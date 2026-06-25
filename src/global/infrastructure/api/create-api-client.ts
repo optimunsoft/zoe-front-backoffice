@@ -1,0 +1,153 @@
+import type { ApiPluginNuxtApp } from './types';
+import { getRequestUrl, isAuthRefreshRequest } from './request-url';
+import { useAuthStore } from '~/core/auth/store/auth.store';
+import { handleRevokedCompanyAccess } from '~/core/company/utils/company-route-access';
+import { useCompanyStore } from '~/core/company/store/company.store';
+import { HEADER_FORCE_AUTH, HEADER_SKIP_AUTH } from '~/shared/constants/headers';
+
+type ApiClient = ReturnType<typeof $fetch.create>;
+
+type ApiRequestOptions = NonNullable<Parameters<ApiClient>[1]> & {
+  _authRetry?: boolean;
+};
+
+const AUTH_BYPASS_PATHS = ['auth/refresh', 'auth/logout', 'auth/login'];
+
+const isAuthBypassPath = (requestUrl: string): boolean =>
+  AUTH_BYPASS_PATHS.some((path) => requestUrl.includes(path));
+
+export function createApiClient(
+  nuxtApp: ApiPluginNuxtApp,
+  basePath: string,
+  apiVersion: string,
+): ApiClient {
+  let client: ApiClient;
+
+  // eslint-disable-next-line prefer-const -- referencia circular para retry del 401
+  client = $fetch.create({
+    baseURL: `${basePath}/${apiVersion}`,
+    headers: {},
+    async onRequest({ options }) {
+      const headers = new Headers(options.headers);
+      const authStore = useAuthStore();
+      const skipAuth = headers.get(HEADER_SKIP_AUTH) === '1';
+      const forceAuth = headers.get(HEADER_FORCE_AUTH) === '1';
+      
+      if (!skipAuth && (authStore.isLoggedIn || forceAuth)) {
+        const token = await authStore.ensureAccessToken();
+        if (token && token.length >= 10) {
+          headers.set('Authorization', `Bearer ${token}`);
+        } else if (import.meta.dev && forceAuth) {
+          console.warn('[API] Petición con forceAuth sin token disponible');
+        }
+      }
+
+      options.headers = headers;
+    },
+    async onResponseError({ request, response, options }) {
+      const authStore = useAuthStore();
+      const requestOptions = options as ApiRequestOptions;
+
+      if (
+        response.status === 404 &&
+        typeof request === 'string' &&
+        request.includes('/accounting/annexes/accounts/config')
+      ) {
+        const silentError = new Error('Annexe account config not found') as Error & {
+          status: number;
+          statusCode: number;
+          response: typeof response;
+        };
+        silentError.status = 404;
+        silentError.statusCode = 404;
+        silentError.response = response;
+        throw silentError;
+      }
+
+      if (response.status === 403) {
+        const requestUrl = getRequestUrl(request);
+        const isAccountingRequest = requestUrl.includes('/accounting');
+        const companyStore = useCompanyStore();
+
+        if (isAccountingRequest && companyStore.currentCompany) {
+          const now = Date.now();
+          const timeSinceLastRedirect = now - authStore.lastAuthRedirectAt;
+          const MIN_REDIRECT_INTERVAL = 2000;
+
+          if (!authStore.authFlowInFlight && timeSinceLastRedirect >= MIN_REDIRECT_INTERVAL) {
+            authStore.setAuthFlowInFlight(true);
+            authStore.markAuthRedirect();
+
+            try {
+              await nuxtApp.runWithContext(() => handleRevokedCompanyAccess());
+            } finally {
+              setTimeout(() => {
+                authStore.setAuthFlowInFlight(false);
+              }, 1000);
+            }
+          }
+        }
+
+        return;
+      }
+
+      if (response.status !== 401) {
+        return;
+      }
+
+      if (isAuthRefreshRequest(request)) {
+        return;
+      }
+
+      const requestUrl = getRequestUrl(request);
+      const headers = new Headers(requestOptions.headers);
+      const skipAuth = headers.get(HEADER_SKIP_AUTH) === '1';
+
+      if (!skipAuth && !isAuthBypassPath(requestUrl) && !requestOptions._authRetry) {
+        const token = await authStore.ensureAccessToken();
+
+        if (token && token.length >= 10) {
+          requestOptions._authRetry = true;
+          headers.set('Authorization', `Bearer ${token}`);
+
+          return client(request, {
+            ...requestOptions,
+            headers,
+          });
+        }
+      }
+
+      const now = Date.now();
+      const timeSinceLastRedirect = now - authStore.lastAuthRedirectAt;
+      const MIN_REDIRECT_INTERVAL = 2000;
+
+      if (authStore.authFlowInFlight || timeSinceLastRedirect < MIN_REDIRECT_INTERVAL) {
+        return;
+      }
+
+      authStore.setAuthFlowInFlight(true);
+      authStore.markAuthRedirect();
+
+      try {
+        await authStore.logout();
+
+        const authSync = nuxtApp.$authSync;
+        authSync?.broadcastLogout?.();
+
+        await nuxtApp.runWithContext(() => navigateTo('/'));
+      } catch (error) {
+        if (import.meta.dev) {
+          console.error('[API] Error en manejo de 401:', error);
+        }
+        await authStore.logout();
+        await nuxtApp.runWithContext(() => navigateTo('/'));
+      } finally {
+        setTimeout(() => {
+          authStore.setAuthFlowInFlight(false);
+        }, 1000);
+      }
+    },
+  });
+
+  return client;
+}
