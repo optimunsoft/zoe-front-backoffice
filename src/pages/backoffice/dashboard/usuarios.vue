@@ -41,59 +41,70 @@
 
     <UTable
       title="Todos los usuarios"
-      :count="rows.length"
+      :count="users.length"
       :columns="columns"
-      :rows="rows"
-      selectable
-      show-favorite
+      :rows="users"
       show-actions
       actions-mode="inline"
       actions-label="Acciones"
       :action-buttons="actionButtons"
-      @change-selection="updateSelectedItems"
       @action="handleRowAction"
     />
+
+    <div class="mt-8">
+      <PaginationClassic
+        :page="currentPage"
+        :amount="amount"
+        :total="usersStore.total as number"
+        @change-page="handleChangePage"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import { Button } from '~/core/ui/buttons'
 import FilterButton from '~/core/ui/dropdown/DropdownFilter.vue'
 import DateSelect from '~/core/ui/form/DateSelect.vue'
+import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
 import UTable from '~/core/ui/Tables/Utable.vue'
 import type { UTableActionButton, UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
+import { useUsersStore } from '~/modules/administration/users/store/users.store'
+import { mapUsersToTableRows, userColumns } from '~/modules/administration/users/mappers/user-tables-mappers'
+import type { User } from '~/core/auth/types/auth.types'
 
+const usersStore = useUsersStore()
 const selectedItems = ref<Array<string | number>>([])
+const currentPage = ref(1)
+const amount = ref(10)
+const isLoading = ref(false)
 
-const columns: UTableColumn[] = [
-  { key: 'name', label: 'Nombre' },
-  { key: 'email', label: 'Email' },
-  { key: 'role', label: 'Rol' },
-  { key: 'company', label: 'Empresa' },
-  { key: 'phone', label: 'Teléfono' },
-  { key: 'status', label: 'Estado', align: 'center', variantKey: 'statusVariant' },
-]
-
-const rows = ref<UTableRow[]>([
-  {
-    id: 1,
-    name: 'Lewis Manzano',
-    email: 'lewis.manzano@optimumsoft.co',
-    role: 'Administrador',
-    company: 'Optimum Soft',
-    phone: '+57 300 000 0000',
-    status: 'Activo',
-    statusVariant: 'success',
-    fav: true,
-  },
-])
+const columns = computed<UTableColumn[]>(() => userColumns)
+const users = computed(() =>
+  mapUsersToTableRows(usersStore.users as unknown as User[])
+)
 
 const actionButtons: UTableActionButton[] = [
   { key: 'edit', label: 'Editar' },
   { key: 'delete', label: 'Eliminar', tone: 'danger' },
 ]
+
+const fetchUsers = async (page: number) => {
+  isLoading.value = true
+  currentPage.value = page
+
+  try {
+    await usersStore.getUsers({
+      amount: amount.value,
+      page,
+    })
+    selectedItems.value = []
+  } finally {
+    isLoading.value = false
+  }
+}
 
 const handleCreateUser = () => {
   // TODO: abrir modal o navegar al formulario de creación
@@ -105,12 +116,17 @@ const handleDeleteSelected = () => {
   console.log('delete', selectedItems.value)
 }
 
-const updateSelectedItems = (selected: Array<string | number>) => {
-  selectedItems.value = selected
-}
-
 const handleRowAction = ({ action, row }: { action: string, row: UTableRow }) => {
   // TODO: conectar con API / navegación
   console.log(action, row.id)
 }
+
+const handleChangePage = async (page: number) => {
+  if (isLoading.value || page === currentPage.value) return
+  await fetchUsers(page)
+}
+
+onMounted(() => {
+  fetchUsers(currentPage.value)
+})
 </script>

@@ -42,59 +42,138 @@
     <UTable
       title="Todas las empresas"
       :count="rows.length"
-      :columns="columns"
+      :columns="companyColumns"
       :rows="rows"
-      selectable
-      show-favorite
       show-actions
       actions-mode="inline"
       actions-label="Acciones"
       :action-buttons="actionButtons"
-      @change-selection="updateSelectedItems"
       @action="handleRowAction"
-    />
+    >
+      <template #cell-documentNumber="{ row }">
+        <div class="flex flex-col items-start gap-1">
+          <span class="font-medium text-gray-800 dark:text-gray-100">
+            {{ row.documentNumber }}
+          </span>
+          <UBadge
+            v-if="row.documentType && row.documentType !== '-'"
+            color="violet"
+            appearance="soft"
+            size="xs"
+          >
+            {{ row.documentType }}
+          </UBadge>
+        </div>
+      </template>
+    </UTable>
+
+    <div class="mt-8">
+      <PaginationClassic
+        :page="currentPage"
+        :amount="amount"
+        :total="totalCompanies"
+        @change-page="handleChangePage"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
+import { useBusinessNatureStore } from '~/core/businessNature/store/businessNature.store'
+import {
+  companyColumns,
+  mapCompaniesToTableRows,
+  type CompanyCatalogItem,
+} from '~/core/company/mappers/company-table.mapper'
+import { useCompanyStore } from '~/core/company/store/company.store'
+import { useDocumentTypeStore } from '~/core/documentType/store/documentType.store'
+import { useTaxResponsibilityStore } from '~/core/taxResponsibility/store/taxResponsibility.store'
+import { useUbicationStore } from '~/core/ubication/store/ubication.store'
 import { Button } from '~/core/ui/buttons'
 import FilterButton from '~/core/ui/dropdown/DropdownFilter.vue'
 import DateSelect from '~/core/ui/form/DateSelect.vue'
+import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
+import UBadge from '~/core/ui/badge/UBadge.vue'
 import UTable from '~/core/ui/Tables/Utable.vue'
-import type { UTableActionButton, UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
+import type { UTableActionButton, UTableRow } from '~/core/ui/Tables/utable.types'
+
+const businessNatureStore = useBusinessNatureStore()
+const companyStore = useCompanyStore()
+const documentTypeStore = useDocumentTypeStore()
+const taxResponsibilityStore = useTaxResponsibilityStore()
+const ubicationStore = useUbicationStore()
 
 const selectedItems = ref<Array<string | number>>([])
+const currentPage = ref(1)
+const amount = ref(10)
+const isLoading = ref(false)
+const municipalitiesById = ref<Record<string, CompanyCatalogItem>>({})
 
-const columns: UTableColumn[] = [
-  { key: 'name', label: 'Nombre' },
-  { key: 'email', label: 'Email' },
-  { key: 'phone', label: 'Teléfono' },
-  { key: 'address', label: 'Dirección' },
-  { key: 'city', label: 'Ciudad' },
-  { key: 'state', label: 'Estado' },
-  { key: 'zip', label: 'Código postal' },
-]
+const totalCompanies = computed(() => companyStore.total)
 
-const rows = ref<UTableRow[]>([
-  {
-    id: 1,
-    name: 'Optimum Soft',
-    email: 'contacto@optimumsoft.co',
-    phone: '+57 300 000 0000',
-    address: 'Calle 123 #45-67',
-    city: 'Bogotá',
-    state: 'Activa',
-    zip: '110111',
-    fav: true,
-  },
-])
+const municipalityItems = computed(() => Object.values(municipalitiesById.value))
+
+const rows = computed<UTableRow[]>(() =>
+  mapCompaniesToTableRows(companyStore.companies, {
+    businessNatures: businessNatureStore.businessNatures,
+    taxResponsibilities: taxResponsibilityStore.taxResponsibilities,
+    documentTypes: documentTypeStore.documentTypes,
+    municipalities: municipalityItems.value,
+  }),
+)
 
 const actionButtons: UTableActionButton[] = [
   { key: 'edit', label: 'Editar' },
   { key: 'delete', label: 'Eliminar', tone: 'danger' },
 ]
+
+const fetchCatalogs = async () => {
+  await Promise.all([
+    businessNatureStore.getBusinessNatures(),
+    documentTypeStore.getDocumentTypes(),
+    taxResponsibilityStore.getTaxResponsibilities(),
+  ])
+}
+
+const fetchMunicipalityNames = async () => {
+  const municipalityIds = [
+    ...new Set(companyStore.companies.map((company) => company.municipalityId).filter(Boolean)),
+  ]
+
+  await Promise.all(
+    municipalityIds.map(async (id) => {
+      if (municipalitiesById.value[id]) return
+
+      await ubicationStore.getMunicipalities({ id })
+      const municipality = ubicationStore.municipalities.find((item) => item.id === id)
+
+      if (municipality) {
+        municipalitiesById.value[id] = {
+          id: municipality.id,
+          name: `${municipality.name} - ${municipality.state.name}`,
+        }
+      }
+    }),
+  )
+}
+
+const fetchCompanies = async (page: number) => {
+  isLoading.value = true
+  currentPage.value = page
+
+  try {
+    await companyStore.getCompanies({
+      amount: amount.value,
+      page,
+    })
+    await fetchMunicipalityNames()
+    selectedItems.value = []
+  } finally {
+    isLoading.value = false
+  }
+}
 
 const handleCreateCompany = () => {
   // TODO: abrir modal o navegar al formulario de creación
@@ -106,12 +185,18 @@ const handleDeleteSelected = () => {
   console.log('delete', selectedItems.value)
 }
 
-const updateSelectedItems = (selected: Array<string | number>) => {
-  selectedItems.value = selected
-}
-
 const handleRowAction = ({ action, row }: { action: string, row: UTableRow }) => {
   // TODO: conectar con API / navegación
   console.log(action, row.id)
 }
+
+const handleChangePage = async (page: number) => {
+  if (isLoading.value || page === currentPage.value) return
+  await fetchCompanies(page)
+}
+
+onMounted(async () => {
+  await fetchCatalogs()
+  await fetchCompanies(currentPage.value)
+})
 </script>

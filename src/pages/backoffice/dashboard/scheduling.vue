@@ -46,7 +46,6 @@
       :columns="columns"
       :rows="rows"
       selectable
-      show-favorite
       show-actions
       actions-mode="inline"
       actions-label="Acciones"

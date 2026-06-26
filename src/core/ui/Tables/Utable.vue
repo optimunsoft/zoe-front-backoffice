@@ -22,9 +22,6 @@
                   </label>
                 </div>
               </th>
-              <th v-if="showFavorite" class="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap w-px">
-                <span class="sr-only">Favorito</span>
-              </th>
               <th
                 v-for="column in columns"
                 :key="column.key"
@@ -59,22 +56,6 @@
                       @change="toggleRow(row)"
                     >
                   </label>
-                </div>
-              </td>
-
-              <td v-if="showFavorite" class="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap w-px">
-                <div class="flex items-center relative">
-                  <button type="button">
-                    <svg
-                      class="shrink-0 fill-current"
-                      :class="row.fav ? 'text-yellow-500' : 'text-gray-300 dark:text-gray-600'"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M8 0L6 5.934H0l4.89 3.954L2.968 16 8 12.223 13.032 16 11.11 9.888 16 5.934h-6L8 0z" />
-                    </svg>
-                  </button>
                 </div>
               </td>
 
@@ -248,10 +229,6 @@ export default {
       type: Boolean,
       default: false,
     },
-    showFavorite: {
-      type: Boolean,
-      default: false,
-    },
     showActions: {
       type: Boolean,
       default: false,
@@ -284,7 +261,6 @@ export default {
     const columnCount = computed(() => {
       let count = props.columns.length
       if (props.selectable) count += 1
-      if (props.showFavorite) count += 1
       if (props.showActions) count += 1
       return count
     })
