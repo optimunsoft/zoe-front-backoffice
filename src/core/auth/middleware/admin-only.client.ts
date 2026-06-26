@@ -17,6 +17,6 @@ export default defineNuxtRouteMiddleware(async () => {
   }
 
   if (!authStore.isAdminUser) {
-    return navigateTo('/admin');
+    return navigateTo('/backoffice/dashboard');
   }
 });

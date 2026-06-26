@@ -2,6 +2,8 @@ import type { RouteLocationNormalizedLoaded } from 'vue-router'
 
 import { sidebarIcons } from './icons'
 
+const BACKOFFICE_DASHBOARD_PATH = '/backoffice/dashboard'
+
 export type SidebarMenuContext = {
   route: RouteLocationNormalizedLoaded
 }
@@ -30,33 +32,29 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
     items: [
       {
         key: 'dashboard',
-        label: 'Dashboard',
+        label: 'Inicio',
         iconPaths: sidebarIcons.dashboard,
+        to: BACKOFFICE_DASHBOARD_PATH,
         active: ({ route }: SidebarMenuContext) => {
-          const id = route.params.iduser
-          if (!id) return false
-
-          const base = `/dashboard/${id}`
-          return route.path === base || route.path === `${base}/`
+          return route.path === BACKOFFICE_DASHBOARD_PATH || route.path === `${BACKOFFICE_DASHBOARD_PATH}/`
         },
-        children: [
-          {
-            key: 'dashboard-home',
-            label: 'Inicio',
-            to: ({ route }: SidebarMenuContext) => `/dashboard/${route.params.iduser}`,
-          },
-        ],
       },
       {
         key: 'administration',
         label: 'Administración',
         iconPaths: sidebarIcons.administration,
-        active: ({ route }: SidebarMenuContext) => route.path.includes('/administration'),
+        active: ({ route }: SidebarMenuContext) =>
+          route.path.includes('/empresas') || route.path.includes('/usuarios'),
         children: [
           {
-            key: 'administration-list',
-            label: 'Lista de administracion',
-            to: ({ route }: SidebarMenuContext) => `/dashboard/${route.params.iduser}/administration`,
+            key: 'empresas-list',
+            label: 'Empresas',
+            to: `${BACKOFFICE_DASHBOARD_PATH}/empresas`,
+          },
+          {
+            key: 'usuarios-list',
+            label: 'Usuarios',
+            to: `${BACKOFFICE_DASHBOARD_PATH}/usuarios`,
           },
         ],
       },
@@ -69,7 +67,7 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
           {
             key: 'scheduling-list',
             label: 'Lista de agendamientos',
-            to: ({ route }: SidebarMenuContext) => `/dashboard/${route.params.iduser}/scheduling`,
+            to: `${BACKOFFICE_DASHBOARD_PATH}/scheduling`,
           },
         ],
       },

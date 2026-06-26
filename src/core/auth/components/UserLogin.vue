@@ -232,7 +232,7 @@
                   type="button"
                   class="shrink-0 px-4 py-3 text-sm font-semibold text-[#007BFF] transition hover:text-brand-600
                          dark:text-blue-400 dark:hover:text-blue-300"
-                  @click="sendVerificationCode"
+                  @click="continueWithEmail"
                 >
                   Enviar Código
                 </button>
@@ -312,7 +312,7 @@ import { getErrorMessage } from '~/shared/utils/get-error-message'
 
     try {
       await passwordlessLoginVerify()
-      await navigateTo('/dashboard/544987')
+      await navigateTo('/backoffice/dashboard')
     } catch (error) {
       errorMessage.value = getErrorMessage(error, 'No se pudo verificar el código. Revisa el código e inténtalo nuevamente.')
     } finally {

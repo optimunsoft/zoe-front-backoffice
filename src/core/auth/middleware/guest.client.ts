@@ -3,7 +3,8 @@ import { useAuthStore } from '~/core/auth/store/auth.store';
 
 const ROUTES = {
   INDEX: '/',
-  DASHBOARD: '/dashboard/544987',
+  BACKOFFICE: '/backoffice',
+  DASHBOARD: '/backoffice/dashboard',
   LOGOUT: '/logout',
 };
 
@@ -24,6 +25,10 @@ function shouldRefreshUserProfile(
   return false;
 }
 
+function isBackofficeRoute(path: string): boolean {
+  return path === ROUTES.BACKOFFICE || path.startsWith(`${ROUTES.BACKOFFICE}/`);
+}
+
 export default defineNuxtRouteMiddleware(async (to, from) => {
   if (to.path === ROUTES.LOGOUT) return;
 
@@ -37,7 +42,6 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   }
 
   const isAuthenticated = authStore.hasValidSession();
-  const mustChangePassword = authStore.user?.mustChangePassword;
 
   if (
     isAuthenticated &&
@@ -51,11 +55,15 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     }
   }
 
-  if (!isAuthenticated && to.path.startsWith(ROUTES.DASHBOARD)) {
+  if (!isAuthenticated && isBackofficeRoute(to.path)) {
     return navigateTo({ path: ROUTES.INDEX });
   }
 
   if (isAuthenticated && to.path === ROUTES.INDEX) {
+    return navigateTo(ROUTES.DASHBOARD);
+  }
+
+  if (isAuthenticated && to.path === ROUTES.BACKOFFICE) {
     return navigateTo(ROUTES.DASHBOARD);
   }
 

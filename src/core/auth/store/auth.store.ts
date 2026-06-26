@@ -143,9 +143,6 @@ export const useAuthStore = defineStore(
       }
     };
 
-    const forgotPassword = async (email: string) => {
-      return await getAuthSvc().forgotPassword(email);
-    };
 
 
 
@@ -203,7 +200,6 @@ export const useAuthStore = defineStore(
       getMe,
       passwordlessLoginVerify,
       logout,
-      forgotPassword,
       ensureAccessToken,
     };
   },

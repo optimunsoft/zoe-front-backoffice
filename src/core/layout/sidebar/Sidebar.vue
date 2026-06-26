@@ -25,7 +25,7 @@
             <path d="M10.7 18.7l1.4-1.4L7.8 13H20v-2H7.8l4.3-4.3-1.4-1.4L4 12z" />
           </svg>
         </button>
-        <router-link class="flex w-full flex-col items-center justify-center lg:w-full" to="/dashboard/123123">
+        <router-link class="flex w-full flex-col items-center justify-center lg:w-full" to="/backoffice/dashboard">
           <img
             src="/images/logo.png"
             alt="Zoe"

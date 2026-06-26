@@ -1,8 +1,6 @@
 import type { ApiPluginNuxtApp } from './types';
 import { getRequestUrl, isAuthRefreshRequest } from './request-url';
 import { useAuthStore } from '~/core/auth/store/auth.store';
-import { handleRevokedCompanyAccess } from '~/core/company/utils/company-route-access';
-import { useCompanyStore } from '~/core/company/store/company.store';
 import { HEADER_FORCE_AUTH, HEADER_SKIP_AUTH } from '~/shared/constants/headers';
 
 type ApiClient = ReturnType<typeof $fetch.create>;
@@ -74,46 +72,7 @@ export function createApiClient(
       const authStore = useAuthStore();
       const requestOptions = options as ApiRequestOptions;
 
-      if (
-        response.status === 404 &&
-        typeof request === 'string' &&
-        request.includes('/accounting/annexes/accounts/config')
-      ) {
-        const silentError = new Error('Annexe account config not found') as Error & {
-          status: number;
-          statusCode: number;
-          response: typeof response;
-        };
-        silentError.status = 404;
-        silentError.statusCode = 404;
-        silentError.response = response;
-        throw silentError;
-      }
-
       if (response.status === 403) {
-        const requestUrl = getRequestUrl(request);
-        const isAccountingRequest = requestUrl.includes('/accounting');
-        const companyStore = useCompanyStore();
-
-        if (isAccountingRequest && companyStore.currentCompany) {
-          const now = Date.now();
-          const timeSinceLastRedirect = now - authStore.lastAuthRedirectAt;
-          const MIN_REDIRECT_INTERVAL = 2000;
-
-          if (!authStore.authFlowInFlight && timeSinceLastRedirect >= MIN_REDIRECT_INTERVAL) {
-            authStore.setAuthFlowInFlight(true);
-            authStore.markAuthRedirect();
-
-            try {
-              await nuxtApp.runWithContext(() => handleRevokedCompanyAccess());
-            } finally {
-              setTimeout(() => {
-                authStore.setAuthFlowInFlight(false);
-              }, 1000);
-            }
-          }
-        }
-
         throw createResponseError(response);
       }
 

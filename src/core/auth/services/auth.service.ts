@@ -54,22 +54,12 @@ export const useAuthService = () => {
     });
   };
 
-  const forgotPassword = (email: string): Promise<void> => {
-    return $apiCore<void>('auth/forgot-password', {
-      method: 'POST',
-      body: {
-        email,
-      },
-    });
-  };
-
 
 
   return {
     getMe,
     passwordlessLoginVerify,
     logout,
-    forgotPassword,
     refresh,
     passwordlessLogin,
   };
