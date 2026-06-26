@@ -1,14 +1,28 @@
-import type { GetMeResponse, LoginApiResponse, LoginRequest } from '../types/auth.types';
+import type { GetMeResponse, LoginApiResponse } from '../types/auth.types';
 import { HEADER_FORCE_AUTH, HEADER_SKIP_AUTH } from '~/shared/constants/headers';
 
 export const useAuthService = () => {
   const { $apiCore } = useNuxtApp();
 
-  const login = (payload: LoginRequest): Promise<LoginApiResponse> => {
-    return $apiCore<LoginApiResponse>('auth/login', {
+
+  const passwordlessLogin = (email: string): Promise<void> => {
+    return $apiCore<void>('auth/admin/passwordless/start', {
       method: 'POST',
-      body: payload,
       headers: { [HEADER_SKIP_AUTH]: '1' },
+      body: {
+        email,
+      },
+    });
+  };
+
+  const passwordlessLoginVerify = (email: string, otp: string): Promise<LoginApiResponse> => {
+    return $apiCore<LoginApiResponse>('auth/admin/passwordless/verify', {
+      method: 'POST',
+      headers: { [HEADER_SKIP_AUTH]: '1' },
+      body: {
+        email,
+        otp,
+      },
     });
   };
 
@@ -53,10 +67,10 @@ export const useAuthService = () => {
 
   return {
     getMe,
-
-    login,
+    passwordlessLoginVerify,
     logout,
     forgotPassword,
     refresh,
+    passwordlessLogin,
   };
 };

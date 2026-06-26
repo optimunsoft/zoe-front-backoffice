@@ -6,5 +6,5 @@ export const ACCESS_TOKEN_EXPIRES_AT_COOKIE = 'access_token_expires_at'
 export const API_CORE_HOST = '192.168.1.5'
 export const API_CORE_PROXY_PATH = '/proxy/api-core'
 
-export const API_ACCOUNTING_HOST = '192.168.1.5'
-export const API_ACCOUNTING_PROXY_PATH = '/proxy/api-accounting'
+export const API_BACKOFFICE_HOST = '192.168.1.5'
+export const API_BACKOFFICE_PROXY_PATH = '/proxy/api-backoffice'

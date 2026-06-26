@@ -18,3 +18,4 @@ export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg'
 export type ButtonIconPosition = 'left' | 'right'
 
 export type ButtonNativeType = 'button' | 'submit' | 'reset'
+2

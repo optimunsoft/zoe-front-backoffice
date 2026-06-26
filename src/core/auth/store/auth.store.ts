@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 
 import { useAuthService } from '../services/auth.service';
 
-import type { LoginRequest, User } from '../types/auth.types';
+import type { User } from '../types/auth.types';
 
 import { useCompanyStore } from '~/core/company/store/company.store';
 import { clearCompanyStores } from '~/shared/utils/clear-company-stores';
@@ -83,16 +83,18 @@ export const useAuthStore = defineStore(
       return session.refreshToken?.trim() ? session.refreshToken : null;
     };
 
-    const login = async (payload: LoginRequest) => {
-      const { response } = await getAuthSvc().login(payload);
 
+    const passwordlessLogin = async (email: string) => {
+      await getAuthSvc().passwordlessLogin(email);
+    };
+
+    const passwordlessLoginVerify = async (email: string, code: string) => {
+      const { response } = await getAuthSvc().passwordlessLoginVerify(email, code);
       if (!response?.accessToken?.trim()) {
-        throw new Error('La respuesta de login no incluye accessToken');
+        throw new Error('La respuesta de passwordlessLoginVerify no incluye accessToken');
       }
-
       setAuthTokens(response.accessToken, response.refreshToken ?? '', response.expiresIn);
       isLoggedIn.value = true;
-
       await getMe({ forceAuth: true });
     };
 
@@ -197,9 +199,9 @@ export const useAuthStore = defineStore(
       hasValidSession,
       getAccessToken,
       getRefreshToken,
-      login,
+      passwordlessLogin,
       getMe,
-
+      passwordlessLoginVerify,
       logout,
       forgotPassword,
       ensureAccessToken,

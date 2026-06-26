@@ -3,10 +3,8 @@ import { useAuthStore } from '~/core/auth/store/auth.store';
 
 const ROUTES = {
   INDEX: '/',
-  ADMIN: '/admin',
+  DASHBOARD: '/dashboard/544987',
   LOGOUT: '/logout',
-  CHANGE_PASSWORD: '/change-password',
-  FORGOT_PASSWORD: '/forgot-password',
 };
 
 function shouldRefreshUserProfile(
@@ -18,13 +16,10 @@ function shouldRefreshUserProfile(
     return true;
   }
 
-  if (toPath.startsWith(ROUTES.ADMIN) && !fromPath.startsWith(ROUTES.ADMIN)) {
+  if (toPath.startsWith(ROUTES.DASHBOARD) && !fromPath.startsWith(ROUTES.DASHBOARD)) {
     return true;
   }
 
-  if (toPath === ROUTES.CHANGE_PASSWORD) {
-    return true;
-  }
 
   return false;
 }
@@ -56,23 +51,12 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     }
   }
 
-  if (!isAuthenticated && to.path.startsWith(ROUTES.ADMIN)) {
+  if (!isAuthenticated && to.path.startsWith(ROUTES.DASHBOARD)) {
     return navigateTo({ path: ROUTES.INDEX });
   }
 
   if (isAuthenticated && to.path === ROUTES.INDEX) {
-    return navigateTo(ROUTES.ADMIN);
+    return navigateTo(ROUTES.DASHBOARD);
   }
 
-  if (
-    isAuthenticated &&
-    mustChangePassword &&
-    to.path !== ROUTES.CHANGE_PASSWORD
-  ) {
-    return navigateTo(ROUTES.CHANGE_PASSWORD);
-  }
-
-  if (isAuthenticated && to.path === ROUTES.FORGOT_PASSWORD) {
-    return navigateTo(ROUTES.ADMIN);
-  }
 });

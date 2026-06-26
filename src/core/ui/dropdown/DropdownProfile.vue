@@ -7,7 +7,10 @@
       @click.prevent="dropdownOpen = !dropdownOpen"
       :aria-expanded="dropdownOpen"
     >
-      <img class="w-8 h-8 rounded-full" :src="UserAvatar" width="32" height="32" alt="User" />
+      <span
+        class="w-8 h-8 shrink-0 rounded-full bg-gray-200 dark:bg-gray-600"
+        aria-hidden="true"
+      />
       <div class="flex items-center truncate">
         <span class="truncate ml-2 text-sm font-medium text-gray-600 dark:text-gray-100 group-hover:text-gray-800 dark:group-hover:text-white">Acme Inc.</span>
         <svg class="w-3 h-3 shrink-0 ml-1 fill-current text-gray-400 dark:text-gray-500" viewBox="0 0 12 12">
@@ -47,16 +50,10 @@
 
 <script>
 import { ref, onMounted, onUnmounted } from 'vue'
-const UserAvatar = '/images/user-avatar-32.png'
 
 export default {
   name: 'DropdownProfile',
   props: ['align'],
-  data() {
-    return {
-      UserAvatar: UserAvatar,
-    }
-  },  
   setup() {
 
     const dropdownOpen = ref(false)

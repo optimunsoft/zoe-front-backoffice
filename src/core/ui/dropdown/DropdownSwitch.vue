@@ -7,7 +7,10 @@
       @click.prevent="dropdownOpen = !dropdownOpen"
       :aria-expanded="dropdownOpen"
     >
-      <img class="w-8 h-8 rounded-full mr-2" src="/images/user-avatar-32.png" width="32" height="32" alt="Group 01" />
+      <span
+        class="mr-2 h-8 w-8 shrink-0 rounded-full bg-gray-200 dark:bg-gray-600"
+        aria-hidden="true"
+      />
       <div class="truncate">
         <span class="text-sm font-medium dark:text-gray-300 group-hover:text-gray-800 dark:group-hover:text-gray-200">Acme Inc.</span>
       </div>
@@ -33,7 +36,10 @@
             <a class="font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 block py-1.5 px-3" href="#0" @click="dropdownOpen = false">
               <div class="flex items-center justify-between">
                 <div class="grow flex items-center truncate">
-                  <img class="w-7 h-7 rounded-full mr-2" src="/images/channel-01.png" width="28" height="28" alt="Channel 01" />
+                  <span
+                    class="mr-2 h-7 w-7 shrink-0 rounded-full bg-gray-200 dark:bg-gray-600"
+                    aria-hidden="true"
+                  />
                   <div class="truncate">Acme Inc.</div>
                 </div>
                 <svg class="w-3 h-3 shrink-0 fill-current text-violet-500 ml-1" viewBox="0 0 12 12">
@@ -46,7 +52,10 @@
             <a class="font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 block py-1.5 px-3" href="#0" @click="dropdownOpen = false">
               <div class="flex items-center justify-between">
                 <div class="grow flex items-center truncate">
-                  <img class="w-7 h-7 rounded-full mr-2" src="/images/channel-02.png" width="28" height="28" alt="Channel 02" />
+                  <span
+                    class="mr-2 h-7 w-7 shrink-0 rounded-full bg-gray-200 dark:bg-gray-600"
+                    aria-hidden="true"
+                  />
                   <div class="truncate">Acme Limited</div>
                 </div>
               </div>
@@ -56,7 +65,10 @@
             <a class="font-medium text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200 block py-1.5 px-3" href="#0" @click="dropdownOpen = false">
               <div class="flex items-center justify-between">
                 <div class="grow flex items-center truncate">
-                  <img class="w-7 h-7 rounded-full mr-2" src="/images/channel-03.png" width="28" height="28" alt="Channel 03" />
+                  <span
+                    class="mr-2 h-7 w-7 shrink-0 rounded-full bg-gray-200 dark:bg-gray-600"
+                    aria-hidden="true"
+                  />
                   <div class="truncate">Acme Srl</div>
                 </div>
               </div>

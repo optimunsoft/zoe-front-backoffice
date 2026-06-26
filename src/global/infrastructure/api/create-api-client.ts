@@ -6,15 +6,41 @@ import { useCompanyStore } from '~/core/company/store/company.store';
 import { HEADER_FORCE_AUTH, HEADER_SKIP_AUTH } from '~/shared/constants/headers';
 
 type ApiClient = ReturnType<typeof $fetch.create>;
+type ApiResponseErrorContext = Parameters<
+  NonNullable<Parameters<typeof $fetch.create>[0]['onResponseError']>
+>[0];
 
 type ApiRequestOptions = NonNullable<Parameters<ApiClient>[1]> & {
   _authRetry?: boolean;
 };
 
-const AUTH_BYPASS_PATHS = ['auth/refresh', 'auth/logout', 'auth/login'];
+const AUTH_BYPASS_PATHS = [
+  'auth/refresh',
+  'auth/logout',
+  'auth/login',
+  'auth/admin/passwordless/start',
+  'auth/admin/passwordless/verify',
+];
 
 const isAuthBypassPath = (requestUrl: string): boolean =>
   AUTH_BYPASS_PATHS.some((path) => requestUrl.includes(path));
+
+const createResponseError = (response: ApiResponseErrorContext['response']) => {
+  const data = response._data as { message?: string } | undefined;
+  const error = new Error(data?.message ?? `Request failed with status ${response.status}`) as Error & {
+    data?: unknown;
+    response: typeof response;
+    status: number;
+    statusCode: number;
+  };
+
+  error.data = response._data;
+  error.response = response;
+  error.status = response.status;
+  error.statusCode = response.status;
+
+  return error;
+};
 
 export function createApiClient(
   nuxtApp: ApiPluginNuxtApp,
@@ -88,7 +114,7 @@ export function createApiClient(
           }
         }
 
-        return;
+        throw createResponseError(response);
       }
 
       if (response.status !== 401) {

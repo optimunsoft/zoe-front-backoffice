@@ -52,7 +52,6 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       API_CORE_PATH: process.env.API_CORE_PATH,
-      API_ACCOUNTING_PATH: process.env.API_ACCOUNTING_PATH,
       API_BACKOFFICE_PATH: process.env.API_BACKOFFICE_PATH,
       API_VERSION: process.env.API_VERSION ?? 'v1',
       BACKEND_PATH_API: process.env.BACKEND_PATH_API,
@@ -64,11 +63,11 @@ export default defineNuxtConfig({
   nitro: {
     devProxy: {
       '/proxy/api-core': {
-        target: 'http://localhost:9000/api',
+        target: 'http://192.168.1.5:9000/api',
         changeOrigin: true,
       },
-      '/proxy/api-accounting': {
-        target: 'http://localhost:9001/api',
+      '/proxy/api-backoffice': {
+        target: 'http://192.168.1.5:9002/api',
         changeOrigin: true,
       },
     },

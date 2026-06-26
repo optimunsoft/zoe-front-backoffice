@@ -42,16 +42,10 @@
 
 <script>
 import { ref, onMounted, onUnmounted } from 'vue'
-const UserAvatar = '/images/user-avatar-32.png'
 
 export default {
-  name: 'DropdownProfile',
+  name: 'DropdownTransaction',
   props: ['align'],
-  data() {
-    return {
-      UserAvatar: UserAvatar,
-    }
-  },  
   setup() {
 
     const dropdownOpen = ref(false)

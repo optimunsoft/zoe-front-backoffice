@@ -1,7 +1,7 @@
 import type { ApiPluginNuxtApp } from './types'
 import { createApiClient } from './create-api-client'
 import {
-  resolveApiAccountingBasePath,
+  resolveApiBackofficeBasePath,
   resolveApiCoreBasePath,
 } from './resolve-api-path'
 
@@ -14,18 +14,18 @@ type PublicRuntimeConfig = {
 }
 
 function resolveCorePath(config: PublicRuntimeConfig): string {
-  const configured =
-    config.API_CORE_PATH?.trim()
-    || config.API_BACKOFFICE_PATH?.trim()
-    || config.BACKEND_PATH_API?.trim()
+  const configured 
+    = config.API_CORE_PATH?.trim()
     || '/proxy/api-core'
 
   return resolveApiCoreBasePath(configured)
 }
 
-function resolveAccountingPath(config: PublicRuntimeConfig): string {
-  const configured = config.API_ACCOUNTING_PATH?.trim() || '/proxy/api-accounting'
-  return resolveApiAccountingBasePath(configured)
+
+
+function resolveBackofficePath(config: PublicRuntimeConfig): string {
+  const configured = config.API_BACKOFFICE_PATH?.trim() || '/proxy/api-backoffice'
+  return resolveApiBackofficeBasePath(configured)
 }
 
 export function createApiClients(
@@ -36,10 +36,6 @@ export function createApiClients(
 
   return {
     apiCore: createApiClient(nuxtApp, resolveCorePath(publicConfig), apiVersion),
-    apiAccounting: createApiClient(
-      nuxtApp,
-      resolveAccountingPath(publicConfig),
-      apiVersion,
-    ),
+    apiBackoffice: createApiClient(nuxtApp, resolveBackofficePath(publicConfig), apiVersion),
   }
 }

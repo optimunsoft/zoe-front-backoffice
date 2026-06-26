@@ -1,6 +1,6 @@
 import {
-  API_ACCOUNTING_HOST,
-  API_ACCOUNTING_PROXY_PATH,
+  API_BACKOFFICE_HOST,
+  API_BACKOFFICE_PROXY_PATH,
   API_CORE_HOST,
   API_CORE_PROXY_PATH,
 } from '~/shared/constants/auth';
@@ -28,6 +28,7 @@ export function resolveApiCoreBasePath(configuredPath: string | undefined): stri
   return resolveDevApiProxyPath(configuredPath, API_CORE_HOST, API_CORE_PROXY_PATH);
 }
 
-export function resolveApiAccountingBasePath(configuredPath: string | undefined): string {
-  return resolveDevApiProxyPath(configuredPath, API_ACCOUNTING_HOST, API_ACCOUNTING_PROXY_PATH);
+
+export function resolveApiBackofficeBasePath(configuredPath: string | undefined): string {
+  return resolveDevApiProxyPath(configuredPath, API_BACKOFFICE_HOST, API_BACKOFFICE_PROXY_PATH);
 }
