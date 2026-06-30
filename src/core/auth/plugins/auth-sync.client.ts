@@ -16,7 +16,7 @@ export default defineNuxtPlugin(() => {
     channel.addEventListener('message', async (ev: MessageEvent<AuthSyncEvent>) => {
       if (ev.data?.type === 'logout') {
         await authStore.logout();
-        navigateTo('/');
+        navigateTo('/login');
       }
     });
   }
@@ -28,7 +28,7 @@ export default defineNuxtPlugin(() => {
         const payload = JSON.parse(e.newValue) as AuthSyncEvent;
         if (payload.type === 'logout') {
           await authStore.logout();
-          navigateTo('/');
+          navigateTo('/login');
         }
       } catch {}
     }

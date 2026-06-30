@@ -5,14 +5,14 @@ export default defineNuxtRouteMiddleware(async () => {
   const authStore = useAuthStore();
 
   if (!authStore.hasValidSession()) {
-    return navigateTo('/');
+    return navigateTo('/login');
   }
 
   if (!authStore.user) {
     try {
       await authStore.getMe({ forceAuth: true });
     } catch {
-      return navigateTo('/');
+      return navigateTo('/login');
     }
   }
 

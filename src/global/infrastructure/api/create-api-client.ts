@@ -145,13 +145,13 @@ export function createApiClient(
         const authSync = nuxtApp.$authSync;
         authSync?.broadcastLogout?.();
 
-        await nuxtApp.runWithContext(() => navigateTo('/'));
+        await nuxtApp.runWithContext(() => navigateTo('/login'));
       } catch (error) {
         if (import.meta.dev) {
           console.error('[API] Error en manejo de 401:', error);
         }
         await authStore.logout();
-        await nuxtApp.runWithContext(() => navigateTo('/'));
+        await nuxtApp.runWithContext(() => navigateTo('/login'));
       } finally {
         setTimeout(() => {
           authStore.setAuthFlowInFlight(false);

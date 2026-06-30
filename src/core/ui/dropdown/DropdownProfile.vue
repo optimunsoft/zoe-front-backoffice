@@ -83,7 +83,7 @@ const keyHandler = ({ keyCode }: KeyboardEvent) => {
 const submitLogout = async () => {
   dropdownOpen.value = false
   await authStore.logout()
-  await navigateTo('/')
+  await navigateTo('/login')
 }
 
 onMounted(() => {

@@ -161,8 +161,8 @@
         >
           <!-- Logo nube -->
           <div class="mb-8 text-center">
-            <div class="mx-auto mb-5 flex size-24 items-center justify-center">
-              <svg class="size-24" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <div class="mx-auto mb-5 flex flex-col items-center justify-center gap-2 rounded-2xl px-8 py-5">
+              <!-- <svg class="size-24" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="8" y="8" width="112" height="112" rx="28" fill="#EAF3FF" />
                 <path
                   d="M43 79H84C92 79 98 73 98 65C98 57.5 92.2 51.5 84.8 51.2C81.8 41.8 73.6 36 64 36C53.8 36 45.2 43 43.2 52.6C35.8 53.4 30 59.5 30 67C30 73.8 35.2 79 43 79Z"
@@ -171,7 +171,14 @@
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
-              </svg>
+              </svg> -->
+              <img
+                src="/images/logo.png"
+                alt="Zoe"
+                class="h-20 w-auto max-w-full object-contain"
+                width="128"
+                height="80"
+              />
             </div>
   
             <h1 class="text-3xl font-bold text-slate-900 dark:text-white">

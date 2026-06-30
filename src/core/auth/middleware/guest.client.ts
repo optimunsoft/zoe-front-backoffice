@@ -3,10 +3,15 @@ import { useAuthStore } from '~/core/auth/store/auth.store';
 
 const ROUTES = {
   INDEX: '/',
+  LOGIN: '/login',
   BACKOFFICE: '/backoffice',
   DASHBOARD: '/backoffice/dashboard',
   LOGOUT: '/logout',
 };
+
+function isLoginRoute(path: string): boolean {
+  return path === ROUTES.INDEX || path === ROUTES.LOGIN;
+}
 
 function shouldRefreshUserProfile(
   toPath: string,
@@ -51,15 +56,15 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
       await authStore.getMe({ forceAuth: true });
     } catch {
       await authStore.logout();
-      return navigateTo({ path: ROUTES.INDEX });
+      return navigateTo({ path: ROUTES.LOGIN });
     }
   }
 
   if (!isAuthenticated && isBackofficeRoute(to.path)) {
-    return navigateTo({ path: ROUTES.INDEX });
+    return navigateTo({ path: ROUTES.LOGIN });
   }
 
-  if (isAuthenticated && to.path === ROUTES.INDEX) {
+  if (isAuthenticated && isLoginRoute(to.path)) {
     return navigateTo(ROUTES.DASHBOARD);
   }
 
