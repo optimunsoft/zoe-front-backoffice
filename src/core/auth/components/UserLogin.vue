@@ -185,13 +185,6 @@
   
           <!-- Formulario -->
           <form class="space-y-4" @submit.prevent="continueWithCode">
-            <p
-              v-if="errorMessage"
-              class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
-            >
-              {{ errorMessage }}
-            </p>
-
             <div>
               <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">
                 Correo electrónico
@@ -266,16 +259,17 @@
   <script setup lang="ts">
   import { computed, ref } from 'vue'
 import { useAuthStore } from '../store/auth.store'
+import { useNotificationAlert } from '~/core/ui/notifications'
 import { getErrorMessage } from '~/shared/utils/get-error-message'
   
   const email = ref('')
   const verificationCode = ref('')
   const codeStepActive = ref(false)
-  const errorMessage = ref('')
   const isStartingLogin = ref(false)
   const isVerifyingLogin = ref(false)
 
   const authStore = useAuthStore()
+  const notification = useNotificationAlert()
 
   const passwordlessLogin = async () => {
     await authStore.passwordlessLogin(email.value.trim())
@@ -290,15 +284,18 @@ import { getErrorMessage } from '~/shared/utils/get-error-message'
   async function continueWithEmail() {
     if (!isEmailValid.value || isStartingLogin.value) return
 
-    errorMessage.value = ''
     isStartingLogin.value = true
 
     try {
       await passwordlessLogin()
       codeStepActive.value = true
       verificationCode.value = ''
+      notification.success(
+        'Código enviado',
+        'Revisa tu bandeja de entrada e introduce el código de verificación.',
+      )
     } catch (error) {
-      errorMessage.value = getErrorMessage(error, 'No se pudo enviar el código. Inténtalo nuevamente.')
+      notification.error(getErrorMessage(error, 'No se pudo enviar el código. Inténtalo nuevamente.'))
     } finally {
       isStartingLogin.value = false
     }
@@ -307,21 +304,17 @@ import { getErrorMessage } from '~/shared/utils/get-error-message'
   async function continueWithCode() {
     if (!isCodeValid.value || isVerifyingLogin.value) return
 
-    errorMessage.value = ''
     isVerifyingLogin.value = true
 
     try {
       await passwordlessLoginVerify()
+      notification.success('Sesión iniciada correctamente')
       await navigateTo('/backoffice/dashboard')
     } catch (error) {
-      errorMessage.value = getErrorMessage(error, 'No se pudo verificar el código. Revisa el código e inténtalo nuevamente.')
+      notification.error(getErrorMessage(error, 'No se pudo verificar el código. Revisa el código e inténtalo nuevamente.'))
     } finally {
       isVerifyingLogin.value = false
     }
-  }
-  
-  function sendVerificationCode() {
-    // TODO: integrar API — enviar OTP al correo `email.value`
   }
   </script>
   
