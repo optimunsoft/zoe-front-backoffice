@@ -1,4 +1,5 @@
 export { default as UBadge } from './UBadge.vue'
+export { default as TableBadge } from './TableBadge.vue'
 
 export type {
   BadgeAppearance,
@@ -13,3 +14,9 @@ export {
   getBadgeVariantClasses,
   resolveBadgeVariant,
 } from './badge.utils'
+
+export {
+  TABLE_BADGE_APPEARANCE,
+  TABLE_BADGE_PROPS,
+  TABLE_BADGE_SIZE,
+} from './table-badge.constants'

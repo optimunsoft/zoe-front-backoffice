@@ -7,14 +7,11 @@ const STATUS_LABELS: Record<DemonstrationStatus, string> = {
     CANCELADA: 'Cancelada',
 }
 
-const STATUS_BADGE_CLASSES: Record<string, string> = {
-    Pendiente: 'bg-amber-500/20 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300',
-    Ejecutada: 'bg-green-500/20 text-green-700 dark:bg-green-500/20 dark:text-green-300',
-    Cancelada: 'bg-red-500/20 text-red-700 dark:bg-red-500/20 dark:text-red-300',
-}
-
-const PRODUCT_BADGE_CLASS =
-    'bg-blue-500/20 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'
+const STATUS_BADGE_COLORS = {
+    Pendiente: 'warning',
+    Ejecutada: 'success',
+    Cancelada: 'danger',
+} as const
 
 const formatDemonstrationDate = (value: Date | string): string => {
     const date = new Date(value)
@@ -48,14 +45,14 @@ export const demonstrationColumns: UTableColumn[] = [
         label: 'Producto de interés',
         type: 'badge',
         align: 'center',
-        classMapFallback: PRODUCT_BADGE_CLASS,
+        badgeColorFallback: 'info',
     },
     {
         key: 'status',
         label: 'Estado',
         type: 'badge',
         align: 'center',
-        classMap: STATUS_BADGE_CLASSES,
+        badgeColorMap: STATUS_BADGE_COLORS,
     },
 ]
 

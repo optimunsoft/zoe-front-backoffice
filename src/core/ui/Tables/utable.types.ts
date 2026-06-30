@@ -1,3 +1,5 @@
+import type { BadgeColor } from '~/core/ui/badge/badge.types'
+
 export type UTableColumnAlign = 'left' | 'center' | 'right'
 
 /**
@@ -29,6 +31,10 @@ export type UTableColumn = {
   imageKey?: string
   /** Mapa valor → clases CSS (badges, colores condicionales, etc.). */
   classMap?: UTableClassMap
+  /** Mapa valor → color semántico de `TableBadge` / `UBadge` (preferido en columnas `badge`). */
+  badgeColorMap?: Record<string, BadgeColor>
+  /** Color por defecto para columnas `badge` cuando no hay entrada en `badgeColorMap`. */
+  badgeColorFallback?: BadgeColor
   /** Campo de referencia para resolver `classMap` (p. ej. colorear una columna según otra). */
   classMapKey?: string
   /** Clase por defecto si `classMap` no tiene entrada. */

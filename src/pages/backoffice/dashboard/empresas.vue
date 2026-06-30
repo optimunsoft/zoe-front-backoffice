@@ -71,38 +71,32 @@
           <span class="font-medium text-gray-800 dark:text-gray-100">
             {{ row.documentNumber }}
           </span>
-          <UBadge
+          <TableBadge
             v-if="row.documentType && row.documentType !== '-'"
             color="violet"
-            appearance="soft"
-            size="xs"
           >
             {{ formatTableText(row.documentType) }}
-          </UBadge>
+          </TableBadge>
         </div>
       </template>
 
       <template #cell-taxResponsibility="{ row }">
-        <UBadge
+        <TableBadge
           v-if="row.taxResponsibility && row.taxResponsibility !== '-'"
           :color="isTaxResponsibilityNoAplica(row.taxResponsibility) ? 'neutral' : 'info'"
-          appearance="soft"
-          size="md"
         >
           {{ formatTableText(row.taxResponsibility) }}
-        </UBadge>
+        </TableBadge>
         <span v-else class="text-gray-400 dark:text-gray-500">-</span>
       </template>
 
       <template #cell-businessNature="{ row }">
-        <UBadge
+        <TableBadge
           v-if="row.businessNature && row.businessNature !== '-'"
           :color="getBusinessNatureBadgeColor(row.businessNature)"
-          appearance="soft"
-          size="md"
         >
           {{ formatTableText(row.businessNature) }}
-        </UBadge>
+        </TableBadge>
         <span v-else class="text-gray-400 dark:text-gray-500">-</span>
       </template>
 
@@ -111,14 +105,12 @@
           <span class="text-gray-800 dark:text-gray-100">
             {{ row.municipalityCity }}
           </span>
-          <UBadge
+          <TableBadge
             v-if="row.municipalityState && row.municipalityState !== '-'"
             color="info"
-            appearance="soft"
-            size="xs"
           >
             {{ formatTableText(row.municipalityState) }}
-          </UBadge>
+          </TableBadge>
         </div>
       </template>
     </UTable>
@@ -154,7 +146,7 @@ import { FilterPills } from '~/core/ui/filters'
 import TableColumnToggle from '~/core/ui/dropdown/TableColumnToggle.vue'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
-import UBadge from '~/core/ui/badge/UBadge.vue'
+import { TableBadge } from '~/core/ui/badge'
 import UTable from '~/core/ui/Tables/Utable.vue'
 import type { UTableActionButton, UTableRow } from '~/core/ui/Tables/utable.types'
 import type { BadgeColor } from '~/core/ui/badge/badge.types'

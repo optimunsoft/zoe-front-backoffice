@@ -65,6 +65,8 @@
 </template>
 
 <script>
+import { onMounted, onUnmounted } from 'vue'
+
 import { ModalSearch, useModal } from '~/core/ui/modal'
 import Notifications from '~/core/ui/dropdown/DropdownNotifications.vue'
 import Help from '~/core/ui/dropdown/DropdownHelp.vue'
@@ -86,6 +88,20 @@ export default {
   },
   setup() {
     const { modalOpen: searchModalOpen, open: openSearchModal, close: closeSearchModal } = useModal()
+
+    const handleSearchShortcut = (event) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') return
+      event.preventDefault()
+      openSearchModal()
+    }
+
+    onMounted(() => {
+      document.addEventListener('keydown', handleSearchShortcut)
+    })
+
+    onUnmounted(() => {
+      document.removeEventListener('keydown', handleSearchShortcut)
+    })
 
     return {
       searchModalOpen,

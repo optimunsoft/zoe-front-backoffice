@@ -66,9 +66,9 @@
                 <span class="text-gray-800 dark:text-gray-100">
                     {{ row.scheduledDate }}
                 </span>
-                <UBadge color="info" appearance="soft" size="xs">
+                <TableBadge color="info">
                     {{ row.scheduledTime }}
-                </UBadge>
+                </TableBadge>
             </div>
         </template>
     </UTable>
@@ -90,7 +90,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
 import { Button, ReloadButton } from '~/core/ui/buttons'
-import UBadge from '~/core/ui/badge/UBadge.vue'
+import { TableBadge } from '~/core/ui/badge'
 import DateSelect from '~/core/ui/form/DateSelect.vue'
 import TableColumnToggle from '~/core/ui/dropdown/TableColumnToggle.vue'
 import { FilterPills } from '~/core/ui/filters'

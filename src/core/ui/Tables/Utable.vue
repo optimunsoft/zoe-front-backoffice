@@ -83,13 +83,12 @@
                   </div>
 
                   <!-- badge -->
-                  <div
+                  <TableBadge
                     v-else-if="column.type === 'badge'"
-                    class="inline-flex font-medium rounded-full text-left px-2.5 py-0.5"
-                    :class="resolveCellClass(row, column)"
+                    :color="resolveBadgeColor(row, column)"
                   >
                     {{ formatCellValue(row[column.key]) }}
-                  </div>
+                  </TableBadge>
 
                   <!-- icon-label -->
                   <div
@@ -178,6 +177,8 @@
 import { computed, ref, watch } from 'vue'
 
 import { toTitleCase } from '~/shared/utils/format'
+import { TableBadge } from '~/core/ui/badge'
+import type { BadgeColor } from '~/core/ui/badge/badge.types'
 import {
   UTABLE_BADGE_FALLBACK_CLASS,
   UTABLE_TEXT_MAP_FALLBACK_CLASS,
@@ -204,6 +205,9 @@ const BUILTIN_INLINE_ACTION_ICONS: Record<string, string[]> = {
 
 export default {
   name: 'UTable',
+  components: {
+    TableBadge,
+  },
   props: {
     title: {
       type: String,
@@ -323,6 +327,17 @@ export default {
       return row[refKey]
     }
 
+    const resolveBadgeColor = (row: UTableRow, column: UTableColumn): BadgeColor => {
+      const mapKey = resolveMapKey(row, column)
+      const key = String(mapKey ?? row[column.key] ?? '')
+
+      if (column.badgeColorMap?.[key]) {
+        return column.badgeColorMap[key]
+      }
+
+      return column.badgeColorFallback ?? 'neutral'
+    }
+
     const resolveCellClass = (row: UTableRow, column: UTableColumn) => {
       const mapKey = resolveMapKey(row, column)
       const key = String(mapKey ?? row[column.key] ?? '')
@@ -373,6 +388,7 @@ export default {
       toggleRow,
       toggleSelectAll,
       formatCellValue,
+      resolveBadgeColor,
       resolveCellClass,
       cellTextClass,
       getCellImage,

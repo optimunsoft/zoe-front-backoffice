@@ -60,7 +60,25 @@
       actions-label="Acciones"
       :action-buttons="actionButtons"
       @action="handleRowAction"
-    />
+    >
+      <template #cell-email="{ row }">
+        <span v-if="hasUserEmail(row.email)" class="text-gray-800 dark:text-gray-100">
+          {{ row.email }}
+        </span>
+        <TableBadge v-else color="neutral">
+          No Aplica
+        </TableBadge>
+      </template>
+
+      <template #cell-isAdmin="{ row }">
+        <TableBadge v-if="row.isAdminUser" color="primary">
+          Superusuario
+        </TableBadge>
+        <TableBadge v-else color="neutral">
+          No Aplica
+        </TableBadge>
+      </template>
+    </UTable>
 
     <div class="mt-8">
       <PaginationClassic
@@ -77,6 +95,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { Button, ReloadButton } from '~/core/ui/buttons'
+import { TableBadge } from '~/core/ui/badge'
 import TableColumnToggle from '~/core/ui/dropdown/TableColumnToggle.vue'
 import { FilterPills } from '~/core/ui/filters'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
@@ -142,6 +161,12 @@ const actionButtons: UTableActionButton[] = [
   { key: 'edit', label: 'Editar' },
   { key: 'delete', label: 'Eliminar', tone: 'danger' },
 ]
+
+const hasUserEmail = (value: unknown) => {
+  if (typeof value !== 'string') return false
+  const email = value.trim()
+  return email.length > 0 && email !== '-'
+}
 
 const fetchUsers = async (page: number, force = false) => {
   isLoading.value = true

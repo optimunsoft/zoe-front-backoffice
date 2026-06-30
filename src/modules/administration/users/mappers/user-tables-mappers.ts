@@ -10,13 +10,31 @@ export const userColumns: UTableColumn[] = [
     label: 'Rol',
     type: 'badge',
     align: 'center',
-    classMap: {
-      Usuario: 'bg-brand-500/20 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300',
-      Subusuario: 'bg-gray-100 text-gray-600 dark:bg-gray-700/50 dark:text-gray-300',
+    badgeColorMap: {
+      Usuario: 'primary',
+      Subusuario: 'neutral',
     },
   },
-  { key: 'isActive', label: 'Activo', type: 'badge', align: 'center', classMap: { Activo: 'bg-green-500/20 text-green-700 dark:bg-green-500/20 dark:text-green-300', Inactivo: 'bg-red-500/20 text-red-700 dark:bg-red-500/20 dark:text-red-300' } },
-  { key: 'isVerified', label: 'Verificado', type: 'badge', align: 'center', classMap: { Verificado: 'bg-green-500/20 text-green-700 dark:bg-green-500/20 dark:text-green-300', 'No verificado': 'bg-red-500/20 text-red-700 dark:bg-red-500/20 dark:text-red-300' } },
+  {
+    key: 'isActive',
+    label: 'Activo',
+    type: 'badge',
+    align: 'center',
+    badgeColorMap: {
+      Activo: 'success',
+      Inactivo: 'danger',
+    },
+  },
+  {
+    key: 'isVerified',
+    label: 'Verificado',
+    type: 'badge',
+    align: 'center',
+    badgeColorMap: {
+      Verificado: 'success',
+      'No verificado': 'danger',
+    },
+  },
   { key: 'isAdmin', label: 'SuperUsuario' },
 ]
 
@@ -25,7 +43,8 @@ export const mapUsersToTableRows = (userList: User[]): UTableRow[] => {
     id: user.id,
     firstName: user.firstName,
     lastName: user.lastName,
-    email: user.email || '-',
+    email: user.email?.trim() ?? '',
+    isAdminUser: user.isAdmin,
     role: user.userType === 'USUARIO' ? 'Usuario' : 'Subusuario',
     isActive: user.isActive ? 'Activo' : 'Inactivo',
     isVerified: user.isVerified ? 'Verificado' : 'No verificado',

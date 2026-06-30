@@ -20,10 +20,10 @@ export type CompanyTableCatalogs = {
   vatRegimes?: CompanyCatalogItem[]
 }
 
-const ACTIVE_BADGE_CLASSES = {
-  Si: 'bg-green-500/20 text-green-700 dark:bg-green-500/20 dark:text-green-300',
-  No: 'bg-red-500/20 text-red-700 dark:bg-red-500/20 dark:text-red-300',
-}
+const HAS_API_KEY_BADGE_COLORS = {
+  Habilitada: 'success',
+  'Sin Habilitar': 'neutral',
+} as const
 
 export const companyColumns: UTableColumn[] = [
   { key: 'businessName', label: 'Razón social', variant: 'emphasis', toggleable: false },
@@ -37,7 +37,7 @@ export const companyColumns: UTableColumn[] = [
     label: 'API Key',
     type: 'badge',
     align: 'center',
-    classMap: ACTIVE_BADGE_CLASSES,
+    badgeColorMap: HAS_API_KEY_BADGE_COLORS,
   },
 ]
 
@@ -90,7 +90,7 @@ export const mapCompaniesToTableRows = (
       municipalityState: municipality.state,
       vatRegime: findCatalogName(catalogs.vatRegimes, company.vatRegimeId),
       address: company.address || '-',
-      hasApiKey: company.hasApiKey ? 'Si' : 'No',
+      hasApiKey: company.hasApiKey ? 'Habilitada' : 'Sin Habilitar',
     }
   })
 }
