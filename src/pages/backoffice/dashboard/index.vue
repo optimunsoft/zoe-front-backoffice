@@ -1,40 +1,32 @@
 <template>
-  <div class="w-full max-w-[96rem] mx-auto">
+  <div class="px-4 sm:px-6 lg:px-8 pt-12 pb-8 w-full max-w-[96rem] mx-auto">
 
-    <!-- Dashboard actions -->
-    <div class="sm:flex sm:justify-between sm:items-center mb-8">
+    <div class="mb-8 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+      <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Dashboard</h1>
 
-      <!-- Left: Title -->
-      <div class="mb-4 sm:mb-0">
-        <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Dashboard</h1>
-      </div>
-
-      <!-- Right: Actions -->
-      <div class="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
-        <div class="w-56">
-          <InputSearch
-            v-model="searchQuery"
-            placeholder="Buscar..."
-            search-label="Buscar"
-          />
-        </div>
-
-        <!-- Filter button -->
-        <FilterButton align="right" />
-        <!-- Datepicker built with flatpickr -->
-        <Datepicker align="right" />
-        <!-- Add view button -->
+      <div class="flex w-full flex-col gap-5 sm:w-auto sm:items-end">
         <button
           type="button"
-          class="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white"
+          class="btn w-full bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white sm:w-auto"
         >
           <svg class="fill-current shrink-0 xs:hidden" width="16" height="16" viewBox="0 0 16 16">
             <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
           </svg>
           <span class="max-xs:sr-only">Add View</span>
         </button>
-      </div>
 
+        <div class="flex w-full flex-wrap items-center justify-end gap-2 sm:gap-3">
+          <div class="w-full sm:w-64">
+            <InputSearch
+              v-model="searchQuery"
+              placeholder="Buscar..."
+              search-label="Buscar"
+            />
+          </div>
+          <FilterButton align="right" />
+          <Datepicker align="right" />
+        </div>
+      </div>
     </div>
 
     <!-- Cards -->

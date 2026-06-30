@@ -1,25 +1,13 @@
 <template>
-  <div class="w-full max-w-[96rem] mx-auto">
-    <div class="sm:flex sm:justify-between sm:items-center mb-8">
-      <div class="mb-4 sm:mb-0">
-        <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
-          Usuarios
-        </h1>
-      </div>
+  <div class="px-4 sm:px-6 lg:px-8 pt-12 pb-8 w-full max-w-[96rem] mx-auto">
+    <div class="mb-8 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+      <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
+        Usuarios
+      </h1>
 
-      <div class="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
-        <div class="w-56">
-          <InputSearch
-            v-model="searchQuery"
-            placeholder="Buscar..."
-            search-label="Buscar"
-          />
-        </div>
-
-        <DateSelect />
-        <FilterButton align="right" />
-
+      <div class="flex w-full flex-col gap-5 sm:w-auto sm:items-end">
         <Button
+          class="w-full sm:w-auto"
           variant="primary"
           aria-controls="new-user-modal"
           @click="handleCreateUser"
@@ -31,6 +19,18 @@
           </template>
           Nuevo usuario
         </Button>
+
+        <div class="flex w-full flex-wrap items-center justify-end gap-2 sm:gap-3">
+          <div class="w-full sm:w-64">
+            <InputSearch
+              v-model="searchQuery"
+              placeholder="Buscar..."
+              search-label="Buscar"
+            />
+          </div>
+          <DateSelect v-model="datePeriod" />
+          <FilterButton align="right" />
+        </div>
       </div>
     </div>
 
@@ -69,23 +69,33 @@ import UTable from '~/core/ui/Tables/Utable.vue'
 import type { UTableActionButton, UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
 import { useUsersStore } from '~/modules/administration/users/store/users.store'
 import { mapUsersToTableRows, userColumns } from '~/modules/administration/users/mappers/user-tables-mappers'
-import type { User } from '~/core/auth/types/auth.types'
 import { filterTableRows } from '~/shared/utils/filter-table-rows'
+import { DATE_PERIOD_DEFAULT } from '~/shared/constants/date-periods'
+import type { DatePeriodId } from '~/shared/constants/date-periods'
+import { filterItemsByDatePeriod } from '~/shared/utils/date-range-filter'
 
 const usersStore = useUsersStore()
 const selectedItems = ref<Array<string | number>>([])
 const searchQuery = ref('')
+const datePeriod = ref<DatePeriodId>(DATE_PERIOD_DEFAULT)
 const currentPage = ref(1)
 const amount = ref(10)
 const isLoading = ref(false)
 
 const columns = computed<UTableColumn[]>(() => userColumns)
-const users = computed(() =>
-  filterTableRows(
-    mapUsersToTableRows(usersStore.users as unknown as User[]),
+const users = computed(() => {
+  const source = usersStore.users
+  const byDate = filterItemsByDatePeriod(
+    source,
+    datePeriod.value,
+    (user) => user.createdAt,
+  )
+
+  return filterTableRows(
+    mapUsersToTableRows(byDate),
     searchQuery.value,
-  ),
-)
+  )
+})
 
 const actionButtons: UTableActionButton[] = [
   { key: 'edit', label: 'Editar' },

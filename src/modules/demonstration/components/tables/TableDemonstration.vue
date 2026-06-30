@@ -1,22 +1,13 @@
 <template>
-<div class="w-full max-w-[96rem] mx-auto">
-    <div class="sm:flex sm:justify-between sm:items-center mb-8">
-        <div class="mb-4 sm:mb-0">
+<div class="w-full">
+    <div class="mb-8 flex flex-col gap-6">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
             <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
                 Demostraciones
             </h1>
-        </div>
-
-        <div class="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
-            <div class="w-56">
-                <InputSearch
-                    v-model="searchQuery"
-                    placeholder="Buscar..."
-                    search-label="Buscar"
-                />
-            </div>
 
             <Button
+                class="w-full sm:w-auto"
                 variant="primary"
                 aria-controls="create-demonstration-modal"
                 @click.stop="emit('create')"
@@ -29,7 +20,28 @@
                 Agendar Demostración
             </Button>
         </div>
+
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+            <FilterPills
+                v-model="statusFilter"
+                :options="statusFilterOptions"
+                aria-label="Filtrar por estado"
+                wrapper-class="mb-0"
+            />
+
+            <div class="flex w-full flex-wrap items-center justify-start sm:w-auto sm:justify-end gap-2 sm:gap-3">
+                <div class="w-full sm:w-64">
+                    <InputSearch
+                        v-model="searchQuery"
+                        placeholder="Buscar..."
+                        search-label="Buscar"
+                    />
+                </div>
+                <DateSelect v-model="datePeriod" />
+            </div>
+        </div>
     </div>
+
 
     <UTable
         title="Todas las demostraciones"
@@ -72,14 +84,22 @@ import { computed, onMounted, ref } from 'vue'
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
 import { Button } from '~/core/ui/buttons'
 import UBadge from '~/core/ui/badge/UBadge.vue'
+import DateSelect from '~/core/ui/form/DateSelect.vue'
+import { FilterPills } from '~/core/ui/filters'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import UTable from '~/core/ui/Tables/Utable.vue'
 import type { UTableActionButton, UTableRow } from '~/core/ui/Tables/utable.types'
+import { DATE_PERIOD_DEFAULT } from '~/shared/constants/date-periods'
+import type { DatePeriodId } from '~/shared/constants/date-periods'
+import { buildFilterPillOptions, filterItemsByPill } from '~/shared/utils/build-filter-pill-options'
+import { filterItemsByDatePeriod } from '~/shared/utils/date-range-filter'
 import { filterTableRows } from '~/shared/utils/filter-table-rows'
 import {
     demonstrationColumns,
     mapDemonstrationsToTableRows,
 } from '../../mappers/demonstration-tables-mappers'
+import type { DemonstrationResponse } from '../../types/demonstration.types'
+import { DemonstrationStatus } from '../../types/demonstration.types'
 import { useDemonstrationsStore } from '../../store/demonstrations.store'
 
 const emit = defineEmits<{
@@ -90,13 +110,58 @@ const emit = defineEmits<{
 
 const demonstrationsStore = useDemonstrationsStore()
 const searchQuery = ref('')
+const datePeriod = ref<DatePeriodId>(DATE_PERIOD_DEFAULT)
+const statusFilter = ref('all')
 
-const demonstrations = computed(() =>
-    filterTableRows(
-        mapDemonstrationsToTableRows(demonstrationsStore.demonstrations),
-        searchQuery.value,
+const demonstrationsByDate = computed(() =>
+    filterItemsByDatePeriod(
+        demonstrationsStore.demonstrations,
+        datePeriod.value,
+        (demonstration) => demonstration.scheduledAt,
     ),
 )
+
+const statusFilterOptions = computed(() =>
+    buildFilterPillOptions<DemonstrationResponse>({
+        items: demonstrationsByDate.value,
+        options: [
+            { key: 'all', label: 'Todos' },
+            {
+                key: DemonstrationStatus.PENDIENTE,
+                label: 'Pendiente',
+                match: (item) => item.status === DemonstrationStatus.PENDIENTE,
+            },
+            {
+                key: DemonstrationStatus.EJECUTADA,
+                label: 'Ejecutada',
+                match: (item) => item.status === DemonstrationStatus.EJECUTADA,
+            },
+            {
+                key: DemonstrationStatus.CANCELADA,
+                label: 'Cancelada',
+                match: (item) => item.status === DemonstrationStatus.CANCELADA,
+            },
+        ],
+    }),
+)
+
+const demonstrations = computed(() => {
+    const byStatus = filterItemsByPill(
+        demonstrationsByDate.value,
+        statusFilter.value,
+        'all',
+        {
+            [DemonstrationStatus.PENDIENTE]: (item) => item.status === DemonstrationStatus.PENDIENTE,
+            [DemonstrationStatus.EJECUTADA]: (item) => item.status === DemonstrationStatus.EJECUTADA,
+            [DemonstrationStatus.CANCELADA]: (item) => item.status === DemonstrationStatus.CANCELADA,
+        },
+    )
+
+    return filterTableRows(
+        mapDemonstrationsToTableRows(byStatus),
+        searchQuery.value,
+    )
+})
 
 const total = computed(() => demonstrationsStore.total)
 

@@ -15,6 +15,7 @@ export interface User {
     isActive: boolean;
     isVerified: boolean;
     isAdmin: boolean;
+    createdAt?: string;
 }
 
 export type PaginatedUsersResponse = {

@@ -1,10 +1,12 @@
 <template>
   <div>
-    <TableDemonstration
-      @create="openCreateModal"
-      @edit="openEditModal"
-      @delete="openDeleteModal"
-    />
+    <div class="px-4 sm:px-6 lg:px-8 pt-12 pb-8 w-full max-w-[96rem] mx-auto">
+      <TableDemonstration
+        @create="openCreateModal"
+        @edit="openEditModal"
+        @delete="openDeleteModal"
+      />
+    </div>
 
     <ModalCreate
       :modal-open="createModalOpen"

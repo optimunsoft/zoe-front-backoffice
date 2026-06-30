@@ -1,25 +1,13 @@
 <template>
-  <div class="w-full max-w-[96rem] mx-auto">
-    <div class="sm:flex sm:justify-between sm:items-center mb-8">
-      <div class="mb-4 sm:mb-0">
-        <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
-          Empresas
-        </h1>
-      </div>
+  <div class="px-4 sm:px-6 lg:px-8 pt-12 pb-8 w-full max-w-[96rem] mx-auto">
+    <div class="mb-8 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+      <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
+        Empresas
+      </h1>
 
-      <div class="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
-        <div class="w-56">
-          <InputSearch
-            v-model="searchQuery"
-            placeholder="Buscar..."
-            search-label="Buscar"
-          />
-        </div>
-
-        <DateSelect />
-        <FilterButton align="right" />
-
+      <div class="flex w-full flex-col gap-5 sm:w-auto sm:items-end">
         <Button
+          class="w-full sm:w-auto"
           variant="primary"
           aria-controls="new-company-modal"
           @click="handleCreateCompany"
@@ -31,6 +19,16 @@
           </template>
           Nueva empresa
         </Button>
+
+        <div class="flex w-full flex-wrap items-center justify-end gap-2 sm:gap-3">
+          <div class="w-full sm:w-64">
+            <InputSearch
+              v-model="searchQuery"
+              placeholder="Buscar..."
+              search-label="Buscar"
+            />
+          </div>
+        </div>
       </div>
     </div>
 

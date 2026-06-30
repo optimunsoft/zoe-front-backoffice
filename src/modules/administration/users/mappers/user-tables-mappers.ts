@@ -1,4 +1,4 @@
-import type { User } from '~/core/auth/types/auth.types'
+import type { User } from '~/modules/administration/users/types/users.types'
 import type { UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
 
 export const userColumns: UTableColumn[] = [
