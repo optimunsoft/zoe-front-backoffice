@@ -6,4 +6,5 @@ export type NotificationAlertItem = {
   title: string
   message: string
   open: boolean
+  visible: boolean
 }

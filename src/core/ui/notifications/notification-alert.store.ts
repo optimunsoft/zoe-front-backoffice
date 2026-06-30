@@ -1,45 +1,66 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+
+import { useModalStackStore } from '~/core/ui/modal/modal-stack.store'
 
 import type { NotificationAlertItem, NotificationAlertType } from './notification-alert.types'
 
-const DEFAULT_DURATION_MS = 6000
+const DISPLAY_DELAY_MS = 2000
 
 type PushNotificationPayload = {
   type: NotificationAlertType
   title: string
   message?: string
-  duration?: number
 }
 
 export const useNotificationAlertStore = defineStore('notificationAlert', () => {
   const items = ref<NotificationAlertItem[]>([])
   let nextId = 0
-  const timers = new Map<number, ReturnType<typeof setTimeout>>()
+  const displayTimers = new Map<number, ReturnType<typeof setTimeout>>()
+
+  const modalStack = useModalStackStore()
+
+  const current = computed(() => {
+    if (modalStack.hasBlockingModal) return null
+    return items.value.find((item) => item.open && item.visible) ?? null
+  })
+
+  const clearDisplayTimer = (id: number) => {
+    const timer = displayTimers.get(id)
+    if (!timer) return
+
+    clearTimeout(timer)
+    displayTimers.delete(id)
+  }
 
   const remove = (id: number) => {
-    const timer = timers.get(id)
-    if (timer) {
-      clearTimeout(timer)
-      timers.delete(id)
-    }
+    clearDisplayTimer(id)
+    items.value = items.value.filter((item) => item.id !== id)
+  }
 
-    const index = items.value.findIndex((item) => item.id === id)
-    if (index === -1) return
+  const dismissCurrent = () => {
+    const active = current.value
+    if (!active) return
 
-    items.value[index].open = false
+    active.open = false
 
     setTimeout(() => {
-      items.value = items.value.filter((item) => item.id !== id)
-    }, 200)
+      remove(active.id)
+    }, 300)
   }
 
-  const scheduleRemoval = (id: number, duration = DEFAULT_DURATION_MS) => {
-    const timer = setTimeout(() => remove(id), duration)
-    timers.set(id, timer)
+  const scheduleVisibility = (id: number) => {
+    const timer = setTimeout(() => {
+      displayTimers.delete(id)
+
+      const item = items.value.find((entry) => entry.id === id)
+      if (item) item.visible = true
+    }, DISPLAY_DELAY_MS)
+
+    displayTimers.set(id, timer)
   }
 
-  const push = ({ type, title, message = '', duration }: PushNotificationPayload) => {
+  const push = ({ type, title, message = '' }: PushNotificationPayload) => {
     const id = ++nextId
 
     items.value.push({
@@ -48,9 +69,10 @@ export const useNotificationAlertStore = defineStore('notificationAlert', () => 
       title,
       message,
       open: true,
+      visible: false,
     })
 
-    scheduleRemoval(id, duration)
+    scheduleVisibility(id)
     return id
   }
 
@@ -68,11 +90,13 @@ export const useNotificationAlertStore = defineStore('notificationAlert', () => 
 
   return {
     items,
+    current,
     push,
     showSuccess,
     showError,
     showWarning,
     showInfo,
     remove,
+    dismissCurrent,
   }
 })

@@ -1,4 +1,4 @@
-export { default as Notification } from './Notification.vue'
+export { default as NotificationAlertModal } from './NotificationAlertModal.vue'
 export { default as NotificationsAlert } from './NotificationsAlert.vue'
 export { useNotificationAlertStore } from './notification-alert.store'
 export type { NotificationAlertItem, NotificationAlertType } from './notification-alert.types'

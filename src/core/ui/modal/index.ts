@@ -6,5 +6,6 @@ export { default as ModalSearch } from './ModalSearch.vue'
 
 export { useModal } from './useModal'
 export { useModalDismiss } from './useModalDismiss'
+export { useModalStackStore } from './modal-stack.store'
 
 export type { ModalCloseEmit, UseModalOptions } from './modal.types'
