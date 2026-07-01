@@ -4,6 +4,7 @@ import type { UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
 export type CompanyCatalogItem = {
   id: string
   name: string
+  code?: string
 }
 
 export type CompanyMunicipalityItem = {
@@ -26,8 +27,8 @@ const API_KEY_BADGE_COLORS = {
 } as const
 
 export const companyColumns: UTableColumn[] = [
-  { key: 'businessName', label: 'Razón social', variant: 'emphasis', toggleable: false },
-  { key: 'documentNumber', label: 'Documento' },
+  { key: 'documentNumber', label: 'Documento', toggleable: false },
+  { key: 'businessName', label: 'Razón social', variant: 'emphasis' },
   { key: 'email', label: 'Email' },
   { key: 'taxResponsibility', label: 'Responsabilidad fiscal' },
   { key: 'businessNature', label: 'Naturaleza' },
@@ -44,7 +45,55 @@ export const companyColumns: UTableColumn[] = [
 const findCatalogName = (
   items: CompanyCatalogItem[] | undefined,
   id: string,
-) => items?.find((item) => item.id === id)?.name ?? '-'
+) => items?.find((item) => String(item.id) === String(id))?.name ?? '-'
+
+const normalizeDocumentTypeText = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+
+const isCitizenshipCard = (name: string, code: string) => {
+  const normalized = normalizeDocumentTypeText(name)
+  const normalizedCode = normalizeDocumentTypeText(code)
+
+  return (
+    (normalized.includes('cedula') && normalized.includes('ciudadania'))
+    || (normalized.includes('cedula') && !normalized.includes('extranjera'))
+    || normalizedCode === '13'
+    || normalizedCode === 'cc'
+    || normalized === 'cc'
+  )
+}
+
+const isNit = (name: string, code: string) => {
+  const normalized = normalizeDocumentTypeText(name)
+  const normalizedCode = normalizeDocumentTypeText(code)
+
+  return (
+    normalized.includes('nit')
+    || (normalized.includes('identificacion') && normalized.includes('tributaria'))
+    || normalizedCode === '31'
+    || normalizedCode === 'nit'
+  )
+}
+
+const findDocumentTypeLabel = (
+  items: CompanyCatalogItem[] | undefined,
+  id: string,
+) => {
+  const item = items?.find((entry) => String(entry.id) === String(id))
+  const name = item?.name ?? '-'
+  if (name === '-') return '-'
+
+  const code = item?.code ?? ''
+
+  if (isCitizenshipCard(name, code)) return 'Cc'
+  if (isNit(name, code)) return 'Nit'
+
+  return name
+}
 
 const findMunicipality = (
   items: CompanyMunicipalityItem[] | undefined,
@@ -78,10 +127,10 @@ export const mapCompaniesToTableRows = (
 
     return {
       id: company.id,
+      documentType: findDocumentTypeLabel(catalogs.documentTypes, company.documentTypeId),
+      documentNumber: company.documentNumber || '-',
       businessName: getDisplayName(company),
       tradeName: company.tradeName || '-',
-      documentType: findCatalogName(catalogs.documentTypes, company.documentTypeId),
-      documentNumber: company.documentNumber || '-',
       email: company.email || '-',
       taxResponsibility: findCatalogName(catalogs.taxResponsibilities, company.taxResponsibilityId),
       businessNature: findCatalogName(catalogs.businessNatures, company.businessNatureId),

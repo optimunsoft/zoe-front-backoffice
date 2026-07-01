@@ -207,13 +207,28 @@
                 v-model="email"
                 type="email"
                 autocomplete="email"
-                placeholder="ejemplo@empresa.com"
+                placeholder="usuario@optimunsoft.co"
                 :readonly="codeStepActive"
-                class="w-full rounded-xl border border-slate-300 bg-white/80 px-4 py-3 text-sm text-slate-900 outline-none transition
-                       placeholder:text-slate-400 focus:border-[#007BFF] focus:ring-4 focus:ring-[#007BFF]/10
+                :aria-invalid="Boolean(emailError)"
+                :aria-describedby="emailError ? 'email-error' : undefined"
+                class="w-full rounded-xl border bg-white/80 px-4 py-3 text-sm text-slate-900 outline-none transition
+                       placeholder:text-slate-400 focus:ring-4 focus:ring-[#007BFF]/10
                        read-only:cursor-default read-only:opacity-80
-                       dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500"
+                       dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500"
+                :class="emailError
+                  ? 'border-red-400 focus:border-red-500 dark:border-red-500/50'
+                  : 'border-slate-300 focus:border-[#007BFF] dark:border-white/10'"
+                @input="emailError = ''"
+                @blur="validateEmailField"
               />
+              <p
+                v-if="emailError"
+                id="email-error"
+                role="alert"
+                class="mt-2 text-sm text-red-600 dark:text-red-400"
+              >
+                {{ emailError }}
+              </p>
             </div>
   
             <div v-if="codeStepActive">
@@ -250,7 +265,7 @@
               v-if="!codeStepActive"
               type="button"
               class="w-full rounded-xl bg-[#007BFF] px-4 py-3 font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="!isEmailValid || isStartingLogin"
+              :disabled="isStartingLogin"
               @click="continueWithEmail"
             >
               {{ isStartingLogin ? 'Enviando código...' : 'Continuar con correo electrónico' }}
@@ -272,12 +287,14 @@
   
   <script setup lang="ts">
   import { computed, ref } from 'vue'
+import { parsePasswordlessLoginEmail } from '../schemas/passwordless-login.schema'
 import { useAuthStore } from '../store/auth.store'
   
   const email = ref('')
   const verificationCode = ref('')
   const codeStepActive = ref(false)
   const errorMessage = ref('')
+  const emailError = ref('')
   const isStartingLogin = ref(false)
   const isVerifyingLogin = ref(false)
 
@@ -290,13 +307,28 @@ import { useAuthStore } from '../store/auth.store'
   const passwordlessLoginVerify = async () => {
     await authStore.passwordlessLoginVerify(email.value.trim(), verificationCode.value.trim())
   }
-  const isEmailValid = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()))
+
   const isCodeValid = computed(() => verificationCode.value.trim().length >= 4)
+
+  function validateEmailField() {
+    const emailValidation = parsePasswordlessLoginEmail({ email: email.value })
+
+    if (!emailValidation.success) {
+      emailError.value = emailValidation.emailError
+      return false
+    }
+
+    emailError.value = ''
+    return true
+  }
   
   async function continueWithEmail() {
-    if (!isEmailValid.value || isStartingLogin.value) return
+    if (!validateEmailField()) return
+
+    if (isStartingLogin.value) return
 
     errorMessage.value = ''
+    emailError.value = ''
     isStartingLogin.value = true
 
     try {
