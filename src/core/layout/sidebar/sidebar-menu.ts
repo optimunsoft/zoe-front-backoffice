@@ -1,6 +1,6 @@
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 
-import { sidebarIcons } from './icons'
+import type { UiIconName } from '~/core/ui/icons'
 
 const BACKOFFICE_DASHBOARD_PATH = '/backoffice/dashboard'
 
@@ -13,7 +13,7 @@ type SidebarMenuResolver<T> = T | ((context: SidebarMenuContext) => T)
 export type SidebarMenuItem = {
   key?: string
   label: string
-  iconPaths?: string[]
+  icon?: UiIconName
   to?: SidebarMenuResolver<string>
   active?: SidebarMenuResolver<boolean>
   children?: SidebarMenuItem[]
@@ -33,7 +33,7 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
       {
         key: 'dashboard',
         label: 'Inicio',
-        iconPaths: sidebarIcons.dashboard,
+        icon: 'dashboard',
         to: BACKOFFICE_DASHBOARD_PATH,
         active: ({ route }: SidebarMenuContext) => {
           return route.path === BACKOFFICE_DASHBOARD_PATH || route.path === `${BACKOFFICE_DASHBOARD_PATH}/`
@@ -42,7 +42,7 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
       {
         key: 'administration',
         label: 'Administración',
-        iconPaths: sidebarIcons.administration,
+        icon: 'administration',
         active: ({ route }: SidebarMenuContext) =>
           route.path.includes('/empresas') || route.path.includes('/usuarios'),
         children: [
@@ -61,7 +61,7 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
       {
         key: 'scheduling',
         label: 'Agendamientos',
-        iconPaths: sidebarIcons.scheduling,
+        icon: 'scheduling',
         to: `${BACKOFFICE_DASHBOARD_PATH}/demonstrations`,
         active: ({ route }: SidebarMenuContext) => route.path.includes('/demonstrations'),
 

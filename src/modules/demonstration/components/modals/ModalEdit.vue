@@ -1,25 +1,30 @@
 <template>
-  <Teleport to="body">
     <ModalBasic
       id="edit-demonstration-modal"
       :modal-open="modalOpen"
       title="Editar demostración"
+      description="Modifica los campos y guarda los cambios."
+      :loading="isLoading"
+      loading-text="Cargando demostración..."
       @close-modal="handleClose"
     >
-      <div class="px-6 py-5">
-        <p v-if="isLoading" class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-          Cargando demostración...
-        </p>
-        <FormDemonstration
-          v-if="modalOpen && demonstrationId"
-          :key="demonstrationId"
-          ref="formRef"
-          mode="edit"
-          @submit="handleEdit"
-        />
-      </div>
+      <template #icon>
+        <div class="flex size-9 items-center justify-center rounded-lg bg-violet-500/15 dark:bg-violet-500/20">
+          <svg class="size-5 fill-current text-violet-500" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M11.7.3c-.4-.4-1-.4-1.4 0l-10 10c-.2.2-.3.4-.3.7v4c0 .6.4 1 1 1h4c.3 0 .5-.1.7-.3l10-10c.4-.4.4-1 0-1.4l-4-4zM4.6 14H2v-2.6l6-6L10.6 8l-6 6zM12 6.6L9.4 4 11 2.4 13.6 5 12 6.6z" />
+          </svg>
+        </div>
+      </template>
 
-      <div class="flex justify-end gap-2 border-t border-gray-100 bg-gray-50/70 px-6 py-4 dark:border-gray-700/60 dark:bg-gray-900/30">
+      <FormDemonstration
+        v-if="modalOpen && demonstrationId"
+        :key="demonstrationId"
+        ref="formRef"
+        mode="edit"
+        @submit="handleEdit"
+      />
+
+      <template #footer>
         <Button variant="secondary" :disabled="isSubmitting || isLoading" @click="handleClose">
           Cancelar
         </Button>
@@ -31,9 +36,8 @@
         >
           Guardar
         </Button>
-      </div>
+      </template>
     </ModalBasic>
-  </Teleport>
 </template>
 
 <script setup lang="ts">

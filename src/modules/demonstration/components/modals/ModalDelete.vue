@@ -1,5 +1,4 @@
 <template>
-  <Teleport to="body">
     <ModalAction
       id="delete-demonstration-modal"
       :modal-open="modalOpen"
@@ -41,7 +40,6 @@
         </div>
       </div>
     </ModalAction>
-  </Teleport>
 </template>
 
 <script setup lang="ts">

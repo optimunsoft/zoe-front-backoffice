@@ -5,6 +5,7 @@ import { useBusinessNatureStore } from '~/core/businessNature/store/businessNatu
 import { useDocumentTypeStore } from '~/core/documentType/store/documentType.store'
 import { useTaxResponsibilityStore } from '~/core/taxResponsibility/store/taxResponsibility.store'
 import { useUbicationStore } from '~/core/ubication/store/ubication.store'
+import { useVatRegimeStore } from '~/core/vatRegime/store/vatRegime.store'
 
 export const useCatalogStore = defineStore('catalog', () => {
   const isLoading = ref(false)
@@ -22,12 +23,14 @@ export const useCatalogStore = defineStore('catalog', () => {
       const documentTypeStore = useDocumentTypeStore()
       const taxResponsibilityStore = useTaxResponsibilityStore()
       const ubicationStore = useUbicationStore()
+      const vatRegimeStore = useVatRegimeStore()
 
       await Promise.all([
         businessNatureStore.getBusinessNatures(force),
         documentTypeStore.getDocumentTypes(force),
         taxResponsibilityStore.getTaxResponsibilities(force),
         ubicationStore.getAllCountries(force),
+        vatRegimeStore.getVatRegimes(force),
       ])
 
       isLoaded.value = true
@@ -55,6 +58,7 @@ export const useCatalogStore = defineStore('catalog', () => {
     useDocumentTypeStore().clear()
     useTaxResponsibilityStore().clear()
     useUbicationStore().clear()
+    useVatRegimeStore().clear()
   }
 
   return {

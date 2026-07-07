@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { normalizeCompanyListItem } from '../schema/company.schema'
+import { normalizeCompanyRolePermissions } from '../schema/company-permissions.schema'
 import { useCompanyService } from '../services/company.service'
-import type { Company, GetCompaniesParams, PaginatedCompaniesResponse } from '../types/company.types'
+import type { CompanyList, CompanyRequestBody, CompanyUpdateRequestBody, CompanyRolePermissions, GetCompaniesParams, PaginatedCompaniesResponse } from '../types/company.types'
 
 export type CompanySummary = {
   id: string
@@ -10,27 +12,40 @@ export type CompanySummary = {
 
 export const useCompanyStore = defineStore('company', () => {
   const currentCompany = ref<CompanySummary | null>(null)
-  const companies = ref<Company[]>([])
+  const companies = ref<CompanyList[]>([])
   const total = ref(0)
   const page = ref(1)
   const amount = ref(10)
-  const cachedPages = ref<Record<string, { companies: Company[]; total: number }>>({})
+  const cachedPages = ref<Record<string, { companies: CompanyList[]; total: number }>>({})
   const pendingRequests = new Map<string, Promise<void>>()
 
-  const normalizeResponse = (response: Company[] | PaginatedCompaniesResponse): { companies: Company[]; total: number } => {
+  const normalizeResponse = (response: CompanyList[] | PaginatedCompaniesResponse): { companies: CompanyList[]; total: number } => {
     if (Array.isArray(response)) {
-      return { companies: response, total: response.length }
+      return {
+        companies: response.map((item) => normalizeCompanyListItem(item)),
+        total: response.length,
+      }
     }
 
     const data = response.data ?? response.items ?? response.companies ?? []
+
     return {
-      companies: data,
+      companies: data.map((item) => normalizeCompanyListItem(item)),
       total: response.total ?? data.length,
     }
   }
 
+  const buildCompaniesCacheKey = (params: GetCompaniesParams) =>
+    [
+      params.page,
+      params.amount,
+      params.search?.trim() ?? '',
+      params.municipalityId?.trim() ?? '',
+      params.stateId?.trim() ?? '',
+    ].join(':')
+
   const getCompanies = async (params: GetCompaniesParams, force = false) => {
-    const cacheKey = `${params.page}:${params.amount}`
+    const cacheKey = buildCompaniesCacheKey(params)
     page.value = params.page
     amount.value = params.amount
 
@@ -72,10 +87,35 @@ export const useCompanyStore = defineStore('company', () => {
     pendingRequests.clear()
   }
 
+  const createCompany = async (company: CompanyRequestBody) => {
+    const { response } = await useCompanyService().createCompany(company)
+    return response
+  }
+
+  const updateCompany = async (id: string, company: CompanyUpdateRequestBody) => {
+    const { response } = await useCompanyService().updateCompany(id, company)
+    return response
+  }
+
+  const getCompanyFromList = (id: string) =>
+    companies.value.find((item) => item.id === id) ?? null
+
+  const getCompanyRolePermissions = async (
+    companyId: string,
+    roleId: string,
+  ): Promise<CompanyRolePermissions> => {
+    const { response } = await useCompanyService().getCompanyPermissions(companyId, roleId)
+    return normalizeCompanyRolePermissions(response)
+  }
+
   return {
     currentCompany,
     clearCompanyLists,
     getCompanies,
+    getCompanyFromList,
+    getCompanyRolePermissions,
+    createCompany,
+    updateCompany,
     companies,
     total,
     page,

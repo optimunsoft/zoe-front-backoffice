@@ -13,9 +13,7 @@
           @click="handleCreateCompany"
         >
           <template #icon>
-            <svg width="16" height="16" viewBox="0 0 16 16">
-              <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
-            </svg>
+            <UiIcon name="plus" size="sm" />
           </template>
           Nueva empresa
         </Button>
@@ -35,6 +33,7 @@
               v-model="searchQuery"
               placeholder="Buscar..."
               search-label="Buscar"
+              @submit="handleSearch"
             />
           </div>
           <TableColumnToggle
@@ -57,13 +56,15 @@
     <UTable
       v-else
       title="Todas las empresas"
-      :count="rows.length"
+      :count="totalCompanies"
       :columns="visibleColumns"
       :rows="rows"
       show-actions
       actions-mode="inline"
       actions-label="Acciones"
-      :action-buttons="actionButtons"
+      :action-buttons="companyTableActions"
+      :expanded-row-key="expandedUsersRowKey"
+      expanded-action-key="users"
       @action="handleRowAction"
     >
       <template #cell-documentNumber="{ row }">
@@ -125,6 +126,15 @@
         </Tooltip>
         <span v-else class="text-gray-400 dark:text-gray-500">-</span>
       </template>
+
+      <template #row-detail="{ row }">
+        <TableCompanyUsers
+          v-if="row.id != null"
+          :company-id="String(row.id)"
+          :company-name="formatTableText(row.businessName)"
+          @permissions="handleOpenPermissionsModal"
+        />
+      </template>
     </UTable>
 
     <div class="mt-8" :class="{ 'pointer-events-none opacity-60': isLoading }">
@@ -135,45 +145,78 @@
         @change-page="handleChangePage"
       />
     </div>
+
+    <ModalCreate
+      :modal-open="createModalOpen"
+      @close-modal="closeCreateModal"
+      @created="handleCompanyCreated"
+    />
+
+    <ModalEdit
+      :modal-open="editModalOpen"
+      :company="editingCompany"
+      @close-modal="handleCloseEditModal"
+      @updated="handleCompanyUpdated"
+    />
+
+    <ModalPermissionRolUser
+      :modal-open="permissionsModalOpen"
+      :company-id="permissionsContext.companyId"
+      :company-name="permissionsContext.companyName"
+      :user="permissionsContext.user"
+      @close-modal="handleClosePermissionsModal"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { watchDebounced } from '@vueuse/core'
 
 import { useCatalogStore } from '~/core/catalog/store/catalog.store'
 import { useBusinessNatureStore } from '~/core/businessNature/store/businessNature.store'
 import {
   companyColumns,
   mapCompaniesToTableRows,
-  type CompanyMunicipalityItem,
 } from '~/core/company/mappers/company-table.mapper'
-import type { Company } from '~/core/company/types/company.types'
+import { companyTableActions } from '~/core/company/mappers/company-table.actions'
+import type { Company, userCompany } from '~/core/company/types/company.types'
 import { useCompanyStore } from '~/core/company/store/company.store'
 import { useDocumentTypeStore } from '~/core/documentType/store/documentType.store'
 import { useTaxResponsibilityStore } from '~/core/taxResponsibility/store/taxResponsibility.store'
-import { useUbicationStore } from '~/core/ubication/store/ubication.store'
+import { useVatRegimeStore } from '~/core/vatRegime/store/vatRegime.store'
 import { Button, ReloadButton } from '~/core/ui/buttons'
+import { UiIcon } from '~/core/ui/icons'
 import { FilterPills } from '~/core/ui/filters'
+import { useModal } from '~/core/ui/modal'
 import TableColumnToggle from '~/core/ui/dropdown/TableColumnToggle.vue'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
 import { TableBadge } from '~/core/ui/badge'
 import { Tooltip } from '~/core/ui/Utooltip'
 import UTable from '~/core/ui/Tables/Utable.vue'
-import type { UTableActionButton, UTableRow } from '~/core/ui/Tables/utable.types'
+import type { UTableRow } from '~/core/ui/Tables/utable.types'
 import type { BadgeColor } from '~/core/ui/badge/badge.types'
 import { toTitleCase } from '~/shared/utils/format'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
 import { buildFilterPillOptions, filterItemsByPill } from '~/shared/utils/build-filter-pill-options'
-import { filterTableRows } from '~/shared/utils/filter-table-rows'
+import ModalCreate from '../modals/ModalCreate.vue'
+import ModalEdit from '../modals/ModalEdit.vue'
+import ModalPermissionRolUser from '../modals/ModalPermissionRolUser.vue'
+import TableCompanyUsers from './TableCompanyUsers.vue'
+
+type PermissionsContext = {
+  companyId: string
+  companyName: string
+  user: userCompany | null
+}
 
 const catalogStore = useCatalogStore()
 const businessNatureStore = useBusinessNatureStore()
 const companyStore = useCompanyStore()
 const documentTypeStore = useDocumentTypeStore()
 const taxResponsibilityStore = useTaxResponsibilityStore()
-const ubicationStore = useUbicationStore()
+const vatRegimeStore = useVatRegimeStore()
 
 const selectedItems = ref<Array<string | number>>([])
 const searchQuery = ref('')
@@ -181,7 +224,7 @@ const companyFilter = ref('all')
 const currentPage = ref(1)
 const amount = ref(10)
 const isLoading = ref(true)
-const municipalitiesById = ref<Record<string, CompanyMunicipalityItem>>({})
+const expandedUsersRowKey = ref<string | number | null>(null)
 
 const {
   visibleKeys: visibleColumnKeys,
@@ -189,9 +232,17 @@ const {
   resetVisibleColumns,
 } = useVisibleTableColumns(companyColumns, { storageKey: 'table-columns:companies' })
 
-const totalCompanies = computed(() => companyStore.total)
+const { modalOpen: createModalOpen, open: openCreateModal, close: closeCreateModal } = useModal()
+const { modalOpen: editModalOpen, open: openEditModal, close: closeEditModal } = useModal()
+const { modalOpen: permissionsModalOpen, open: openPermissionsModal, close: closePermissionsModal } = useModal()
+const editingCompany = ref<Company | null>(null)
+const permissionsContext = ref<PermissionsContext>({
+  companyId: '',
+  companyName: '',
+  user: null,
+})
 
-const municipalityItems = computed(() => Object.values(municipalitiesById.value))
+const totalCompanies = computed(() => companyStore.total)
 
 const normalizeCatalogLabel = (value: string) =>
   value
@@ -226,9 +277,7 @@ const companyFilterOptions = computed(() =>
         key: 'juridica',
         label: 'Persona jurídica',
         match: (company) => isJuridicaBusinessNatureId(company.businessNatureId),
-      },
-      { key: 'with-api-key', label: 'Con API Key', match: (company) => company.hasApiKey },
-      { key: 'without-api-key', label: 'Sin API Key', match: (company) => !company.hasApiKey },
+      }
     ],
   }),
 )
@@ -248,59 +297,49 @@ const filteredCompanies = computed(() =>
 )
 
 const rows = computed<UTableRow[]>(() =>
-  filterTableRows(
-    mapCompaniesToTableRows(filteredCompanies.value, {
-      businessNatures: businessNatureStore.businessNatures,
-      taxResponsibilities: taxResponsibilityStore.taxResponsibilities,
-      documentTypes: documentTypeStore.documentTypes,
-      municipalities: municipalityItems.value,
-    }),
-    searchQuery.value,
-  ),
+  mapCompaniesToTableRows(filteredCompanies.value, {
+    businessNatures: businessNatureStore.businessNatures,
+    taxResponsibilities: taxResponsibilityStore.taxResponsibilities,
+    documentTypes: documentTypeStore.documentTypes,
+    vatRegimes: vatRegimeStore.vatRegimes,
+  }),
 )
 
-const actionButtons: UTableActionButton[] = [
-  { key: 'edit', label: 'Editar' },
-  { key: 'delete', label: 'Eliminar', tone: 'danger' },
-]
-
-const fetchMunicipalityNames = async (force = false) => {
-  const municipalityIds = [
-    ...new Set(companyStore.companies.map((company) => company.municipalityId).filter(Boolean)),
-  ]
-
-  if (municipalityIds.length === 0) {
-    if (force) municipalitiesById.value = {}
+const handleRowAction = ({ action, row }: { action: string, row: UTableRow }) => {
+  if (action === 'users') {
+    const rowKey = row.id
+    if (rowKey == null) return
+    expandedUsersRowKey.value = expandedUsersRowKey.value === rowKey ? null : rowKey
     return
   }
 
-  const resolved = await Promise.all(
-    municipalityIds.map(async (id) => {
-      if (!force && municipalitiesById.value[id]) {
-        return [id, municipalitiesById.value[id]] as const
-      }
-
-      const municipality = await ubicationStore.getMunicipalityById(id, force)
-
-      if (!municipality) return null
-
-      return [id, {
-        id: municipality.id,
-        city: municipality.name,
-        state: municipality.state.name,
-      }] as const
-    }),
-  )
-
-  const next: Record<string, CompanyMunicipalityItem> = force
-    ? {}
-    : { ...municipalitiesById.value }
-
-  for (const entry of resolved) {
-    if (entry) next[entry[0]] = entry[1]
+  if (expandedUsersRowKey.value != null) {
+    expandedUsersRowKey.value = null
   }
 
-  municipalitiesById.value = next
+  if (action === 'edit') {
+    if (row.id == null) return
+
+    const company = companyStore.getCompanyFromList(String(row.id))
+    if (!company) return
+
+    editingCompany.value = company
+    openEditModal()
+    return
+  }
+
+  // TODO: conectar eliminar con API / navegación
+  console.log(action, row.id)
+}
+
+const buildCompaniesRequestParams = (page: number) => {
+  const search = searchQuery.value.trim()
+
+  return {
+    amount: amount.value,
+    page,
+    ...(search ? { search } : {}),
+  }
 }
 
 const fetchCompanies = async (page: number, force = false) => {
@@ -309,25 +348,49 @@ const fetchCompanies = async (page: number, force = false) => {
 
   try {
     await catalogStore.preload(force)
-    await companyStore.getCompanies({
-      amount: amount.value,
-      page,
-    }, force)
-    await fetchMunicipalityNames(force)
+    await companyStore.getCompanies(buildCompaniesRequestParams(page), force)
     selectedItems.value = []
+    expandedUsersRowKey.value = null
   } finally {
     isLoading.value = false
   }
 }
 
 const handleCreateCompany = () => {
-  // TODO: abrir modal o navegar al formulario de creación
-  console.log('create company')
+  openCreateModal()
 }
 
-const handleRowAction = ({ action, row }: { action: string, row: UTableRow }) => {
-  // TODO: conectar con API / navegación
-  console.log(action, row.id)
+const handleCompanyCreated = async () => {
+  await fetchCompanies(currentPage.value, true)
+}
+
+const handleCloseEditModal = () => {
+  editingCompany.value = null
+  closeEditModal()
+}
+
+const handleOpenPermissionsModal = (payload: { companyId: string, user: userCompany }) => {
+  const company = companyStore.getCompanyFromList(payload.companyId)
+
+  permissionsContext.value = {
+    companyId: payload.companyId,
+    companyName: company?.businessName || company?.tradeName || '',
+    user: payload.user,
+  }
+  openPermissionsModal()
+}
+
+const handleClosePermissionsModal = () => {
+  permissionsContext.value = {
+    companyId: '',
+    companyName: '',
+    user: null,
+  }
+  closePermissionsModal()
+}
+
+const handleCompanyUpdated = async () => {
+  await fetchCompanies(currentPage.value, true)
 }
 
 const formatTableText = (value: unknown) => {
@@ -361,7 +424,24 @@ const handleReload = async () => {
   await fetchCompanies(currentPage.value, true)
 }
 
-onMounted(() => {
-  void fetchCompanies(currentPage.value)
+const handleSearch = async () => {
+  if (isLoading.value) return
+  await fetchCompanies(1, true)
+}
+
+const isInitialLoadDone = ref(false)
+
+watchDebounced(
+  searchQuery,
+  async () => {
+    if (!isInitialLoadDone.value || isLoading.value) return
+    await fetchCompanies(1, true)
+  },
+  { debounce: 400 },
+)
+
+onMounted(async () => {
+  await fetchCompanies(currentPage.value)
+  isInitialLoadDone.value = true
 })
 </script>

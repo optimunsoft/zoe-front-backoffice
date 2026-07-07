@@ -1,4 +1,5 @@
 import type { SidebarMenuContext, SidebarMenuItem, SidebarMenuSection } from './sidebar-menu'
+import type { UiIconName } from '~/core/ui/icons'
 
 export type SidebarMenuSearchItem = {
   key: string
@@ -6,7 +7,7 @@ export type SidebarMenuSearchItem = {
   to: string
   section: string
   group?: string
-  iconPaths?: string[]
+  icon?: UiIconName
 }
 
 const normalizeSearchText = (value: string) =>
@@ -39,7 +40,7 @@ const collectNavigableItems = (
         to,
         section: sectionTitle,
         group: parentLabel,
-        iconPaths: item.iconPaths,
+        icon: item.icon,
       })
     }
 

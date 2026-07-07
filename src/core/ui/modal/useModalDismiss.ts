@@ -1,37 +1,36 @@
-import { onMounted, onUnmounted, type Ref } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 
 import type { ModalCloseEmit } from './modal.types'
+import { useModalStackStore } from './modal-stack.store'
 
 /**
- * Comportamiento compartido de los modales Mosaic:
- * - Cerrar con clic fuera del contenido
- * - Cerrar con tecla Esc
+ * Comportamiento compartido de los modales:
+ * - Cerrar con tecla Esc (solo el modal superior del stack)
+ *
+ * El cierre por clic fuera se maneja en `ModalShell` sobre el backdrop,
+ * para evitar que el mismo clic que abre el modal lo cierre de inmediato.
  */
 export function useModalDismiss(
+  modalId: () => string,
   isOpen: () => boolean,
-  modalContent: Ref<HTMLElement | null>,
   emit: ModalCloseEmit,
 ) {
   const close = () => emit('close-modal')
 
-  const clickHandler = ({ target }: MouseEvent) => {
-    if (!isOpen()) return
-    if (!modalContent.value || modalContent.value.contains(target as Node)) return
-    close()
-  }
+  const keyHandler = (event: KeyboardEvent) => {
+    if (!isOpen() || event.key !== 'Escape') return
 
-  const keyHandler = ({ keyCode }: KeyboardEvent) => {
-    if (!isOpen() || keyCode !== 27) return
+    const modalStack = useModalStackStore()
+    if (modalStack.topModalId !== modalId()) return
+
     close()
   }
 
   onMounted(() => {
-    document.addEventListener('click', clickHandler)
     document.addEventListener('keydown', keyHandler)
   })
 
   onUnmounted(() => {
-    document.removeEventListener('click', clickHandler)
     document.removeEventListener('keydown', keyHandler)
   })
 

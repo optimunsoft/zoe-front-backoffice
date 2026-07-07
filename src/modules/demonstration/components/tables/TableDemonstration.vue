@@ -58,7 +58,7 @@
         show-actions
         actions-mode="inline"
         actions-label="Acciones"
-        :action-buttons="actionButtons"
+        :action-buttons="demonstrationTableActions"
         @action="handleRowAction"
     >
         <template #cell-scheduledAt="{ row }">
@@ -96,7 +96,7 @@ import TableColumnToggle from '~/core/ui/dropdown/TableColumnToggle.vue'
 import { FilterPills } from '~/core/ui/filters'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import UTable from '~/core/ui/Tables/Utable.vue'
-import type { UTableActionButton, UTableRow } from '~/core/ui/Tables/utable.types'
+import type { UTableRow } from '~/core/ui/Tables/utable.types'
 import { DATE_PERIOD_DEFAULT } from '~/shared/constants/date-periods'
 import type { DatePeriodId } from '~/shared/constants/date-periods'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
@@ -107,6 +107,7 @@ import {
     demonstrationColumns,
     mapDemonstrationsToTableRows,
 } from '../../mappers/demonstration-tables-mappers'
+import { demonstrationTableActions } from '../../mappers/demonstration-table.actions'
 import type { DemonstrationResponse } from '../../types/demonstration.types'
 import { DemonstrationStatus } from '../../types/demonstration.types'
 import { useDemonstrationsStore } from '../../store/demonstrations.store'
@@ -185,14 +186,20 @@ const currentPage = computed(() => demonstrationsStore.page)
 
 const amount = computed(() => demonstrationsStore.amount)
 
-const actionButtons: UTableActionButton[] = [
-    { key: 'edit', label: 'Editar' },
-    { key: 'delete', label: 'Eliminar', tone: 'danger' },
-]
+const handleRowAction = async ({ action, row }: { action: string, row: UTableRow }) => {
+    if (row.id == null) return
 
-const handleChangePage = async (page: number) => {
-    if (isLoading.value) return
-    await fetchDemonstrations(page)
+    if (action === 'edit') {
+        emit('edit', String(row.id))
+        return
+    }
+
+    if (action === 'delete') {
+        emit('delete', {
+            id: String(row.id),
+            name: String(row.name ?? ''),
+        })
+    }
 }
 
 const fetchDemonstrations = async (page: number) => {
@@ -213,20 +220,9 @@ const handleReload = async () => {
     await fetchDemonstrations(currentPage.value)
 }
 
-const handleRowAction = async ({ action, row }: { action: string, row: UTableRow }) => {
-    if (row.id == null) return
-
-    if (action === 'edit') {
-        emit('edit', String(row.id))
-        return
-    }
-
-    if (action === 'delete') {
-        emit('delete', {
-            id: String(row.id),
-            name: String(row.name ?? ''),
-        })
-    }
+const handleChangePage = async (page: number) => {
+    if (isLoading.value) return
+    await fetchDemonstrations(page)
 }
 
 onMounted(async () => {

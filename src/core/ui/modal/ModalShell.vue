@@ -1,49 +1,53 @@
 <template>
-  <transition
-    :enter-active-class="backdropEnterActiveClass"
-    enter-from-class="opacity-0"
-    enter-to-class="opacity-100"
-    :leave-active-class="backdropLeaveActiveClass"
-    leave-from-class="opacity-100"
-    leave-to-class="opacity-0"
-  >
-    <div
-      v-show="modalOpen"
-      class="fixed inset-0 z-50 bg-gray-900/45 backdrop-blur-[3px] dark:bg-gray-950/65"
-      aria-hidden="true"
-    />
-  </transition>
+  <Teleport to="body">
+    <transition
+      :enter-active-class="backdropEnterActiveClass"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      :leave-active-class="backdropLeaveActiveClass"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="modalOpen"
+        class="fixed inset-0 z-50 bg-gray-900/45 backdrop-blur-[3px] dark:bg-gray-950/65"
+        aria-hidden="true"
+        @click="close"
+      />
+    </transition>
 
-  <div
-    v-show="modalOpen"
-    class="fixed inset-0 z-50 flex justify-center overflow-hidden px-4 sm:px-6"
-    :class="position === 'top' ? 'items-start pt-20 pb-4' : 'items-center py-4'"
-    role="dialog"
-    aria-modal="true"
-  >
     <transition
       :enter-active-class="panelEnterActiveClass"
       :enter-from-class="panelEnterFromClass"
       enter-to-class="opacity-100 scale-100 translate-y-0"
       :leave-active-class="panelLeaveActiveClass"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
+      leave-from-class="opacity-100 scale-100 translate-y-0"
+      leave-to-class="opacity-0 scale-[0.98] translate-y-2"
     >
       <div
-        v-show="modalOpen"
-        :id="id"
-        ref="modalContent"
-        class="flex w-full max-h-[min(90vh,calc(100dvh-2rem))] flex-col overflow-hidden rounded-xl bg-white shadow-2xl shadow-gray-900/10 ring-1 ring-gray-900/5 dark:bg-gray-800 dark:shadow-black/40 dark:ring-gray-700/60"
-        :class="sizeClass"
+        v-if="modalOpen"
+        class="fixed inset-0 z-50 flex justify-center overflow-hidden px-4 sm:px-6 pointer-events-none"
+        :class="position === 'top' ? 'items-start pt-20 pb-4' : 'items-center py-4'"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="ariaLabelledby"
+        :aria-describedby="ariaDescribedby"
       >
-        <slot :close="close" />
+        <div
+          :id="id"
+          class="pointer-events-auto flex w-full max-h-[min(90vh,calc(100dvh-2rem))] min-h-0 flex-col overflow-hidden rounded-xl bg-white shadow-2xl shadow-gray-900/10 ring-1 ring-gray-900/5 dark:bg-gray-800 dark:shadow-black/40 dark:ring-gray-700/60"
+          :class="sizeClass"
+          @click.stop
+        >
+          <slot :close="close" />
+        </div>
       </div>
     </transition>
-  </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, watch } from 'vue'
 
 import type { ModalPosition, ModalSize } from './modal.types'
 import { useModalStackStore } from './modal-stack.store'
@@ -55,6 +59,8 @@ const props = withDefaults(defineProps<{
   size?: ModalSize
   position?: ModalPosition
   motion?: 'default' | 'gentle'
+  ariaLabelledby?: string
+  ariaDescribedby?: string
 }>(), {
   size: 'lg',
   position: 'center',
@@ -65,8 +71,7 @@ const emit = defineEmits<{
   'close-modal': []
 }>()
 
-const modalContent = ref<HTMLElement | null>(null)
-const { close } = useModalDismiss(() => props.modalOpen, modalContent, emit)
+const { close } = useModalDismiss(() => props.id, () => props.modalOpen, emit)
 
 watch(
   () => props.modalOpen,
@@ -77,16 +82,17 @@ watch(
     if (open) modalStack.register(props.id)
     else modalStack.unregister(props.id)
 
-    document.body.style.overflow = open ? 'hidden' : ''
+    modalStack.syncBodyScrollLock()
   },
   { immediate: true },
 )
 
 onUnmounted(() => {
-  if (import.meta.client) {
-    useModalStackStore().unregister(props.id)
-    document.body.style.overflow = ''
-  }
+  if (!import.meta.client) return
+
+  const modalStack = useModalStackStore()
+  modalStack.unregister(props.id)
+  modalStack.syncBodyScrollLock()
 })
 
 const isGentleMotion = computed(() => props.motion === 'gentle')
@@ -128,6 +134,9 @@ const sizeClass = computed(() => {
     lg: 'max-w-lg',
     xl: 'max-w-xl',
     '2xl': 'max-w-2xl',
+    '3xl': 'max-w-3xl',
+    '4xl': 'max-w-4xl',
+    '5xl': 'max-w-5xl',
   }
 
   return sizes[props.size]

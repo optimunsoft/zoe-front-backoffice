@@ -50,15 +50,11 @@
               :to="item.to"
               @click="handleSelect"
             >
-              <svg
-                class="fill-current text-gray-400 dark:text-gray-500 shrink-0 mr-3"
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path v-for="path in item.iconPaths || defaultSidebarIcon" :key="path" :d="path" />
-              </svg>
+              <UiIcon
+                :name="item.icon || defaultSidebarIcon"
+                size="sm"
+                class="text-gray-400 dark:text-gray-500 mr-3"
+              />
               <span>
                 <span class="font-medium">{{ item.label }}</span>
                 <span
@@ -78,7 +74,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { defaultSidebarIcon } from '~/core/layout/sidebar/icons'
+import { defaultSidebarIcon, UiIcon } from '~/core/ui/icons'
 import { sidebarMenuSections } from '~/core/layout/sidebar/sidebar-menu'
 import {
   filterSidebarMenuSearch,

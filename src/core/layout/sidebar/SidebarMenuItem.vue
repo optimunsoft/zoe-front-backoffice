@@ -8,16 +8,11 @@
     >
       <div class="flex items-center justify-between">
         <div class="flex items-center">
-          <svg
-            class="shrink-0 fill-current"
+          <UiIcon
+            :name="itemIcon"
+            size="sm"
             :class="activeCondition ? 'text-brand-500' : 'text-gray-400 dark:text-gray-500'"
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-          >
-            <path v-for="path in iconPaths" :key="path" :d="path" />
-          </svg>
+          />
           <span class="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">{{ item.label }}</span>
         </div>
         <div class="flex shrink-0 ml-2">
@@ -60,16 +55,11 @@
         @click="navigate"
       >
         <div v-if="level === 0" class="flex items-center">
-          <svg
-            class="shrink-0 fill-current"
+          <UiIcon
+            :name="itemIcon"
+            size="sm"
             :class="isExactActive ? 'text-brand-500' : 'text-gray-400 dark:text-gray-500'"
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-          >
-            <path v-for="path in iconPaths" :key="path" :d="path" />
-          </svg>
+          />
           <span class="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">{{ item.label }}</span>
         </div>
         <span v-else class="text-sm font-medium lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">{{ item.label }}</span>
@@ -83,12 +73,13 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 import SidebarLinkGroup from './SidebarLinkGroup.vue'
-import { defaultSidebarIcon } from './icons'
+import { UiIcon, defaultSidebarIcon } from '~/core/ui/icons'
 
 export default {
   name: 'SidebarMenuItem',
   components: {
     SidebarLinkGroup,
+    UiIcon,
   },
   props: {
     item: {
@@ -105,7 +96,7 @@ export default {
     const route = useRoute()
 
     const hasChildren = computed(() => Array.isArray(props.item.children) && props.item.children.length > 0)
-    const iconPaths = computed(() => props.item.iconPaths || defaultSidebarIcon)
+    const itemIcon = computed(() => props.item.icon || defaultSidebarIcon)
 
     const resolveValue = (value) => {
       if (typeof value === 'function') return value({ route })
@@ -133,7 +124,7 @@ export default {
       activeCondition,
       expandSidebar,
       hasChildren,
-      iconPaths,
+      itemIcon,
       resolveTo,
     }
   },

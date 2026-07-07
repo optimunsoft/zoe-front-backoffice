@@ -13,9 +13,7 @@
           @click="handleCreateUser"
         >
           <template #icon>
-            <svg width="16" height="16" viewBox="0 0 16 16">
-              <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
-            </svg>
+            <UiIcon name="plus" size="sm" />
           </template>
           Nuevo usuario
         </Button>
@@ -58,7 +56,7 @@
       show-actions
       actions-mode="inline"
       actions-label="Acciones"
-      :action-buttons="actionButtons"
+      :action-buttons="userTableActions"
       @action="handleRowAction"
     >
       <template #cell-email="{ row }">
@@ -95,14 +93,16 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { Button, ReloadButton } from '~/core/ui/buttons'
+import { UiIcon } from '~/core/ui/icons'
 import { TableBadge } from '~/core/ui/badge'
 import TableColumnToggle from '~/core/ui/dropdown/TableColumnToggle.vue'
 import { FilterPills } from '~/core/ui/filters'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
 import UTable from '~/core/ui/Tables/Utable.vue'
-import type { UTableActionButton, UTableRow } from '~/core/ui/Tables/utable.types'
+import type { UTableRow } from '~/core/ui/Tables/utable.types'
 import { mapUsersToTableRows, userColumns } from '~/modules/administration/users/mappers/user-tables-mappers'
+import { userTableActions } from '~/modules/administration/users/mappers/user-table.actions'
 import { useUsersStore } from '~/modules/administration/users/store/users.store'
 import type { User } from '~/modules/administration/users/types/users.types'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
@@ -157,10 +157,10 @@ const users = computed(() => {
   )
 })
 
-const actionButtons: UTableActionButton[] = [
-  { key: 'edit', label: 'Editar' },
-  { key: 'delete', label: 'Eliminar', tone: 'danger' },
-]
+const handleRowAction = ({ action, row }: { action: string, row: UTableRow }) => {
+  // TODO: conectar con API / navegación
+  console.log(action, row.id)
+}
 
 const hasUserEmail = (value: unknown) => {
   if (typeof value !== 'string') return false
@@ -186,11 +186,6 @@ const fetchUsers = async (page: number, force = false) => {
 const handleCreateUser = () => {
   // TODO: abrir modal o navegar al formulario de creación
   console.log('create user')
-}
-
-const handleRowAction = ({ action, row }: { action: string, row: UTableRow }) => {
-  // TODO: conectar con API / navegación
-  console.log(action, row.id)
 }
 
 const handleChangePage = async (page: number) => {

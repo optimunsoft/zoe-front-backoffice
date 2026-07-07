@@ -40,7 +40,8 @@
           </thead>
 
           <tbody class="text-sm divide-y divide-gray-100 dark:divide-gray-700/60">
-            <tr v-for="row in rows" :key="getRowKey(row)">
+            <template v-for="row in rows" :key="getRowKey(row)">
+              <tr>
               <td v-if="selectable" class="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap w-px text-center">
                 <div class="flex items-center justify-center">
                   <label class="inline-flex">
@@ -131,13 +132,29 @@
                       v-for="action in actionButtons"
                       :key="action.key"
                       type="button"
-                      class="rounded-full text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
+                      class="rounded-full transition-colors"
+                      :class="isActionExpanded(action, row)
+                        ? 'text-brand-500 dark:text-brand-400'
+                        : action.tone === 'danger'
+                          ? 'text-red-400 hover:text-red-500 dark:text-red-500/80 dark:hover:text-red-400'
+                          : 'text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400'"
+                      :aria-expanded="isActionExpanded(action, row) || undefined"
                       @click.stop="emitAction(action.key, row)"
                     >
                       <span class="sr-only">{{ action.label }}</span>
-                      <svg class="w-8 h-8 fill-current" viewBox="0 0 32 32">
+                      <UiIcon
+                        v-if="resolveActionIconName(action)"
+                        :name="resolveActionIconName(action)!"
+                        size="lg"
+                      />
+                      <svg
+                        v-else-if="action.iconPaths?.length"
+                        class="w-8 h-8 fill-current"
+                        viewBox="0 0 32 32"
+                        aria-hidden="true"
+                      >
                         <path
-                          v-for="(path, index) in getActionIconPaths(action)"
+                          v-for="(path, index) in action.iconPaths"
                           :key="index"
                           :d="path"
                         />
@@ -160,7 +177,18 @@
                   </button>
                 </slot>
               </td>
-            </tr>
+              </tr>
+
+              <tr
+                v-if="isRowExpanded(row) && $slots['row-detail']"
+                :id="`row-detail-${getRowKey(row)}`"
+                role="region"
+              >
+                <td :colspan="columnCount" class="px-2 first:pl-5 last:pr-5 py-3">
+                  <slot name="row-detail" :row="row" />
+                </td>
+              </tr>
+            </template>
 
             <tr v-if="rows.length === 0">
               <td :colspan="columnCount" class="px-5 py-8 text-center text-gray-500 dark:text-gray-400">
@@ -179,6 +207,7 @@ import { computed, ref, watch } from 'vue'
 import { toTitleCase } from '~/shared/utils/format'
 import { TableBadge } from '~/core/ui/badge'
 import type { BadgeColor } from '~/core/ui/badge/badge.types'
+import { UiIcon, resolveUiIconName } from '~/core/ui/icons'
 import {
   UTABLE_BADGE_FALLBACK_CLASS,
   UTABLE_TEXT_MAP_FALLBACK_CLASS,
@@ -189,24 +218,11 @@ import type {
   UTableRow,
 } from './utable.types'
 
-/** Iconos built-in opcionales para acciones inline comunes (edit, download, delete). */
-const BUILTIN_INLINE_ACTION_ICONS: Record<string, string[]> = {
-  edit: [
-    'M19.7 8.3c-.4-.4-1-.4-1.4 0l-10 10c-.2.2-.3.4-.3.7v4c0 .6.4 1 1 1h4c.3 0 .5-.1.7-.3l10-10c.4-.4.4-1 0-1.4l-4-4zM12.6 22H10v-2.6l6-6 2.6 2.6-6 6zm7.4-7.4L17.4 12l1.6-1.6 2.6 2.6-1.6 1.6z',
-  ],
-  download: [
-    'M16 20c.3 0 .5-.1.7-.3l5.7-5.7-1.4-1.4-4 4V8h-2v8.6l-4-4L9.6 14l5.7 5.7c.2.2.4.3.7.3zM9 22h14v2H9z',
-  ],
-  delete: [
-    'M13 15h2v6h-2zM17 15h2v6h-2z',
-    'M20 9c0-.6-.4-1-1-1h-6c-.6 0-1 .4-1 1v2H8v2h1v10c0 .6.4 1 1 1h12c.6 0 1-.4 1-1V13h1v-2h-4V9zm-6 1h4v1h-4v-1zm7 3v9H11v-9h10z',
-  ],
-}
-
 export default {
   name: 'UTable',
   components: {
     TableBadge,
+    UiIcon,
   },
   props: {
     title: {
@@ -255,6 +271,16 @@ export default {
     emptyText: {
       type: String,
       default: 'No hay registros',
+    },
+    /** Fila expandida (acordeón). Comparar con `rowKey` / `id`. */
+    expandedRowKey: {
+      type: [String, Number] as () => string | number | null,
+      default: null,
+    },
+    /** Resalta la acción que abrió el acordeón (ej. `users`). */
+    expandedActionKey: {
+      type: String,
+      default: '',
     },
   },
   emits: ['change-selection', 'action'],
@@ -370,10 +396,16 @@ export default {
       return column.iconMap?.[value] ?? column.iconMap?.default ?? []
     }
 
-    const getActionIconPaths = (action: UTableActionButton) => {
-      if (action.iconPaths?.length) return action.iconPaths
-      return BUILTIN_INLINE_ACTION_ICONS[action.key] ?? []
-    }
+    const resolveActionIconName = (action: UTableActionButton) =>
+      resolveUiIconName(action.icon, action.key)
+
+    const isRowExpanded = (row: UTableRow) =>
+      props.expandedRowKey != null && getRowKey(row) === props.expandedRowKey
+
+    const isActionExpanded = (action: UTableActionButton, row: UTableRow) =>
+      isRowExpanded(row)
+      && props.expandedActionKey !== ''
+      && action.key === props.expandedActionKey
 
     const emitAction = (actionKey: string, row: UTableRow) => {
       emit('action', { action: actionKey, row })
@@ -393,7 +425,9 @@ export default {
       cellTextClass,
       getCellImage,
       getIconPaths,
-      getActionIconPaths,
+      resolveActionIconName,
+      isRowExpanded,
+      isActionExpanded,
       emitAction,
     }
   },

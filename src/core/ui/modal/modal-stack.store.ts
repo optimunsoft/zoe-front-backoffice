@@ -7,28 +7,34 @@ export const isNotificationModalId = (id: string) =>
   id.startsWith(NOTIFICATION_MODAL_PREFIX)
 
 export const useModalStackStore = defineStore('modalStack', () => {
-  const openModalIds = ref<Set<string>>(new Set())
+  const openModalIds = ref<string[]>([])
 
   const register = (id: string) => {
-    openModalIds.value = new Set(openModalIds.value).add(id)
+    if (openModalIds.value.includes(id)) return
+    openModalIds.value = [...openModalIds.value, id]
   }
 
   const unregister = (id: string) => {
-    if (!openModalIds.value.has(id)) return
-
-    const next = new Set(openModalIds.value)
-    next.delete(id)
-    openModalIds.value = next
+    openModalIds.value = openModalIds.value.filter((item) => item !== id)
   }
 
+  const topModalId = computed(() => openModalIds.value.at(-1) ?? null)
+
   const hasBlockingModal = computed(() =>
-    [...openModalIds.value].some((id) => !isNotificationModalId(id)),
+    openModalIds.value.some((id) => !isNotificationModalId(id)),
   )
+
+  const syncBodyScrollLock = () => {
+    if (!import.meta.client) return
+    document.body.style.overflow = openModalIds.value.length > 0 ? 'hidden' : ''
+  }
 
   return {
     openModalIds,
     register,
     unregister,
+    topModalId,
     hasBlockingModal,
+    syncBodyScrollLock,
   }
 })

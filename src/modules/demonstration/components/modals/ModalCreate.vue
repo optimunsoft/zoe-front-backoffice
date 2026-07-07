@@ -1,25 +1,30 @@
 <template>
-  <Teleport to="body">
     <ModalBasic
       id="create-demonstration-modal"
       :modal-open="modalOpen"
       title="Crear demostración"
+      description="Completa los datos para registrar una nueva demostración."
       @close-modal="handleClose"
     >
-    <div class="px-6 py-5">
-      <FormDemonstration ref="formRef" @submit="handleCreate" />
-    </div>
+      <template #icon>
+        <div class="flex size-9 items-center justify-center rounded-lg bg-violet-500/15 dark:bg-violet-500/20">
+          <svg class="size-5 fill-current text-violet-500" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
+          </svg>
+        </div>
+      </template>
 
-    <div class="flex justify-end gap-2 border-t border-gray-100 bg-gray-50/70 px-6 py-4 dark:border-gray-700/60 dark:bg-gray-900/30">
-      <Button variant="secondary" :disabled="isSubmitting" @click="handleClose">
-        Cancelar
-      </Button>
-      <Button variant="primary" :loading="isSubmitting" @click="submitForm">
-        Crear
-      </Button>
-    </div>
+      <FormDemonstration ref="formRef" @submit="handleCreate" />
+
+      <template #footer>
+        <Button variant="secondary" :disabled="isSubmitting" @click="handleClose">
+          Cancelar
+        </Button>
+        <Button variant="primary" :loading="isSubmitting" @click="submitForm">
+          Crear
+        </Button>
+      </template>
     </ModalBasic>
-  </Teleport>
 </template>
 
 <script setup lang="ts">

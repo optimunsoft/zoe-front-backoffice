@@ -1,4 +1,4 @@
-import type { Company } from '../types/company.types'
+import type { Company, companyMunicipality } from '../types/company.types'
 import type { UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
 
 export type CompanyCatalogItem = {
@@ -7,17 +7,10 @@ export type CompanyCatalogItem = {
   code?: string
 }
 
-export type CompanyMunicipalityItem = {
-  id: string
-  city: string
-  state: string
-}
-
 export type CompanyTableCatalogs = {
   businessNatures?: CompanyCatalogItem[]
   taxResponsibilities?: CompanyCatalogItem[]
   documentTypes?: CompanyCatalogItem[]
-  municipalities?: CompanyMunicipalityItem[]
   vatRegimes?: CompanyCatalogItem[]
 }
 
@@ -95,17 +88,10 @@ const findDocumentTypeLabel = (
   return name
 }
 
-const findMunicipality = (
-  items: CompanyMunicipalityItem[] | undefined,
-  id: string,
-) => {
-  const municipality = items?.find((item) => item.id === id)
-
-  return {
-    city: municipality?.city ?? '-',
-    state: municipality?.state ?? '-',
-  }
-}
+const resolveMunicipalityDisplay = (municipality?: companyMunicipality | null) => ({
+  city: municipality?.name?.trim() || '-',
+  state: municipality?.state?.name?.trim() || '-',
+})
 
 const getDisplayName = (company: Company) => {
   const names = [
@@ -123,7 +109,7 @@ export const mapCompaniesToTableRows = (
   catalogs: CompanyTableCatalogs = {},
 ): UTableRow[] => {
   return companies.map((company) => {
-    const municipality = findMunicipality(catalogs.municipalities, company.municipalityId)
+    const municipality = resolveMunicipalityDisplay(company.municipality)
 
     return {
       id: company.id,
@@ -139,6 +125,9 @@ export const mapCompaniesToTableRows = (
       municipalityState: municipality.state,
       vatRegime: findCatalogName(catalogs.vatRegimes, company.vatRegimeId),
       address: company.address || '-',
+      accountantName: company.accountantName || '-',
+      professionalCard: company.professionalCard || '-',
+      users: company.users ?? [],
       hasApiKey: company.hasApiKey ? 'Activa' : 'Inactiva',
     }
   })

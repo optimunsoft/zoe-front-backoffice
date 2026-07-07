@@ -1,4 +1,5 @@
 import type { BadgeColor } from '~/core/ui/badge/badge.types'
+import type { UiIconName } from '~/core/ui/icons'
 
 export type UTableColumnAlign = 'left' | 'center' | 'right'
 
@@ -56,7 +57,9 @@ export type UTableActionButton = {
   key: string
   label: string
   tone?: 'default' | 'danger'
-  /** Paths SVG del icono. Si se omite, UTable intenta iconos built-in por `key`. */
+  /** Referencia al registro central. Preferido sobre iconPaths. */
+  icon?: UiIconName
+  /** Override puntual; solo si el icono no está en el registro. */
   iconPaths?: string[]
 }
 
