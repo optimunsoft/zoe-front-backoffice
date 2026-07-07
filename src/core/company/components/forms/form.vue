@@ -141,9 +141,9 @@
           name="verificationDigit"
           label="DV"
           placeholder="--"
+          disabled
           input-class="text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           :error="errors.verificationDigit"
-          @update:model-value="onVerificationDigitChange"
         />
       </div>
 
@@ -349,7 +349,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, toRef, watch } from 'vue'
 import { refDebounced } from '@vueuse/core'
 
 import { useCatalogStore } from '~/core/catalog/store/catalog.store'
@@ -376,10 +376,10 @@ import {
   parseCompanyForm,
   sanitizeCompanyDocumentNumber,
   sanitizeCompanyName,
-  sanitizeVerificationDigit,
   type CompanyFormErrors,
 } from '../../schema/company.schema'
 import { useAuthStore } from '~/core/auth/store/auth.store'
+import { useNitCheckDigit } from '../../composables/use-nit-check-digit'
 
 
 const AuthStore = useAuthStore();
@@ -422,6 +422,13 @@ const municipalityResults = ref<Array<{ id: string, label: string }>>([])
 const isSearchingMunicipalities = ref(false)
 const isSyncingMunicipalitySearch = ref(false)
 const isSyncingForm = ref(false)
+
+useNitCheckDigit(toRef(form, 'documentNumber'), {
+  onDigitChange: (digit) => {
+    form.verificationDigit = digit
+    errors.verificationDigit = ''
+  },
+})
 
 const normalizeCatalogLabel = (value: string) =>
   value
@@ -582,11 +589,6 @@ const onBusinessNatureChange = (value: string | number) => {
 const onDocumentNumberChange = (value: string) => {
   form.documentNumber = sanitizeCompanyDocumentNumber(value)
   errors.documentNumber = ''
-}
-
-const onVerificationDigitChange = (value: string) => {
-  form.verificationDigit = sanitizeVerificationDigit(value)
-  errors.verificationDigit = ''
 }
 
 const onFirstNameChange = (value: string) => {
