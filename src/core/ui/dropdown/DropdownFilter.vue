@@ -20,7 +20,7 @@
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-      <div v-show="dropdownOpen" class="origin-top-right z-10 absolute top-full left-0 right-auto min-w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 pt-1.5 rounded-lg shadow-lg overflow-hidden mt-1" :class="align === 'right' ? 'md:left-auto md:right-0' : 'md:left-0 md:right-auto'">
+      <div v-show="dropdownOpen" class="origin-top-right z-50 absolute top-full left-0 right-auto min-w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 pt-1.5 rounded-lg shadow-lg overflow-hidden mt-1" :class="align === 'right' ? 'md:left-auto md:right-0' : 'md:left-0 md:right-auto'">
         <div ref="dropdown">
           <div class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase pt-1.5 pb-2 px-3">Filters</div>
           <ul class="mb-4">

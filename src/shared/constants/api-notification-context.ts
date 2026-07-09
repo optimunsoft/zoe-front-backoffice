@@ -13,8 +13,33 @@ type EntityRule = {
 
 const PATH_ENTITY_RULES: EntityRule[] = [
   { pattern: /administration\/users|\/users\/(create|edit|delete)/i, entity: 'Usuario', feminine: false },
+  { pattern: /administration\/modules\/[^/]+\/companies/i, entity: 'Módulo', feminine: false },
   { pattern: /administration\/companies|\/companies\/(create|edit|delete)/i, entity: 'Empresa', feminine: true },
   { pattern: /demonstrations/i, entity: 'Demostración', feminine: true },
+]
+
+type CustomSuccessMessageRule = {
+  pattern: RegExp
+  message: string
+}
+
+const CUSTOM_SUCCESS_MESSAGE_RULES: CustomSuccessMessageRule[] = [
+  {
+    pattern: /\/companies\/[^/]+\/logo$/i,
+    message: 'Logo actualizado correctamente',
+  },
+  {
+    pattern: /\/companies\/users\/assign$/i,
+    message: 'Usuario administrador asignado correctamente',
+  },
+  {
+    pattern: /\/companies\/users\/unassign$/i,
+    message: 'Usuario administrador removido correctamente',
+  },
+  {
+    pattern: /\/companies\/[^/]+\/status$/i,
+    message: 'Estado de la empresa actualizado correctamente',
+  },
 ]
 
 const ROUTE_ENTITY_RULES: EntityRule[] = [
@@ -83,11 +108,17 @@ export const buildContextualSuccessMessage = (
   return `${context.entity} ${suffix} correctamente`
 }
 
+const resolveCustomSuccessMessage = (requestUrl: string) =>
+  CUSTOM_SUCCESS_MESSAGE_RULES.find((rule) => rule.pattern.test(requestUrl))?.message ?? null
+
 export const resolveContextualSuccessMessage = (
   method: string,
   requestUrl: string,
   routePath?: string,
 ): string | null => {
+  const customMessage = resolveCustomSuccessMessage(requestUrl)
+  if (customMessage) return customMessage
+
   const action = resolveMutationAction(method, requestUrl)
   const entity = resolveNotificationEntity(requestUrl, routePath)
 

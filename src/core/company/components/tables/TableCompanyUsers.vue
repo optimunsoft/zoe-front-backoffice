@@ -103,26 +103,6 @@
                 No Aplica
               </TableBadge>
             </td>
-            <td class="py-2">
-              <button
-                v-if="user.roles.length > 0"
-                type="button"
-                class="inline-flex size-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:text-violet-500 dark:text-gray-500 dark:hover:bg-gray-700/50 dark:hover:text-violet-400"
-                aria-label="Ver permisos"
-                @click="handlePermissionsClick(user)"
-              >
-                <UiIcon
-                  name="permissions"
-                  size="lg"
-                />
-              </button>
-              <TableBadge
-                v-else
-                color="neutral"
-              >
-                No Aplica
-              </TableBadge>
-            </td>
           </tr>
         </tbody>
       </table>
@@ -141,7 +121,7 @@ import {
 } from '~/core/company/mappers/company-users.mapper'
 import type { Company, userCompany } from '~/core/company/types/company.types'
 import { useCompanyStore } from '~/core/company/store/company.store'
-import { UiIcon } from '~/core/ui/icons'
+
 import { TableBadge } from '~/core/ui/badge'
 import { toTitleCase } from '~/shared/utils/format'
 
@@ -166,7 +146,5 @@ const formatRoleName = (value: string) => {
   return toTitleCase(value)
 }
 
-const handlePermissionsClick = (user: userCompany) => {
-  emit('permissions', { companyId: props.companyId, user })
-}
+
 </script>

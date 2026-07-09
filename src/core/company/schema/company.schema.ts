@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { normalizeCompanyModules } from '../mappers/company-module.mapper'
 import type {
   CompanyList,
   CompanyRequestBody,
@@ -80,6 +81,10 @@ export const normalizeCompanyListItem = (raw: CompanyList | RawCompanyRecord): C
   return {
     id: pickString(item, 'id'),
     hasApiKey: Boolean(item.hasApiKey ?? item.has_api_key),
+    isActive: item.isActive === undefined && item.is_active === undefined
+      ? true
+      : Boolean(item.isActive ?? item.is_active),
+    modules: normalizeCompanyModules(item.modules ?? item.moduleIds ?? item.module_ids),
     users: normalizeUsers(item.users),
     businessNatureId: pickString(item, 'businessNatureId', 'business_nature_id'),
     taxResponsibilityId: pickString(item, 'taxResponsibilityId', 'tax_responsibility_id'),
@@ -124,6 +129,7 @@ export type CompanyFormValues = {
   email: string
   accountantName: string
   professionalCardNumber: string
+  isActive: boolean
 }
 
 export type CompanyFormErrors = Partial<Record<keyof CompanyFormValues, string>>
@@ -149,6 +155,7 @@ export const emptyCompanyFormValues = (): CompanyFormValues => ({
   email: '',
   accountantName: '',
   professionalCardNumber: '',
+  isActive: true,
 })
 
 export const sanitizeCompanyDocumentNumber = (value: string) =>
@@ -205,11 +212,16 @@ const baseCompanyFormSchema = z.object({
     .string()
     .trim()
     .max(30, 'El número de tarjeta profesional no puede superar 30 caracteres.'),
+  isActive: z.boolean(),
 })
 
 export const parseCompanyForm = (
   values: CompanyFormValues,
-  options: { isNaturalPerson: boolean, isJuridicaPerson: boolean, mode?: 'create' | 'edit' },
+  options: {
+    isNaturalPerson: boolean
+    isJuridicaPerson: boolean
+    mode?: 'create' | 'edit'
+  },
 ) => {
   const mode = options.mode ?? 'create'
   const schema = mode === 'create'
@@ -296,7 +308,7 @@ export const parseCompanyForm = (
 
   const payload: CompanyRequestBody = {
     ...basePayload,
-    ownerUserId: result.data.ownerUserId,
+    ownerUserId: values.ownerUserId,
   }
 
   return {
@@ -315,7 +327,7 @@ export const mapCompanyToFormValues = (company: CompanyList): CompanyFormValues 
     ownerUserId: '',
     documentTypeId: normalized.documentTypeId,
     documentNumber: normalized.documentNumber,
-    verificationDigit: pickString(company as RawCompanyRecord, 'verificationDigit', 'verification_digit', 'dv'),
+    verificationDigit: pickString(company as unknown as RawCompanyRecord, 'verificationDigit', 'verification_digit', 'dv'),
     vatRegimeId: normalized.vatRegimeId,
     taxResponsibilityId: normalized.taxResponsibilityId,
     businessNatureId: normalized.businessNatureId,
@@ -330,5 +342,6 @@ export const mapCompanyToFormValues = (company: CompanyList): CompanyFormValues 
     email: normalized.email,
     accountantName: normalized.accountantName,
     professionalCardNumber: normalized.professionalCard,
+    isActive: normalized.isActive,
   }
 }

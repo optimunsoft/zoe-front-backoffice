@@ -15,13 +15,23 @@
         </div>
       </template>
 
-      <FormCompany ref="formRef" @submit="handleCreate" />
+      <FormCompany
+        v-if="modalOpen"
+        ref="formRef"
+        mode="create"
+        @submit="handleCreate"
+      />
 
       <template #footer>
-        <Button variant="secondary" :disabled="isSubmitting" @click="handleClose">
+        <Button variant="secondary" :disabled="isSubmitting || isInitializing" @click="handleClose">
           Cancelar
         </Button>
-        <Button variant="primary" :loading="isSubmitting" @click="submitForm">
+        <Button
+          variant="primary"
+          :loading="isSubmitting"
+          :disabled="isInitializing"
+          @click="submitForm"
+        >
           Crear empresa
         </Button>
       </template>
@@ -29,16 +39,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 
 import { Button } from '~/core/ui/buttons'
 import { ModalBasic } from '~/core/ui/modal'
-import { useToast } from '~/core/ui/toast'
 import { useCompanyStore } from '../../store/company.store'
 import type { CompanyRequestBody } from '../../types/company.types'
 import FormCompany from '../forms/form.vue'
 
-defineProps<{
+const props = defineProps<{
   modalOpen: boolean
 }>()
 
@@ -48,9 +57,35 @@ const emit = defineEmits<{
 }>()
 
 const companyStore = useCompanyStore()
-const toast = useToast()
 const formRef = ref<InstanceType<typeof FormCompany> | null>(null)
 const isSubmitting = ref(false)
+const isInitializing = ref(false)
+
+const waitForFormRef = async () => {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await nextTick()
+    if (formRef.value) return
+  }
+}
+
+watch(
+  () => props.modalOpen,
+  async (isOpen) => {
+    if (!isOpen) {
+      isInitializing.value = false
+      return
+    }
+
+    isInitializing.value = true
+
+    try {
+      await waitForFormRef()
+      await formRef.value?.initialize()
+    } finally {
+      isInitializing.value = false
+    }
+  },
+)
 
 const handleClose = () => {
   if (isSubmitting.value) return
@@ -68,17 +103,15 @@ const handleCreate = async (payload: CompanyRequestBody) => {
   isSubmitting.value = true
 
   try {
-    await companyStore.createCompany(payload)
-    await companyStore.getCompanies({
-      amount: companyStore.amount,
-      page: companyStore.page,
-    }, true)
+    const createdCompany = await companyStore.createCompany(payload)
+    if (createdCompany?.id) {
+      await formRef.value?.uploadCompanyLogoIfNeeded(createdCompany.id, { skipNotification: true })
+    }
     formRef.value?.reset()
-    toast.success('Empresa creada correctamente.')
-    emit('created')
     emit('close-modal')
+    emit('created')
   } catch {
-    toast.error('No se pudo crear la empresa. Intenta de nuevo.')
+    // El cliente API muestra la notificación de error.
   } finally {
     isSubmitting.value = false
   }

@@ -10,7 +10,8 @@
     >
       <div
         v-if="modalOpen"
-        class="fixed inset-0 z-50 bg-gray-900/45 backdrop-blur-[3px] dark:bg-gray-950/65"
+        class="fixed inset-0 bg-gray-900/45 backdrop-blur-[3px] dark:bg-gray-950/65"
+        :class="layerClass"
         aria-hidden="true"
         @click="close"
       />
@@ -26,8 +27,11 @@
     >
       <div
         v-if="modalOpen"
-        class="fixed inset-0 z-50 flex justify-center overflow-hidden px-4 sm:px-6 pointer-events-none"
-        :class="position === 'top' ? 'items-start pt-20 pb-4' : 'items-center py-4'"
+        class="fixed inset-0 flex justify-center overflow-hidden px-4 sm:px-6 pointer-events-none"
+        :class="[
+          layerClass,
+          position === 'top' ? 'items-start pt-20 pb-4' : 'items-center py-4',
+        ]"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="ariaLabelledby"
@@ -49,7 +53,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, watch } from 'vue'
 
-import type { ModalPosition, ModalSize } from './modal.types'
+import type { ModalLayer, ModalPosition, ModalSize } from './modal.types'
 import { useModalStackStore } from './modal-stack.store'
 import { useModalDismiss } from './useModalDismiss'
 
@@ -59,12 +63,14 @@ const props = withDefaults(defineProps<{
   size?: ModalSize
   position?: ModalPosition
   motion?: 'default' | 'gentle'
+  layer?: ModalLayer
   ariaLabelledby?: string
   ariaDescribedby?: string
 }>(), {
   size: 'lg',
   position: 'center',
   motion: 'default',
+  layer: 'base',
 })
 
 const emit = defineEmits<{
@@ -93,6 +99,16 @@ onUnmounted(() => {
   const modalStack = useModalStackStore()
   modalStack.unregister(props.id)
   modalStack.syncBodyScrollLock()
+})
+
+const layerClass = computed(() => {
+  const layers: Record<ModalLayer, string> = {
+    base: 'z-[80]',
+    elevated: 'z-[90]',
+    notification: 'z-[100]',
+  }
+
+  return layers[props.layer]
 })
 
 const isGentleMotion = computed(() => props.motion === 'gentle')

@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { normalizeCompanyListItem } from '../schema/company.schema'
 import { normalizeCompanyRolePermissions } from '../schema/company-permissions.schema'
 import { useCompanyService } from '../services/company.service'
-import type { CompanyList, CompanyRequestBody, CompanyUpdateRequestBody, CompanyRolePermissions, GetCompaniesParams, PaginatedCompaniesResponse } from '../types/company.types'
+import type { CompanyList, CompanyRequestBody, CompanyUpdateRequestBody, CompanyRolePermissions, GetCompaniesParams, PaginatedCompaniesResponse, ActiveModule } from '../types/company.types'
 
 export type CompanySummary = {
   id: string
@@ -89,7 +89,8 @@ export const useCompanyStore = defineStore('company', () => {
 
   const createCompany = async (company: CompanyRequestBody) => {
     const { response } = await useCompanyService().createCompany(company)
-    return response
+    const normalized = normalizeResponse(response)
+    return normalized.companies[0] ?? null
   }
 
   const updateCompany = async (id: string, company: CompanyUpdateRequestBody) => {
@@ -108,6 +109,57 @@ export const useCompanyStore = defineStore('company', () => {
     return normalizeCompanyRolePermissions(response)
   }
 
+  const getStatusCompanies = async (companyId: string, active: boolean) => {
+    const status = await useCompanyService().getStatusCompanies(companyId, active).then((result) => result.status)
+
+    const company = companies.value.find((item) => item.id === companyId)
+    if (company) {
+      company.isActive = active
+    }
+
+    return status
+  }
+
+  const assignUsersToCompany = async (companyId: string, userIds: string[], isOwner = false) => {
+    let lastMessage: string | undefined
+
+    for (const userId of userIds) {
+      const { message } = await useCompanyService().assignUsersToCompany({
+        companyId,
+        userId,
+        isOwner,
+      })
+      lastMessage = message
+    }
+
+    return lastMessage
+  }
+
+  const unassignUsersFromCompany = async (companyId: string, userId: string) => {
+    const response = await useCompanyService().unassignUsersFromCompany(companyId, userId).then((result) => result.message)
+    return response
+  }
+
+
+  const assignModulesToCompany = async (companyId: string, moduleId: string, action: ActiveModule) => {
+    const response = await useCompanyService().assignModulesToCompany(moduleId, companyId, action).then((result) => result.message)
+    return response
+  }
+
+  const uploadCompanyLogo = async (
+    companyId: string,
+    logo: File,
+    options?: { skipNotification?: boolean },
+  ) => {
+    const response = await useCompanyService().uploadCompanyLogo(companyId, logo, options).then((result) => result.message)
+    return response
+  }
+
+  const getCompanyLogo = async (companyId: string) => {
+    const { response } = await useCompanyService().getCompanyLogo(companyId)
+    return response.logo
+  }
+  
   return {
     currentCompany,
     clearCompanyLists,
@@ -120,5 +172,11 @@ export const useCompanyStore = defineStore('company', () => {
     total,
     page,
     amount,
+    getStatusCompanies,
+    assignUsersToCompany,
+    unassignUsersFromCompany,
+    assignModulesToCompany,
+    uploadCompanyLogo,
+    getCompanyLogo,
   }
 })

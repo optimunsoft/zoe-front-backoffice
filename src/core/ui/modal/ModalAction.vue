@@ -1,5 +1,11 @@
 <template>
-  <ModalShell :id="id" :modal-open="modalOpen" :size="size" @close-modal="emit('close-modal')">
+  <ModalShell
+    :id="id"
+    :modal-open="modalOpen"
+    :size="size"
+    layer="elevated"
+    @close-modal="emit('close-modal')"
+  >
     <template #default="{ close }">
       <div class="relative px-6 py-7 sm:px-8 sm:py-8">
         <ModalCloseButton class="absolute right-4 top-4 sm:right-5 sm:top-5" @click="close" />

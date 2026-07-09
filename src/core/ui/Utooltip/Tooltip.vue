@@ -1,6 +1,7 @@
 <template>
   <div
     class="relative"
+    :class="UI_POINTER_CHILDREN_CLASSES"
     @mouseenter="tooltipOpen = true"
     @mouseleave="tooltipOpen = false"
     @focusin="tooltipOpen = true"
@@ -10,6 +11,7 @@
       <button
         type="button"
         class="block"
+        :class="UI_ICON_BUTTON_CLASSES"
         aria-haspopup="true"
         :aria-expanded="tooltipOpen"
         @click.prevent
@@ -19,7 +21,7 @@
         </svg>
       </button>
     </slot>
-    <div class="z-10 absolute" :class="positionOuterClasses">
+    <div class="z-50 absolute" :class="positionOuterClasses">
       <transition
         enter-active-class="transition ease-out duration-200 transform"
         enter-from-class="opacity-0 -translate-y-2"
@@ -43,6 +45,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
+import { UI_ICON_BUTTON_CLASSES, UI_POINTER_CHILDREN_CLASSES } from '~/core/ui/interactive.classes'
 import {
   getTooltipColorClasses,
   getTooltipPositionInnerClasses,

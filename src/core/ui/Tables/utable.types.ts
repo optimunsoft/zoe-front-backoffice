@@ -56,6 +56,8 @@ export type UTableActionsMode = 'menu' | 'inline'
 export type UTableActionButton = {
   key: string
   label: string
+  /** Texto del tooltip; por defecto usa `label`. */
+  tooltip?: string
   tone?: 'default' | 'danger'
   /** Referencia al registro central. Preferido sobre iconPaths. */
   icon?: UiIconName

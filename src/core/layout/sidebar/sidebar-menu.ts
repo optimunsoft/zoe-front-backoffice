@@ -44,7 +44,7 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
         label: 'Administración',
         icon: 'administration',
         active: ({ route }: SidebarMenuContext) =>
-          route.path.includes('/empresas') || route.path.includes('/usuarios'),
+          route.path.includes('/empresas') || route.path.includes('/usuarios') || route.path.includes('/modulos'),
         children: [
           {
             key: 'empresas-list',
@@ -55,6 +55,11 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
             key: 'usuarios-list',
             label: 'Usuarios',
             to: `${BACKOFFICE_DASHBOARD_PATH}/usuarios`,
+          },
+          {
+            key: 'modulos-list',
+            label: 'Módulos',
+            to: `${BACKOFFICE_DASHBOARD_PATH}/modulos`,
           },
         ],
       },

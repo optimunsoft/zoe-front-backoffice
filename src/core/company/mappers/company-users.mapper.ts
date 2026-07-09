@@ -13,7 +13,7 @@ export const companyUserDetailColumns: CompanyUserDetailColumn[] = [
   { key: 'userType', label: 'Tipo' },
   { key: 'status', label: 'Estado' },
   { key: 'roles', label: 'Roles' },
-  { key: 'permissions', label: 'Permisos' },
+
 ]
 
 export const formatCompanyUserName = (user: userCompany) => {
@@ -27,6 +27,19 @@ export const formatCompanyUserType = (userType: string) => {
   const formatted = toTitleCase(userType.trim())
   return formatted === 'Usuario' ? 'Administrador' : 'Subusuario'
 }
+
+export const isCompanyAdministratorUser = (user: userCompany) => {
+  const formattedType = toTitleCase(user.userType?.trim() ?? '')
+  if (formattedType === 'Usuario') return true
+
+  return user.roles?.some((role) => {
+    const name = role.name?.toLowerCase() ?? ''
+    return name.includes('admin') || name.includes('administrador')
+  }) ?? false
+}
+
+export const getCompanyAdministratorUsers = (users: userCompany[] | undefined | null) =>
+  getVisibleCompanyUsers(users).filter((user) => user.isActive && isCompanyAdministratorUser(user))
 
 export const formatCompanyUserRoles = (roles: roleUserCompany[]) => {
   const names = roles.map((role) => role.name.trim()).filter(Boolean)

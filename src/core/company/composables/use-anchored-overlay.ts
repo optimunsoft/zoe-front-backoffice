@@ -1,0 +1,85 @@
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  toValue,
+  watch,
+  type MaybeRefOrGetter,
+} from 'vue'
+
+export type AnchoredOverlayStyle = {
+  position: 'fixed'
+  top: string
+  left: string
+  width: string
+  zIndex: number
+}
+
+export const useAnchoredOverlay = (
+  open: MaybeRefOrGetter<boolean>,
+  options: {
+    offset?: number
+    zIndex?: number
+    maxHeight?: number
+  } = {},
+) => {
+  const anchorRef = ref<HTMLElement | null>(null)
+  const style = ref<AnchoredOverlayStyle | null>(null)
+
+  const offset = options.offset ?? 4
+  const zIndex = options.zIndex ?? 100
+  const maxHeight = options.maxHeight ?? 224
+
+  const updatePosition = () => {
+    const el = anchorRef.value
+    if (!el || !toValue(open)) {
+      style.value = null
+      return
+    }
+
+    const rect = el.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom - offset
+    const spaceAbove = rect.top - offset
+    const openUp = spaceBelow < Math.min(maxHeight, 160) && spaceAbove > spaceBelow
+
+    style.value = {
+      position: 'fixed',
+      top: openUp
+        ? `${Math.max(8, rect.top - Math.min(maxHeight, spaceAbove) - offset)}px`
+        : `${rect.bottom + offset}px`,
+      left: `${rect.left}px`,
+      width: `${rect.width}px`,
+      zIndex,
+    }
+  }
+
+  watch(() => toValue(open), async (isOpen) => {
+    if (!isOpen) {
+      style.value = null
+      return
+    }
+
+    await nextTick()
+    updatePosition()
+  })
+
+  onMounted(() => {
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+  })
+
+  onBeforeUnmount(() => {
+    window.removeEventListener('resize', updatePosition)
+    window.removeEventListener('scroll', updatePosition, true)
+  })
+
+  const panelStyle = computed(() => style.value ?? undefined)
+
+  return {
+    anchorRef,
+    panelStyle,
+    updatePosition,
+  }
+}

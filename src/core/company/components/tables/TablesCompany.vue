@@ -28,14 +28,55 @@
         />
 
         <div class="flex w-full flex-wrap items-center justify-start sm:w-auto sm:justify-end gap-2 sm:gap-3">
+          <div class="relative w-full sm:w-72">
+            <InputSearch
+              v-model="locationSearchQuery"
+              placeholder="Departamento o municipio..."
+              search-label="Buscar por departamento o municipio"
+              @submit="handleLocationSearch"
+            />
+
+            <div
+              v-if="showLocationSuggestions"
+              class="absolute top-full z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700/60 dark:bg-gray-800"
+            >
+              <button
+                v-for="option in locationSearchResults"
+                :key="option.key"
+                type="button"
+                class="flex w-full border-b border-gray-100 px-3 py-2.5 text-left transition last:border-b-0 hover:bg-gray-50 dark:border-gray-700/60 dark:hover:bg-gray-800/60"
+                @click="selectLocationOption(option)"
+              >
+                <span class="truncate text-sm text-gray-800 dark:text-gray-100">
+                  {{ option.label }}
+                </span>
+              </button>
+
+              <p
+                v-if="locationSearchResults.length === 0 && !isSearchingLocations"
+                class="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400"
+              >
+                No se encontraron departamentos o municipios.
+              </p>
+
+              <p
+                v-else-if="isSearchingLocations"
+                class="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400"
+              >
+                Buscando...
+              </p>
+            </div>
+          </div>
+
           <div class="w-full sm:w-64">
             <InputSearch
               v-model="searchQuery"
-              placeholder="Buscar..."
+              placeholder="Buscar por Nit o Razón social..."
               search-label="Buscar"
               @submit="handleSearch"
             />
           </div>
+
           <TableColumnToggle
             v-model="visibleColumnKeys"
             :columns="companyColumns"
@@ -47,7 +88,7 @@
       </div>
     </div>
 
-    <div v-if="isLoading" class="flex min-h-72 items-center justify-center rounded-xl bg-white shadow-xs dark:bg-gray-800">
+    <div v-if="isLoading && !isInitialLoadDone" class="flex min-h-72 items-center justify-center rounded-xl bg-white shadow-xs dark:bg-gray-800">
       <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
         Cargando empresas...
       </p>
@@ -59,6 +100,7 @@
       :count="totalCompanies"
       :columns="visibleColumns"
       :rows="rows"
+      :refreshing="isLoading && isInitialLoadDone"
       show-actions
       actions-mode="inline"
       actions-label="Acciones"
@@ -171,7 +213,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { watchDebounced } from '@vueuse/core'
+import { refDebounced, watchDebounced } from '@vueuse/core'
 
 import { useCatalogStore } from '~/core/catalog/store/catalog.store'
 import { useBusinessNatureStore } from '~/core/businessNature/store/businessNature.store'
@@ -179,6 +221,10 @@ import {
   companyColumns,
   mapCompaniesToTableRows,
 } from '~/core/company/mappers/company-table.mapper'
+import {
+  mapMunicipalitySearchToLocationOptions,
+  type CompanyLocationSearchOption,
+} from '~/core/company/mappers/company-location.mapper'
 import { companyTableActions } from '~/core/company/mappers/company-table.actions'
 import type { Company, userCompany } from '~/core/company/types/company.types'
 import { useCompanyStore } from '~/core/company/store/company.store'
@@ -204,6 +250,8 @@ import ModalCreate from '../modals/ModalCreate.vue'
 import ModalEdit from '../modals/ModalEdit.vue'
 import ModalPermissionRolUser from '../modals/ModalPermissionRolUser.vue'
 import TableCompanyUsers from './TableCompanyUsers.vue'
+import { useAuthStore } from '~/core/auth/store/auth.store'
+import { useMunicipalityService } from '~/core/ubication/services/municipality.service'
 
 type PermissionsContext = {
   companyId: string
@@ -212,15 +260,25 @@ type PermissionsContext = {
 }
 
 const catalogStore = useCatalogStore()
+const authStore = useAuthStore()
 const businessNatureStore = useBusinessNatureStore()
 const companyStore = useCompanyStore()
 const documentTypeStore = useDocumentTypeStore()
 const taxResponsibilityStore = useTaxResponsibilityStore()
 const vatRegimeStore = useVatRegimeStore()
+const municipalityService = useMunicipalityService()
 
 const selectedItems = ref<Array<string | number>>([])
 const searchQuery = ref('')
+const locationSearchQuery = ref('')
+const locationSearchDebounced = refDebounced(locationSearchQuery, 400)
+const locationSearchResults = ref<CompanyLocationSearchOption[]>([])
+const isSearchingLocations = ref(false)
+const hasLocationSearchAttempt = ref(false)
+const appliedLocationLabel = ref('')
 const companyFilter = ref('all')
+const appliedStateId = ref('')
+const appliedMunicipalityId = ref('')
 const currentPage = ref(1)
 const amount = ref(10)
 const isLoading = ref(true)
@@ -268,19 +326,79 @@ const companyFilterOptions = computed(() =>
     items: companyStore.companies,
     options: [
       { key: 'all', label: 'Todos' },
-      {
-        key: 'natural',
-        label: 'Persona natural',
-        match: (company) => isNaturalBusinessNatureId(company.businessNatureId),
-      },
-      {
-        key: 'juridica',
-        label: 'Persona jurídica',
-        match: (company) => isJuridicaBusinessNatureId(company.businessNatureId),
-      }
     ],
   }),
 )
+
+const showLocationSuggestions = computed(() => {
+  const query = locationSearchQuery.value.trim()
+  if (!query || query === appliedLocationLabel.value.trim()) return false
+
+  return isSearchingLocations.value || hasLocationSearchAttempt.value
+})
+
+const searchLocations = async (term: string) => {
+  const normalized = term.trim()
+  locationSearchResults.value = []
+
+  if (!normalized) {
+    hasLocationSearchAttempt.value = false
+    appliedStateId.value = ''
+    appliedMunicipalityId.value = ''
+    return false
+  }
+
+  const countryId = authStore.user?.countryId
+  if (!countryId) return false
+
+  isSearchingLocations.value = true
+
+  try {
+    const { response } = await municipalityService.search({
+      countryId,
+      name: normalized,
+    })
+
+    locationSearchResults.value = mapMunicipalitySearchToLocationOptions(
+      response ?? [],
+      normalized,
+    )
+    hasLocationSearchAttempt.value = true
+    return true
+  } catch {
+    locationSearchResults.value = []
+    hasLocationSearchAttempt.value = true
+    return false
+  } finally {
+    isSearchingLocations.value = false
+  }
+}
+
+const applyLocationFilter = async (option: CompanyLocationSearchOption) => {
+  appliedStateId.value = option.stateId
+  appliedMunicipalityId.value = option.municipalityId
+  locationSearchResults.value = []
+  await fetchCompanies(1, true)
+}
+
+const selectLocationOption = async (option: CompanyLocationSearchOption) => {
+  appliedLocationLabel.value = option.label
+  locationSearchQuery.value = option.label
+  hasLocationSearchAttempt.value = false
+  locationSearchResults.value = []
+  await applyLocationFilter(option)
+}
+
+const clearLocationFilter = async () => {
+  appliedStateId.value = ''
+  appliedMunicipalityId.value = ''
+  appliedLocationLabel.value = ''
+  locationSearchResults.value = []
+  hasLocationSearchAttempt.value = false
+
+  if (!isInitialLoadDone.value || isLoading.value) return
+  await fetchCompanies(1, true)
+}
 
 const filteredCompanies = computed(() =>
   filterItemsByPill(
@@ -334,11 +452,33 @@ const handleRowAction = ({ action, row }: { action: string, row: UTableRow }) =>
 
 const buildCompaniesRequestParams = (page: number) => {
   const search = searchQuery.value.trim()
+  const stateId = appliedStateId.value.trim()
+  const municipalityId = appliedMunicipalityId.value.trim()
 
   return {
     amount: amount.value,
     page,
     ...(search ? { search } : {}),
+    ...(stateId ? { stateId } : {}),
+    ...(municipalityId ? { municipalityId } : {}),
+  }
+}
+
+const applyLocationSearch = async () => {
+  if (isLoading.value) return
+
+  const term = locationSearchQuery.value.trim()
+  if (!term) {
+    await clearLocationFilter()
+    return
+  }
+
+  if (term === appliedLocationLabel.value.trim()) return
+
+  await searchLocations(term)
+
+  if (locationSearchResults.value.length === 1) {
+    await selectLocationOption(locationSearchResults.value[0]!)
   }
 }
 
@@ -429,7 +569,41 @@ const handleSearch = async () => {
   await fetchCompanies(1, true)
 }
 
+const handleLocationSearch = async () => {
+  await applyLocationSearch()
+}
+
 const isInitialLoadDone = ref(false)
+
+watchDebounced(
+  locationSearchDebounced,
+  async (term) => {
+    if (!isInitialLoadDone.value) return
+
+    const normalized = term.trim()
+
+    if (!normalized) {
+      await clearLocationFilter()
+      return
+    }
+
+    if (normalized === appliedLocationLabel.value.trim()) return
+
+    if (appliedLocationLabel.value) {
+      const hadFilter = Boolean(appliedStateId.value || appliedMunicipalityId.value)
+      appliedLocationLabel.value = ''
+      appliedStateId.value = ''
+      appliedMunicipalityId.value = ''
+
+      if (hadFilter) {
+        await fetchCompanies(1, true)
+      }
+    }
+
+    await searchLocations(term)
+  },
+  { debounce: 0 },
+)
 
 watchDebounced(
   searchQuery,

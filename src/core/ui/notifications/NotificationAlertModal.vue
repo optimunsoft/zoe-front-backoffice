@@ -4,6 +4,7 @@
     :modal-open="notification.open"
     size="sm"
     motion="gentle"
+    layer="notification"
     @close-modal="emit('close')"
   >
     <template #default="{ close }">

@@ -2,17 +2,17 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 import { useUsersService } from '../services/users.services';
-import type { GetUsersParams, PaginatedUsersResponse, User } from '../types/users.types';
+import type { GetUsersParams, PaginatedUsersResponse, UserList, UserRequestBody, UserUpdate } from '../types/users.types';
 
 export const useUsersStore = defineStore('users', () => {
-    const users = ref<User[]>([]);
+    const users = ref<UserList[]>([]);
     const total = ref(0);
     const page = ref(1);
     const amount = ref(10);
-    const cachedPages = ref<Record<string, { users: User[]; total: number }>>({});
+    const cachedPages = ref<Record<string, { users: UserList[]; total: number }>>({});
     const pendingRequests = new Map<string, Promise<void>>();
 
-    const normalizeResponse = (response: User[] | PaginatedUsersResponse): { users: User[]; total: number } => {
+    const normalizeResponse = (response: UserList[] | PaginatedUsersResponse): { users: UserList[]; total: number } => {
         if (Array.isArray(response)) {
             return { users: response, total: response.length };
         }
@@ -58,6 +58,26 @@ export const useUsersStore = defineStore('users', () => {
             pendingRequests.delete(cacheKey);
         }
     }
+
+    const createUser = async (user: UserRequestBody) => {
+        const { response } = await useUsersService().createUser(user);
+        return response;
+    }
+
+    const updateUser = async (userId: string, user: UserUpdate) => {
+        const { response } = await useUsersService().updateUser(userId, user);
+        return response;
+    }
+
+    const changesStatusUser = async (userId: string, status: boolean) => {
+        const { response } = await useUsersService().changesStatusUser(userId, status);
+        return response;
+    }
+
+    const changesStatusDemoUser = async (userId: string, demo: boolean) => {
+        const { response } = await useUsersService().changesStatusDemoUser(userId, demo);
+        return response;
+    }
     return {
         users,
         total,
@@ -65,5 +85,9 @@ export const useUsersStore = defineStore('users', () => {
         amount,
         cachedPages,
         getUsers,
+        createUser,
+        updateUser,
+        changesStatusUser,
+        changesStatusDemoUser,
     }
 })

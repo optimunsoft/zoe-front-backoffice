@@ -24,10 +24,15 @@
     />
 
     <template #footer>
-      <Button variant="secondary" :disabled="isSubmitting" @click="handleClose">
+      <Button variant="secondary" :disabled="isSubmitting || isInitializing" @click="handleClose">
         Cancelar
       </Button>
-      <Button variant="primary" :loading="isSubmitting" @click="submitForm">
+      <Button
+        variant="primary"
+        :loading="isSubmitting"
+        :disabled="isInitializing"
+        @click="submitForm"
+      >
         Guardar cambios
       </Button>
     </template>
@@ -39,7 +44,6 @@ import { nextTick, ref, watch } from 'vue'
 
 import { Button } from '~/core/ui/buttons'
 import { ModalBasic } from '~/core/ui/modal'
-import { useToast } from '~/core/ui/toast'
 import { useCompanyStore } from '../../store/company.store'
 import type { Company, CompanyUpdateRequestBody } from '../../types/company.types'
 import FormCompany from '../forms/form.vue'
@@ -55,29 +59,33 @@ const emit = defineEmits<{
 }>()
 
 const companyStore = useCompanyStore()
-const toast = useToast()
 const formRef = ref<InstanceType<typeof FormCompany> | null>(null)
 const isSubmitting = ref(false)
+const isInitializing = ref(false)
 
 const waitForFormRef = async () => {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
     await nextTick()
     if (formRef.value) return
   }
 }
 
-const loadCompany = async (company: Company) => {
-  await waitForFormRef()
-  await formRef.value?.setValues(company)
-}
-
 watch(
   () => [props.modalOpen, props.company] as const,
   async ([isOpen, company]) => {
-    if (!isOpen || !company) return
+    if (!isOpen || !company) {
+      isInitializing.value = false
+      return
+    }
 
-    await nextTick()
-    await loadCompany(company)
+    isInitializing.value = true
+
+    try {
+      await waitForFormRef()
+      await formRef.value?.initialize(company)
+    } finally {
+      isInitializing.value = false
+    }
   },
 )
 
@@ -98,17 +106,11 @@ const handleEdit = async (payload: CompanyUpdateRequestBody) => {
 
   try {
     await companyStore.updateCompany(props.company.id, payload)
-    await companyStore.getCompanies({
-      amount: companyStore.amount,
-      page: companyStore.page,
-    }, true)
-
     formRef.value?.reset()
-    toast.success('Empresa actualizada correctamente.')
-    emit('updated')
     emit('close-modal')
+    emit('updated')
   } catch {
-    toast.error('No se pudo actualizar la empresa. Intenta de nuevo.')
+    // El cliente API muestra la notificación de error.
   } finally {
     isSubmitting.value = false
   }

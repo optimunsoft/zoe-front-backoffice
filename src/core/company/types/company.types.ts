@@ -77,9 +77,19 @@ export interface generalInformationCompany {
   address: string;
 }
 
+
+export interface CompanyModule {
+  moduleId: string;
+  code: string;
+  name: string;
+  status: string;
+}
+
 export interface CompanyList extends generalInformationCompany {
   id: string;
   hasApiKey: boolean;
+  isActive: boolean;
+  modules: CompanyModule[];
   users: userCompany[];
 }
 
@@ -105,6 +115,34 @@ export type PaginatedCompaniesResponse = {
   totalPages?: number;
 }
 
+
+export type AssignUsersCompany = {
+  companyId: string;
+  userId: string;
+  isOwner: boolean;
+}
+
+
+export enum ActiveModule {
+  ACTIVO = 'ACTIVO',
+  INACTIVO = 'INACTIVO',
+  SOLO_LECTURA = 'SOLO_LECTURA',
+}
+export type UploadLogo = {
+  message: string;
+  logoName: string;
+}
+
+export type CompanyLogo = {
+  logo: string;
+}
+
+export type AssignUsersCompanyRequest = AssignUsersCompany
+
+export type AssignUsersCompanyResponse = ApiResponse<AssignUsersCompany>;
+
+export type UploadLogoResponse = ApiResponse<UploadLogo>;
+export type GetCompanyLogoResponse = ApiResponse<CompanyLogo>;
 export type GetCompaniesResponse = ApiResponse<CompanyList[] | PaginatedCompaniesResponse>;
 export type GetCompanyPermissionsResponse = ApiResponse<CompanyRolePermissions>;
 export type CompanyRequestBody = CompanyCreate;

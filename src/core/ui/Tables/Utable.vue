@@ -1,6 +1,8 @@
 <template>
   <div class="bg-white dark:bg-gray-800 shadow-xs rounded-xl overflow-hidden relative">
-    <header v-if="title" class="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
+    <TableRefreshRibbon :active="refreshing" />
+
+    <header v-if="title" class="relative px-5 py-4 border-b border-gray-100 dark:border-gray-700/60">
       <h2 class="font-semibold text-gray-800 dark:text-gray-100">
         {{ title }}
         <span v-if="count !== undefined" class="text-gray-400 dark:text-gray-500 font-medium">{{ count }}</span>
@@ -128,45 +130,56 @@
                 <slot name="actions" :row="row">
                   <!-- inline: botones por fila -->
                   <div v-if="actionsMode === 'inline'" class="flex justify-start space-x-1">
-                    <button
+                    <Tooltip
                       v-for="action in actionButtons"
                       :key="action.key"
-                      type="button"
-                      class="rounded-full transition-colors"
-                      :class="isActionExpanded(action, row)
-                        ? 'text-brand-500 dark:text-brand-400'
-                        : action.tone === 'danger'
-                          ? 'text-red-400 hover:text-red-500 dark:text-red-500/80 dark:hover:text-red-400'
-                          : 'text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400'"
-                      :aria-expanded="isActionExpanded(action, row) || undefined"
-                      @click.stop="emitAction(action.key, row)"
+                      bg="light"
+                      position="top"
                     >
-                      <span class="sr-only">{{ action.label }}</span>
-                      <UiIcon
-                        v-if="resolveActionIconName(action)"
-                        :name="resolveActionIconName(action)!"
-                        size="lg"
-                      />
-                      <svg
-                        v-else-if="action.iconPaths?.length"
-                        class="w-8 h-8 fill-current"
-                        viewBox="0 0 32 32"
-                        aria-hidden="true"
-                      >
-                        <path
-                          v-for="(path, index) in action.iconPaths"
-                          :key="index"
-                          :d="path"
-                        />
-                      </svg>
-                    </button>
+                      <template #trigger>
+                        <button
+                          type="button"
+                          class="ui-icon-btn rounded-full transition-colors"
+                          :class="isActionExpanded(action, row)
+                            ? 'text-brand-500 dark:text-brand-400'
+                            : action.tone === 'danger'
+                              ? 'text-red-400 hover:text-red-500 dark:text-red-500/80 dark:hover:text-red-400'
+                              : 'text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400'"
+                          :aria-expanded="isActionExpanded(action, row) || undefined"
+                          :aria-label="action.label"
+                          @click.stop="emitAction(action.key, row)"
+                        >
+                          <span class="sr-only">{{ action.label }}</span>
+                          <UiIcon
+                            v-if="resolveActionIconName(action)"
+                            :name="resolveActionIconName(action)!"
+                            size="lg"
+                          />
+                          <svg
+                            v-else-if="action.iconPaths?.length"
+                            class="w-8 h-8 fill-current"
+                            viewBox="0 0 32 32"
+                            aria-hidden="true"
+                          >
+                            <path
+                              v-for="(path, index) in action.iconPaths"
+                              :key="index"
+                              :d="path"
+                            />
+                          </svg>
+                        </button>
+                      </template>
+                      <div class="whitespace-nowrap text-xs font-medium">
+                        {{ action.tooltip || action.label }}
+                      </div>
+                    </Tooltip>
                   </div>
 
                   <!-- menu: ⋯ -->
                   <button
                     v-else
                     type="button"
-                    class="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 rounded-full"
+                    class="ui-icon-btn text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 rounded-full"
                   >
                     <span class="sr-only">Menú</span>
                     <svg class="w-8 h-8 fill-current" viewBox="0 0 32 32">
@@ -208,10 +221,12 @@ import { toTitleCase } from '~/shared/utils/format'
 import { TableBadge } from '~/core/ui/badge'
 import type { BadgeColor } from '~/core/ui/badge/badge.types'
 import { UiIcon, resolveUiIconName } from '~/core/ui/icons'
+import { Tooltip } from '~/core/ui/utooltip'
 import {
   UTABLE_BADGE_FALLBACK_CLASS,
   UTABLE_TEXT_MAP_FALLBACK_CLASS,
 } from './utable.types'
+import TableRefreshRibbon from './TableRefreshRibbon.vue'
 import type {
   UTableActionButton,
   UTableColumn,
@@ -222,6 +237,8 @@ export default {
   name: 'UTable',
   components: {
     TableBadge,
+    TableRefreshRibbon,
+    Tooltip,
     UiIcon,
   },
   props: {
@@ -281,6 +298,11 @@ export default {
     expandedActionKey: {
       type: String,
       default: '',
+    },
+    /** Muestra una cinta de carga en la cabecera mientras se refrescan los datos. */
+    refreshing: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ['change-selection', 'action'],

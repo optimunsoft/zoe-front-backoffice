@@ -27,7 +27,7 @@
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-      <div v-show="dropdownOpen" class="z-10 absolute top-full right-0 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 py-1.5 rounded-lg shadow-lg overflow-hidden mt-1">
+      <div v-show="dropdownOpen" class="z-50 absolute top-full right-0 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 py-1.5 rounded-lg shadow-lg overflow-hidden mt-1">
         <div
           ref="dropdown"
           class="font-medium text-sm text-gray-600 dark:text-gray-300"

@@ -86,11 +86,22 @@
         @change-page="handleChangePage"
       />
     </div>
+
+    <ModalCreate
+      :modal-open="createModalOpen"
+      @close-modal="closeCreateModal"
+    />
+
+    <ModalEdit
+      :modal-open="editModalOpen"
+      :user="editingUser"
+      @close-modal="closeEditModal"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 
 import { Button, ReloadButton } from '~/core/ui/buttons'
 import { UiIcon } from '~/core/ui/icons'
@@ -103,6 +114,8 @@ import UTable from '~/core/ui/Tables/Utable.vue'
 import type { UTableRow } from '~/core/ui/Tables/utable.types'
 import { mapUsersToTableRows, userColumns } from '~/modules/administration/users/mappers/user-tables-mappers'
 import { userTableActions } from '~/modules/administration/users/mappers/user-table.actions'
+import ModalCreate from '~/modules/administration/users/components/modals/ModalCreate.vue'
+import ModalEdit from '~/modules/administration/users/components/modals/ModalEdit.vue'
 import { useUsersStore } from '~/modules/administration/users/store/users.store'
 import type { User } from '~/modules/administration/users/types/users.types'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
@@ -116,6 +129,9 @@ const userFilter = ref('all')
 const currentPage = ref(1)
 const amount = ref(10)
 const isLoading = ref(false)
+const createModalOpen = ref(false)
+const editModalOpen = ref(false)
+const editingUser = ref<User | null>(null)
 
 const {
   visibleKeys: visibleColumnKeys,
@@ -157,9 +173,33 @@ const users = computed(() => {
   )
 })
 
-const handleRowAction = ({ action, row }: { action: string, row: UTableRow }) => {
-  // TODO: conectar con API / navegación
-  console.log(action, row.id)
+const resolveUserFromRow = (row: UTableRow): User | null => {
+  const rowId = row.id == null ? '' : String(row.id).trim()
+  if (!rowId) return null
+
+  return usersStore.users.find((user) => user.id === rowId) ?? null
+}
+
+const openEditModal = async (row: UTableRow) => {
+  const user = resolveUserFromRow(row)
+  if (!user) return
+
+  editingUser.value = user
+  await nextTick()
+  editModalOpen.value = true
+}
+
+const closeEditModal = () => {
+  editModalOpen.value = false
+  editingUser.value = null
+}
+
+const handleRowAction = async ({ action, row }: { action: string, row: UTableRow }) => {
+  if (row.id == null) return
+
+  if (action === 'edit') {
+    await openEditModal(row)
+  }
 }
 
 const hasUserEmail = (value: unknown) => {
@@ -184,8 +224,11 @@ const fetchUsers = async (page: number, force = false) => {
 }
 
 const handleCreateUser = () => {
-  // TODO: abrir modal o navegar al formulario de creación
-  console.log('create user')
+  createModalOpen.value = true
+}
+
+const closeCreateModal = () => {
+  createModalOpen.value = false
 }
 
 const handleChangePage = async (page: number) => {

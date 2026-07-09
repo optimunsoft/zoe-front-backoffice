@@ -59,6 +59,8 @@ export function getButtonSizeClass(size: string): string {
   return SIZE_CLASSES[size] ?? SIZE_CLASSES.md
 }
 
+export const BUTTON_INTERACTION_CLASSES = 'cursor-pointer'
+
 export const BUTTON_DISABLED_CLASSES =
   'disabled:border-gray-200 dark:disabled:border-gray-700 disabled:bg-white dark:disabled:bg-gray-800 disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed disabled:shadow-none'
 

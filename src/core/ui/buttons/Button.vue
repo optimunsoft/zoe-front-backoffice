@@ -63,6 +63,7 @@ import {
   BUTTON_GROUP_ACTIVE_CLASSES,
   BUTTON_GROUP_INACTIVE_CLASSES,
   BUTTON_GROUP_ITEM_CLASSES,
+  BUTTON_INTERACTION_CLASSES,
   getButtonIconClasses,
   getButtonSizeClass,
   getButtonVariantClasses,
@@ -139,6 +140,7 @@ const iconClasses = computed(() =>
 
 const buttonClasses = computed(() => {
   const classes = [
+    BUTTON_INTERACTION_CLASSES,
     getButtonSizeClass(props.size),
     getButtonVariantClasses(resolvedVariant.value),
     BUTTON_DISABLED_CLASSES,

@@ -1,11 +1,9 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { useModalStackStore } from '~/core/ui/modal/modal-stack.store'
-
 import type { NotificationAlertItem, NotificationAlertType } from './notification-alert.types'
 
-const DISPLAY_DELAY_MS = 2000
+const DISPLAY_DELAY_MS = 400
 
 type PushNotificationPayload = {
   type: NotificationAlertType
@@ -18,12 +16,9 @@ export const useNotificationAlertStore = defineStore('notificationAlert', () => 
   let nextId = 0
   const displayTimers = new Map<number, ReturnType<typeof setTimeout>>()
 
-  const modalStack = useModalStackStore()
-
-  const current = computed(() => {
-    if (modalStack.hasBlockingModal) return null
-    return items.value.find((item) => item.open && item.visible) ?? null
-  })
+  const current = computed(() =>
+    items.value.find((item) => item.open && item.visible) ?? null,
+  )
 
   const clearDisplayTimer = (id: number) => {
     const timer = displayTimers.get(id)

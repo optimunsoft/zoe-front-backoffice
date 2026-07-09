@@ -1,4 +1,8 @@
-import type { CompanyRequestBody, CompanyUpdateRequestBody, GetCompaniesParams, GetCompaniesResponse, GetCompanyPermissionsResponse } from '../types/company.types'
+import type { ApiResponse } from '~/shared/interfaces/api'
+import { HEADER_SKIP_NOTIFICATION } from '~/shared/constants/headers'
+import type { ActiveModule, AssignUsersCompanyRequest, AssignUsersCompanyResponse, CompanyRequestBody, CompanyUpdateRequestBody, GetCompaniesParams, GetCompaniesResponse, GetCompanyLogoResponse, GetCompanyPermissionsResponse, UploadLogoResponse } from '../types/company.types'
+
+export type GetCompanyStatusResponse = ApiResponse<null>
 
 export const useCompanyService = () => {
     const { $apiBackoffice } = useNuxtApp();
@@ -44,10 +48,76 @@ export const useCompanyService = () => {
         });
     }
 
+    const getStatusCompanies = (companyId: string, active: boolean): Promise<GetCompanyStatusResponse> => {
+        return $apiBackoffice<GetCompanyStatusResponse>(`administration/companies/${companyId}/status`, {
+            method: 'PATCH',
+            body: {
+                active: active,
+            },
+        });
+    }
+
+    const assignUsersToCompany = (assignUsersCompany: AssignUsersCompanyRequest): Promise<GetCompanyStatusResponse> => {
+        return $apiBackoffice<GetCompanyStatusResponse>('administration/companies/users/assign', {
+            method: 'POST',
+            body: assignUsersCompany,
+        });
+    }
+
+    const unassignUsersFromCompany = (companyId: string, userId: string): Promise<AssignUsersCompanyResponse> => {
+        return $apiBackoffice<AssignUsersCompanyResponse>(`administration/companies/users/unassign`, {
+            method: 'POST',
+            body: {
+                companyId: companyId,
+                userId: userId,
+            },
+        });
+    }
+
+    const assignModulesToCompany = (moduleId: string, companyId: string, active: ActiveModule): Promise<AssignUsersCompanyResponse> => {
+        return $apiBackoffice<AssignUsersCompanyResponse>(`administration/modules/${moduleId}/companies`, {
+            method: 'PATCH',
+            body: {
+                companyId: companyId,
+                status: active,
+            },
+        });
+    }
+
+    const uploadCompanyLogo = (
+        companyId: string,
+        logo: File,
+        options?: { skipNotification?: boolean },
+    ): Promise<UploadLogoResponse> => {
+        const formData = new FormData()
+        formData.append('logo', logo)
+
+        return $apiBackoffice<UploadLogoResponse>(`administration/companies/${companyId}/logo`, {
+            method: 'POST',
+            body: formData,
+            ...(options?.skipNotification
+                ? { headers: { [HEADER_SKIP_NOTIFICATION]: '1' } }
+                : {}),
+        })
+    }
+
+    const getCompanyLogo = (companyId: string): Promise<GetCompanyLogoResponse> => {
+        return $apiBackoffice<GetCompanyLogoResponse>(`administration/companies/${companyId}/logo`, {
+            method: 'GET',
+        })
+    }
+
+
     return {
         getCompanies,
         createCompany,
         updateCompany,
         getCompanyPermissions,
+        getStatusCompanies,
+        assignUsersToCompany,
+        unassignUsersFromCompany,
+        assignModulesToCompany,
+        uploadCompanyLogo,
+        getCompanyLogo,
     }
 }

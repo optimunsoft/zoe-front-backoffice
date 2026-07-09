@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="relative inline-flex">
     <button
       ref="trigger"
@@ -22,7 +22,7 @@
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-      <div v-show="dropdownOpen" class="origin-top-right z-10 absolute top-full min-w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 py-1.5 rounded-lg shadow-lg overflow-hidden mt-1" :class="align === 'right' ? 'right-0' : 'left-0'">
+      <div v-show="dropdownOpen" class="origin-top-right z-50 absolute top-full min-w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 py-1.5 rounded-lg shadow-lg overflow-hidden mt-1" :class="align === 'right' ? 'right-0' : 'left-0'">
         <ul
           ref="dropdown"
           @focusin="dropdownOpen = true"
