@@ -1,9 +1,9 @@
-import type { Demonstration, GetDemonstrationsResponse, UpdateDemonstration } from "../types/demonstration.types";
+import type { Demonstration, GetDemonstrationsParams, GetDemonstrationsResponse, UpdateDemonstration } from "../types/demonstration.types";
 
 export const useDemonstrationService = () => {
     const { $apiBackoffice } = useNuxtApp();
 
-    const getDemonstrations = async (params: { amount: number, page: number }): Promise<GetDemonstrationsResponse> => {
+    const getDemonstrations = async (params: GetDemonstrationsParams): Promise<GetDemonstrationsResponse> => {
         return $apiBackoffice<GetDemonstrationsResponse>('demonstrations/list', {
             method: 'GET',
             query: {

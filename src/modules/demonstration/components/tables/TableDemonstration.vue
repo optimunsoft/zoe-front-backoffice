@@ -50,11 +50,18 @@
     </div>
 
 
+    <TableInitialLoader
+        v-if="showInitialLoader"
+        message="Cargando demostraciones..."
+    />
+
     <UTable
+        v-else
         title="Todas las demostraciones"
         :count="demonstrations.length"
         :columns="visibleColumns"
         :rows="demonstrations"
+        :refreshing="isTableRefreshing"
         show-actions
         actions-mode="inline"
         actions-label="Acciones"
@@ -71,9 +78,25 @@
                 </TableBadge>
             </div>
         </template>
+
+        <template #cell-productInterest="{ row }">
+            <div
+                v-if="Array.isArray(row.productInterest) && row.productInterest.length"
+                class="flex flex-wrap items-center justify-center gap-1"
+            >
+                <TableBadge
+                    v-for="product in row.productInterest"
+                    :key="product"
+                    color="info"
+                >
+                    {{ product }}
+                </TableBadge>
+            </div>
+            <span v-else class="text-gray-400 dark:text-gray-500">-</span>
+        </template>
     </UTable>
 
-    <div class="mt-8">
+    <div class="mt-8" :class="{ 'pointer-events-none opacity-60': isLoading }">
         <PaginationClassic
             :page="currentPage"
             :amount="amount"
@@ -95,8 +118,9 @@ import DateSelect from '~/core/ui/form/DateSelect.vue'
 import TableColumnToggle from '~/core/ui/dropdown/TableColumnToggle.vue'
 import { FilterPills } from '~/core/ui/filters'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
-import UTable from '~/core/ui/Tables/Utable.vue'
+import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableRow } from '~/core/ui/Tables/utable.types'
+import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import { DATE_PERIOD_DEFAULT } from '~/shared/constants/date-periods'
 import type { DatePeriodId } from '~/shared/constants/date-periods'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
@@ -122,7 +146,12 @@ const demonstrationsStore = useDemonstrationsStore()
 const searchQuery = ref('')
 const datePeriod = ref<DatePeriodId>(DATE_PERIOD_DEFAULT)
 const statusFilter = ref('all')
-const isLoading = ref(false)
+const {
+    isLoading,
+    isTableRefreshing,
+    showInitialLoader,
+    withTableLoading,
+} = useTableRefresh()
 
 const {
     visibleKeys: visibleColumnKeys,
@@ -203,16 +232,12 @@ const handleRowAction = async ({ action, row }: { action: string, row: UTableRow
 }
 
 const fetchDemonstrations = async (page: number) => {
-    isLoading.value = true
-
-    try {
+    await withTableLoading(async () => {
         await demonstrationsStore.getDemonstrations({
             amount: amount.value,
             page,
         })
-    } finally {
-        isLoading.value = false
-    }
+    })
 }
 
 const handleReload = async () => {

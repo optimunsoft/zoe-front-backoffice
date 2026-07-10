@@ -15,19 +15,25 @@
       <input
         :id="inputId"
         :value="modelValue"
-        :type="type"
+        :type="resolvedType"
         :name="name"
         :placeholder="placeholder"
         :required="required"
         :disabled="disabled"
+        :inputmode="digitsOnly ? 'numeric' : undefined"
+        :maxlength="maxLength || undefined"
+        :autocomplete="digitsOnly ? 'off' : undefined"
         class="form-input w-full"
         :class="[
           sizeClass,
           stateClass,
           disabledClass,
           paddingClass,
+          digitsOnlyClass,
           inputClass,
         ]"
+        @keydown="onKeydown"
+        @paste="onPaste"
         @input="onInput"
       >
 
@@ -62,6 +68,11 @@
 <script setup lang="ts">
 import { computed, useId, useSlots } from 'vue'
 
+import {
+  blockNonDigitKeydown,
+  extractDigitsFromClipboard,
+  sanitizeDigitsInput,
+} from '~/shared/utils/digits-input.utils'
 import InputField from './InputField.vue'
 import type { InputSize, InputState } from './input.types'
 
@@ -81,12 +92,16 @@ const props = withDefaults(defineProps<{
   size?: InputSize
   state?: InputState
   inputClass?: string
+  /** Solo permite dígitos al escribir, pegar o autocompletar. */
+  digitsOnly?: boolean
+  maxLength?: number
 }>(), {
   modelValue: '',
   type: 'text',
   size: 'md',
   state: 'default',
   inputClass: '',
+  digitsOnly: false,
 })
 
 const emit = defineEmits<{
@@ -96,6 +111,14 @@ const emit = defineEmits<{
 const slots = useSlots()
 const generatedId = useId()
 const inputId = computed(() => props.id ?? generatedId)
+
+const resolvedType = computed(() => (props.digitsOnly ? 'text' : props.type))
+
+const digitsOnlyClass = computed(() => (
+  props.digitsOnly
+    ? '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+    : ''
+))
 
 const sizeClass = computed(() => {
   if (props.size === 'sm') return 'px-2 py-1'
@@ -122,7 +145,44 @@ const paddingClass = computed(() => {
   return classes.join(' ')
 })
 
+const sanitizeValue = (value: string) => (
+  props.digitsOnly
+    ? sanitizeDigitsInput(value, props.maxLength)
+    : value
+)
+
+const onKeydown = (event: KeyboardEvent) => {
+  if (!props.digitsOnly || props.disabled) return
+  blockNonDigitKeydown(event)
+}
+
+const onPaste = (event: ClipboardEvent) => {
+  if (!props.digitsOnly || props.disabled) return
+
+  event.preventDefault()
+
+  const input = event.target as HTMLInputElement
+  const pastedDigits = extractDigitsFromClipboard(event, props.maxLength)
+  if (!pastedDigits) return
+
+  const selectionStart = input.selectionStart ?? input.value.length
+  const selectionEnd = input.selectionEnd ?? input.value.length
+  const nextValue = sanitizeValue(
+    `${input.value.slice(0, selectionStart)}${pastedDigits}${input.value.slice(selectionEnd)}`,
+  )
+
+  input.value = nextValue
+  emit('update:modelValue', nextValue)
+}
+
 const onInput = (event: Event) => {
-  emit('update:modelValue', (event.target as HTMLInputElement).value)
+  const input = event.target as HTMLInputElement
+  const value = sanitizeValue(input.value)
+
+  if (input.value !== value) {
+    input.value = value
+  }
+
+  emit('update:modelValue', value)
 }
 </script>

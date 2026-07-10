@@ -20,6 +20,16 @@ const pickString = (source: RawCompanyRecord, ...keys: string[]) => {
   return ''
 }
 
+const resolveActiveFlag = (source: RawCompanyRecord): boolean => {
+  const value = source.active ?? source.isActive ?? source.is_active
+
+  if (typeof value === 'boolean') return value
+  if (value === 1 || value === '1' || value === 'true') return true
+  if (value === 0 || value === '0' || value === 'false') return false
+
+  return true
+}
+
 const normalizeMunicipality = (value: unknown): companyMunicipality => {
   const municipality = (value && typeof value === 'object' ? value : {}) as RawCompanyRecord
   const state = (municipality.state && typeof municipality.state === 'object'
@@ -81,9 +91,7 @@ export const normalizeCompanyListItem = (raw: CompanyList | RawCompanyRecord): C
   return {
     id: pickString(item, 'id'),
     hasApiKey: Boolean(item.hasApiKey ?? item.has_api_key),
-    isActive: item.isActive === undefined && item.is_active === undefined
-      ? true
-      : Boolean(item.isActive ?? item.is_active),
+    isActive: resolveActiveFlag(item),
     modules: normalizeCompanyModules(item.modules ?? item.moduleIds ?? item.module_ids),
     users: normalizeUsers(item.users),
     businessNatureId: pickString(item, 'businessNatureId', 'business_nature_id'),
@@ -160,6 +168,9 @@ export const emptyCompanyFormValues = (): CompanyFormValues => ({
 
 export const sanitizeCompanyDocumentNumber = (value: string) =>
   value.replace(/\D/g, '').slice(0, 15)
+
+export const sanitizeCompanyProfessionalCardNumber = (value: string) =>
+  value.replace(/\D/g, '').slice(0, 30)
 
 export const sanitizeVerificationDigit = (value: string) =>
   value.replace(/\D/g, '').slice(0, 1)

@@ -34,12 +34,18 @@
       </div>
     </div>
 
+    <TableInitialLoader
+      v-if="showInitialLoader"
+      message="Cargando módulos..."
+    />
+
     <UTable
+      v-else
       title="Todos los módulos"
       :count="tableRows.length"
       :columns="moduleColumns"
       :rows="tableRows"
-      :refreshing="isLoading && isInitialLoadDone"
+      :refreshing="isTableRefreshing"
       show-actions
       actions-mode="inline"
       actions-label="Acciones"
@@ -95,8 +101,9 @@ import { Button, ReloadButton } from '~/core/ui/buttons'
 import { TableBadge } from '~/core/ui/badge'
 import { UiIcon } from '~/core/ui/icons'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
-import UTable from '~/core/ui/Tables/Utable.vue'
+import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableRow } from '~/core/ui/Tables/utable.types'
+import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import {
   hasModuleCellValue,
   mapModulesToTableRows,
@@ -111,8 +118,12 @@ import type { ModuleList } from '../../types/modules.types'
 
 const modulesStore = useModulesStore()
 const { modules, search, isLoading } = storeToRefs(modulesStore)
+const {
+  isInitialLoadDone,
+  isTableRefreshing,
+  showInitialLoader,
+} = useTableRefresh(isLoading)
 
-const isInitialLoadDone = ref(false)
 const createModalOpen = ref(false)
 const editModalOpen = ref(false)
 const deleteModalOpen = ref(false)
@@ -208,6 +219,5 @@ watchDebounced(
 
 onMounted(async () => {
   await modulesStore.fetchModules()
-  isInitialLoadDone.value = true
 })
 </script>

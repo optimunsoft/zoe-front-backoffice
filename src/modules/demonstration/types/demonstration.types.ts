@@ -5,7 +5,7 @@ export interface Demonstration {
     email: string;
     scheduledAt: Date;
     phone: string;
-    productInterest: string;
+    productInterest: string[];
 }
 
 export enum DemonstrationStatus {
@@ -20,7 +20,7 @@ export interface DemonstrationResponse {
     email: string;
     scheduledAt: Date;
     phone: string;
-    productInterest: string;
+    productInterest: string[];
     status: DemonstrationStatus;
     createdAt: Date;
     updatedAt: Date;
@@ -47,4 +47,4 @@ export type PaginatedDemonstrationsResponse = {
 };
 
 export type UpdateDemonstrationRequest = UpdateDemonstration;
-export type GetDemonstrationsResponse = ApiResponse<DemonstrationResponse[] | PaginatedDemonstrationsResponse>;
+export type GetDemonstrationsResponse = ApiResponse<unknown>;

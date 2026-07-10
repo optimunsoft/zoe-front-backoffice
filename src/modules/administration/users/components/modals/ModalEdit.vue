@@ -15,14 +15,15 @@
       </div>
     </template>
 
-    <FormUser
-      v-if="modalOpen && user"
-      :key="user.id"
-      ref="formRef"
-      mode="edit"
-      :initial-user="user"
-      @submit="handleEdit"
-    />
+    <template v-if="modalOpen && user">
+      <FormUser
+        :key="user.id"
+        ref="formRef"
+        mode="edit"
+        :initial-user="user"
+        @submit="handleEdit"
+      />
+    </template>
 
     <template #footer>
       <Button variant="secondary" :disabled="isSubmitting" @click="handleClose">
@@ -46,10 +47,15 @@ import { ref } from 'vue'
 import { Button } from '~/core/ui/buttons'
 import { ModalBasic } from '~/core/ui/modal'
 import { useUsersStore } from '../../store/users.store'
-import type { User, UserUpdate } from '../../types/users.types'
+import type { User, UserCreate, UserUpdate } from '../../types/users.types'
 import FormUser from '../forms/Form.vue'
 
-const props = defineProps<{
+type UserFormExpose = {
+  submit: () => void
+  reset: () => void
+}
+
+const { modalOpen, user } = defineProps<{
   modalOpen: boolean
   user: User | null
 }>()
@@ -60,7 +66,7 @@ const emit = defineEmits<{
 }>()
 
 const usersStore = useUsersStore()
-const formRef = ref<InstanceType<typeof FormUser> | null>(null)
+const formRef = ref<UserFormExpose | null>(null)
 const isSubmitting = ref(false)
 
 const handleClose = () => {
@@ -73,14 +79,14 @@ const submitForm = () => {
   formRef.value?.submit()
 }
 
-const handleEdit = async (payload: UserUpdate) => {
-  const userId = props.user?.id
+const handleEdit = async (payload: UserCreate | UserUpdate) => {
+  const userId = user?.id
   if (isSubmitting.value || !userId) return
 
   isSubmitting.value = true
 
   try {
-    await usersStore.updateUser(userId, payload)
+    await usersStore.updateUser(userId, payload as UserUpdate)
     await usersStore.getUsers({
       amount: usersStore.amount,
       page: usersStore.page,

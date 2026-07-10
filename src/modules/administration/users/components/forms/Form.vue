@@ -5,7 +5,7 @@
       variant="underline"
       :items="formTabs"
       aria-label="Secciones del formulario de usuario"
-      wrapper-class="mb-2"
+      :wrapper-class="isCreateMode ? 'mb-2 user-form-tabs--single' : 'mb-2'"
     >
       <template #user-data>
         <div class="grid gap-4 sm:grid-cols-2">
@@ -103,7 +103,8 @@
                     type="tel"
                     placeholder="3000000000"
                     required
-                    input-class="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    digits-only
+                    :max-length="15"
                     @update:model-value="onPhoneNumberChange"
                     @blur="validateField('phoneNumber')"
                   />
@@ -214,18 +215,6 @@
                   Usuario demo
                 </label>
                 <InputSwitch
-                  v-if="isCreateMode"
-                  id="user-is-demo"
-                  v-model="form.isDemo"
-                  label="Usuario demo"
-                  :show-state-label="false"
-                  on-label="Sí"
-                  off-label="No"
-                  wrapper-class="shrink-0"
-                  :disabled="!canEditModulesAndBackoffice"
-                />
-                <InputSwitch
-                  v-else
                   id="user-is-demo"
                   :model-value="userIsDemo"
                   label="Usuario demo"
@@ -288,6 +277,16 @@
     </UTabs>
   </form>
 </template>
+
+<style scoped>
+.user-form-tabs--single :deep(ul[role='tablist']) {
+  display: none;
+}
+
+.user-form-tabs--single :deep(.absolute.bottom-0) {
+  display: none;
+}
+</style>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
@@ -357,10 +356,17 @@ const userIsDemo = ref(false)
 const isUpdatingUserStatus = ref(false)
 const isUpdatingDemoStatus = ref(false)
 
-const formTabs: UiTabItem[] = [
-  { key: 'user-data', label: 'Datos del usuario' },
-  { key: 'configuration', label: 'Configuración' },
-]
+const formTabs = computed<UiTabItem[]>(() => {
+  const tabs: UiTabItem[] = [
+    { key: 'user-data', label: 'Datos del usuario' },
+  ]
+
+  if (isEditMode.value) {
+    tabs.push({ key: 'configuration', label: 'Configuración' })
+  }
+
+  return tabs
+})
 
 const configurationTabFields: Array<keyof UserFormErrors> = ['backofficeRole']
 
@@ -421,7 +427,8 @@ const applyFieldErrors = (fieldErrors: UserFormErrors) => {
 }
 
 const focusTabWithErrors = (fieldErrors: UserFormErrors) => {
-  const hasConfigurationError = configurationTabFields.some((field) => fieldErrors[field])
+  const hasConfigurationError = isEditMode.value
+    && configurationTabFields.some((field) => fieldErrors[field])
   const hasUserDataError = (Object.keys(fieldErrors) as Array<keyof UserFormErrors>)
     .some((field) => fieldErrors[field] && !configurationTabFields.includes(field))
 

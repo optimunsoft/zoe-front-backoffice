@@ -19,10 +19,22 @@ const API_KEY_BADGE_COLORS = {
   Inactiva: 'danger',
 } as const
 
+const COMPANY_STATUS_BADGE_COLORS = {
+  Activa: 'success',
+  Inactiva: 'danger',
+} as const
+
 export const companyColumns: UTableColumn[] = [
   { key: 'documentNumber', label: 'Documento', toggleable: false },
   { key: 'businessName', label: 'Razón social', variant: 'emphasis' },
   { key: 'email', label: 'Email' },
+  {
+    key: 'isActive',
+    label: 'Estado',
+    type: 'badge',
+    align: 'center',
+    badgeColorMap: COMPANY_STATUS_BADGE_COLORS,
+  },
   { key: 'taxResponsibility', label: 'Responsabilidad fiscal' },
   { key: 'businessNature', label: 'Naturaleza' },
   { key: 'municipality', label: 'Ciudad' },
@@ -128,6 +140,7 @@ export const mapCompaniesToTableRows = (
       accountantName: company.accountantName || '-',
       professionalCard: company.professionalCard || '-',
       users: company.users ?? [],
+      isActive: company.isActive ? 'Activa' : 'Inactiva',
       hasApiKey: company.hasApiKey ? 'Activa' : 'Inactiva',
     }
   })

@@ -21,6 +21,7 @@
       ref="formRef"
       mode="edit"
       @submit="handleEdit"
+      @status-updated="handleStatusUpdated"
     />
 
     <template #footer>
@@ -56,6 +57,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'close-modal': []
   updated: []
+  'status-updated': [active: boolean]
 }>()
 
 const companyStore = useCompanyStore()
@@ -97,6 +99,10 @@ const handleClose = () => {
 
 const submitForm = () => {
   formRef.value?.submit()
+}
+
+const handleStatusUpdated = (active: boolean) => {
+  emit('status-updated', active)
 }
 
 const handleEdit = async (payload: CompanyUpdateRequestBody) => {

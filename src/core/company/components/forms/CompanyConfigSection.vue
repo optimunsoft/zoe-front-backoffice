@@ -26,6 +26,19 @@
         </div>
 
         <div class="company-config-panel__body">
+          <div class="space-y-2">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
+              Tipo de asignación
+            </p>
+            <FilterPills
+              v-model="adminAssignMode"
+              :options="adminAssignModeOptions"
+              :show-count="false"
+              aria-label="Tipo de asignación de usuario"
+              wrapper-class="mb-0"
+            />
+          </div>
+
           <div ref="adminAnchorRef" class="company-config-panel__search">
             <input
               id="company-admin-user-search"
@@ -42,7 +55,7 @@
             <button
               type="button"
               class="company-config-panel__search-action"
-              aria-label="Agregar usuario administrador"
+              :aria-label="assignAdminActionLabel"
               :disabled="isAssigningAdminUser"
               @mousedown.prevent
               @click="confirmAddAdminUser"
@@ -62,6 +75,7 @@
                 :key="user.id"
                 type="button"
                 class="flex w-full items-center gap-3 border-b border-gray-100 px-3 py-2.5 text-left transition last:border-b-0 hover:bg-gray-50 dark:border-gray-700/60 dark:hover:bg-gray-800/60"
+                :disabled="isAssigningAdminUser"
                 @mousedown.prevent="selectAdminUserCandidate(user)"
               >
                 <span
@@ -69,7 +83,7 @@
                 >
                   {{ getUserInitials(user) }}
                 </span>
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                   <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
                     {{ formatUserDisplayName(user) }}
                   </p>
@@ -111,9 +125,18 @@
                   {{ getUserInitials(user) }}
                 </span>
                 <div class="company-config-panel__card-text">
-                  <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
-                    {{ formatUserDisplayName(user) }}
-                  </p>
+                  <div class="flex min-w-0 flex-wrap items-center gap-2">
+                    <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
+                      {{ formatUserDisplayName(user) }}
+                    </p>
+                    <TableBadge
+                      v-if="user.isOwner"
+                      color="warning"
+                      badge-class="shrink-0"
+                    >
+                      Dueño
+                    </TableBadge>
+                  </div>
                   <p class="company-config-panel__card-subtitle truncate text-xs text-gray-500 dark:text-gray-400">
                     {{ user.email }}
                   </p>
@@ -253,15 +276,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { refDebounced } from '@vueuse/core'
+import { computed, ref } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 
 import { useUsersService } from '~/modules/administration/users/services/users.services'
 import type { PaginatedUsersResponse, User } from '~/modules/administration/users/types/users.types'
 import { USER_TYPE } from '~/modules/administration/users/types/users.types'
 import InputField from '~/core/ui/inputs/InputField.vue'
 import InputSwitch from '~/core/ui/inputs/InputSwitch.vue'
+import { TableBadge } from '~/core/ui/badge'
 import { Button } from '~/core/ui/buttons'
+import { FilterPills } from '~/core/ui/filters'
+import type { FilterPillOption } from '~/core/ui/filters/filter-pills.types'
 import { ModalAction } from '~/core/ui/modal'
 import { UiIcon } from '~/core/ui/icons'
 import type { Company, userCompany } from '../../types/company.types'
@@ -293,7 +319,7 @@ const selectedAdminUserIds = ref<string[]>([])
 const assignedUsersById = ref<Record<string, DisplayUser>>({})
 const adminUserCandidates = ref<User[]>([])
 const adminUserSearch = ref('')
-const adminUserSearchDebounced = refDebounced(adminUserSearch, 300)
+const adminAssignMode = ref<'admin' | 'root'>('admin')
 const showAdminSuggestions = ref(false)
 const isSearchingAdminUsers = ref(false)
 const isAssigningAdminUser = ref(false)
@@ -306,25 +332,43 @@ const removeAdminModalOpen = ref(false)
 const pendingRemoveAdminUserId = ref<string | null>(null)
 const pendingRemoveAdminUserName = ref('')
 
-type DisplayUser = Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>
+const adminAssignModeOptions: FilterPillOption[] = [
+  { key: 'admin', label: 'Administrador' },
+  { key: 'root', label: 'Root (dueño)' },
+]
 
-const formatUserDisplayName = (user: DisplayUser) => {
+const assignAdminAsOwner = computed(() => adminAssignMode.value === 'root')
+
+const assignAdminActionLabel = computed(() =>
+  assignAdminAsOwner.value
+    ? 'Agregar usuario como root'
+    : 'Agregar usuario administrador',
+)
+
+type AdminUserCandidate = Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>
+
+type DisplayUser = AdminUserCandidate & {
+  isOwner: boolean
+}
+
+const formatUserDisplayName = (user: AdminUserCandidate) => {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ')
   return fullName || user.email
 }
 
-const getUserInitials = (user: DisplayUser) => {
+const getUserInitials = (user: AdminUserCandidate) => {
   const first = user.firstName?.trim()?.[0]
   const last = user.lastName?.trim()?.[0]
   if (first || last) return `${first ?? ''}${last ?? ''}`.toUpperCase()
   return (user.email?.trim()?.[0] ?? '?').toUpperCase()
 }
 
-const userToDisplay = (user: User | userCompany): DisplayUser => ({
+const userToDisplay = (user: User | userCompany, isOwner = false): DisplayUser => ({
   id: user.id,
   firstName: user.firstName,
   lastName: user.lastName,
   email: user.email,
+  isOwner: 'isOwner' in user ? Boolean(user.isOwner) : isOwner,
 })
 
 const selectedAdminUsers = computed(() =>
@@ -370,16 +414,18 @@ const {
   panelStyle: adminPanelStyle,
 } = useAnchoredOverlay(showAdminSuggestionsPanel)
 
+const runAdminUserSearch = useDebounceFn(async (term: string) => {
+  await fetchAdminUserCandidates(term)
+}, 300)
+
 const onAdminUserSearchInput = () => {
   showAdminSuggestions.value = true
+  void runAdminUserSearch(adminUserSearch.value)
 }
 
 const onAdminUserSearchFocus = () => {
   showAdminSuggestions.value = true
-
-  if (adminUserCandidates.value.length === 0) {
-    void fetchAdminUserCandidates(adminUserSearch.value)
-  }
+  void runAdminUserSearch(adminUserSearch.value)
 }
 
 const onAdminUserSearchBlur = () => {
@@ -410,32 +456,34 @@ const confirmCompanyStatusChange = () => {
   pendingCompanyStatus.value = null
 }
 
-const assignAdminUser = async (user: User) => {
+const assignAdminUser = async (user: User, isOwner = false) => {
   if (selectedAdminUserIds.value.includes(user.id) || isAssigningAdminUser.value) return
+
+  const displayUser = userToDisplay(user, isOwner)
 
   if (!props.companyId) {
     selectedAdminUserIds.value = [...selectedAdminUserIds.value, user.id]
     assignedUsersById.value = {
       ...assignedUsersById.value,
-      [user.id]: userToDisplay(user),
+      [user.id]: displayUser,
     }
     return
   }
 
   const previousIds = [...selectedAdminUserIds.value]
+  const previousUsers = { ...assignedUsersById.value }
   selectedAdminUserIds.value = [...selectedAdminUserIds.value, user.id]
   assignedUsersById.value = {
     ...assignedUsersById.value,
-    [user.id]: userToDisplay(user),
+    [user.id]: displayUser,
   }
   isAssigningAdminUser.value = true
 
   try {
-    await companyStore.assignUsersToCompany(props.companyId, [user.id], false)
+    await companyStore.assignUsersToCompany(props.companyId, [user.id], isOwner)
   } catch {
     selectedAdminUserIds.value = previousIds
-    const { [user.id]: _removed, ...rest } = assignedUsersById.value
-    assignedUsersById.value = rest
+    assignedUsersById.value = previousUsers
   } finally {
     isAssigningAdminUser.value = false
   }
@@ -444,7 +492,7 @@ const assignAdminUser = async (user: User) => {
 const selectAdminUserCandidate = async (user: User) => {
   adminUserSearch.value = ''
   showAdminSuggestions.value = false
-  await assignAdminUser(user)
+  await assignAdminUser(user, assignAdminAsOwner.value)
 }
 
 const confirmAddAdminUser = async () => {
@@ -460,6 +508,7 @@ const confirmAddAdminUser = async () => {
   }
 
   showAdminSuggestions.value = true
+  void runAdminUserSearch(adminUserSearch.value)
 }
 
 const requestRemoveAdminUser = (userId: string) => {
@@ -518,23 +567,21 @@ const removeAdminUser = async (userId: string) => {
 }
 
 const syncAdminUserAssignments = (users: userCompany[]) => {
-  assignedUsersById.value = Object.fromEntries(users.map((user) => [user.id, userToDisplay(user)]))
+  assignedUsersById.value = Object.fromEntries(
+    users.map((user) => [user.id, userToDisplay(user)]),
+  )
   selectedAdminUserIds.value = users.map((user) => user.id)
   adminUserSearch.value = ''
   showAdminSuggestions.value = false
   adminUserCandidates.value = []
 }
 
-watch(adminUserSearchDebounced, async (term) => {
-  if (!showAdminSuggestions.value) return
-  await fetchAdminUserCandidates(term)
-})
-
 const reset = () => {
   selectedAdminUserIds.value = []
   assignedUsersById.value = {}
   adminUserCandidates.value = []
   adminUserSearch.value = ''
+  adminAssignMode.value = 'admin'
   showAdminSuggestions.value = false
   companyStatusModalOpen.value = false
   pendingCompanyStatus.value = null

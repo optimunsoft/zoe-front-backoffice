@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import { normalizeDemonstrationsListResponse } from '../schema/demonstrations.schema';
 import { useDemonstrationService } from '../services/demonstration.services';
-import type { Demonstration, DemonstrationResponse, PaginatedDemonstrationsResponse, UpdateDemonstration } from '../types/demonstration.types';
+import type { Demonstration, DemonstrationResponse, UpdateDemonstration } from '../types/demonstration.types';
 
 export const useDemonstrationsStore = defineStore('demonstrations', () => {
     const demonstrations = ref<DemonstrationResponse[]>([]);
@@ -9,24 +10,12 @@ export const useDemonstrationsStore = defineStore('demonstrations', () => {
     const page = ref(1);
     const amount = ref(10);
 
-    const normalizeResponse = (response: DemonstrationResponse[] | PaginatedDemonstrationsResponse): { demonstrations: DemonstrationResponse[]; total: number } => {
-        if (Array.isArray(response)) {
-            return { demonstrations: response, total: response.length };
-        }
-
-        const data = response.data ?? response.items ?? response.demonstrations ?? [];
-        return {
-            demonstrations: data,
-            total: response.total ?? data.length,
-        };
-    }
-
     const getDemonstrations = async (params: { amount: number, page: number }) => {
         page.value = params.page;
         amount.value = params.amount;
 
         const { response } = await useDemonstrationService().getDemonstrations(params);
-        const normalized = normalizeResponse(response);
+        const normalized = normalizeDemonstrationsListResponse(response);
 
         demonstrations.value = normalized.demonstrations;
         total.value = normalized.total;

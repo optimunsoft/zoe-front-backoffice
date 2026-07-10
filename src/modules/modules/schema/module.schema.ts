@@ -1,12 +1,17 @@
 import { z } from 'zod'
 
+import {
+  blockNonDigitKeydown,
+  extractDigitsFromClipboard,
+  sanitizeDigitsInput,
+} from '~/shared/utils/digits-input.utils'
 import type { Module, ModuleList } from '../types/modules.types'
 
 export const sanitizeModuleCode = (value: string) =>
-  value.replace(/\D/g, '').slice(0, 3)
+  sanitizeDigitsInput(value, 3)
 
 export const sanitizeModulePrice = (value: string) =>
-  value.replace(/\D/g, '').slice(0, 12)
+  sanitizeDigitsInput(value, 12)
 
 export const formatModulePriceInput = (value: string) => {
   const digits = sanitizeModulePrice(value)
@@ -23,32 +28,7 @@ export const formatModulePriceInput = (value: string) => {
 export const parseModulePriceInput = (value: string) =>
   sanitizeModulePrice(value)
 
-const ALLOWED_CONTROL_KEYS = new Set([
-  'Backspace',
-  'Delete',
-  'Tab',
-  'ArrowLeft',
-  'ArrowRight',
-  'Home',
-  'End',
-])
-
-export const isAllowedDigitsOnlyKey = (event: KeyboardEvent) => {
-  if (event.ctrlKey || event.metaKey || event.altKey) return true
-  if (ALLOWED_CONTROL_KEYS.has(event.key)) return true
-  return /^\d$/.test(event.key)
-}
-
-export const blockNonDigitKeydown = (event: KeyboardEvent) => {
-  if (!isAllowedDigitsOnlyKey(event)) {
-    event.preventDefault()
-  }
-}
-
-export const extractDigitsFromClipboard = (event: ClipboardEvent) => {
-  const pasted = event.clipboardData?.getData('text') ?? ''
-  return sanitizeModulePrice(pasted)
-}
+export { blockNonDigitKeydown, extractDigitsFromClipboard } from '~/shared/utils/digits-input.utils'
 
 export const moduleFormSchema = z.object({
   code: z

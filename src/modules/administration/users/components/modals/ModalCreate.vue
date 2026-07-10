@@ -39,8 +39,13 @@ import { ref } from 'vue'
 import { Button } from '~/core/ui/buttons'
 import { ModalBasic } from '~/core/ui/modal'
 import { useUsersStore } from '../../store/users.store'
-import type { UserRequestBody } from '../../types/users.types'
+import type { UserCreate, UserUpdate } from '../../types/users.types'
 import FormUser from '../forms/Form.vue'
+
+type UserFormExpose = {
+  submit: () => void
+  reset: () => void
+}
 
 defineProps<{
   modalOpen: boolean
@@ -52,7 +57,7 @@ const emit = defineEmits<{
 }>()
 
 const usersStore = useUsersStore()
-const formRef = ref<InstanceType<typeof FormUser> | null>(null)
+const formRef = ref<UserFormExpose | null>(null)
 const isSubmitting = ref(false)
 
 const handleClose = () => {
@@ -65,13 +70,13 @@ const submitForm = () => {
   formRef.value?.submit()
 }
 
-const handleCreate = async (payload: UserRequestBody) => {
+const handleCreate = async (payload: UserCreate | UserUpdate) => {
   if (isSubmitting.value) return
 
   isSubmitting.value = true
 
   try {
-    await usersStore.createUser(payload)
+    await usersStore.createUser(payload as UserCreate)
     await usersStore.getUsers({
       amount: usersStore.amount,
       page: usersStore.page,

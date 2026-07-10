@@ -59,16 +59,22 @@
       {{ errors.scheduledDate }}
     </p>
 
-    <InputSelect
-      id="demonstration-product"
-      v-model="form.productInterest"
-      name="productInterest"
-      label="Producto de interés"
-      placeholder="Seleccionar producto"
+    <InputField
+      label="Productos de interés"
+      html-for="demonstration-products"
       required
-      :options="productOptions"
       :error="errors.productInterest"
-    />
+    >
+      <div id="demonstration-products" class="space-y-2">
+        <InputCheckbox
+          v-for="option in productOptions"
+          :key="option.value"
+          :model-value="form.productInterest.includes(String(option.value))"
+          :label="option.label"
+          @update:model-value="(checked) => toggleProduct(String(option.value), checked)"
+        />
+      </div>
+    </InputField>
 
     <InputSelect
       v-if="mode === 'edit'"
@@ -86,9 +92,11 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, watch } from 'vue'
 
 import Datepicker from '~/core/ui/form/Datepicker.vue'
+import InputCheckbox from '~/core/ui/inputs/InputCheckbox.vue'
+import InputField from '~/core/ui/inputs/InputField.vue'
 import InputSelect from '~/core/ui/inputs/InputSelect.vue'
 import InputText from '~/core/ui/inputs/InputText.vue'
 import type { InputSelectOption } from '~/core/ui/inputs/input.types'
@@ -110,8 +118,10 @@ defineOptions({
 
 const props = withDefaults(defineProps<{
   mode?: 'create' | 'edit'
+  initialDemonstration?: DemonstrationResponse | null
 }>(), {
   mode: 'create',
+  initialDemonstration: null,
 })
 
 const emit = defineEmits<{
@@ -136,7 +146,7 @@ const initialForm = () => ({
   phone: '',
   scheduledDate: null as string | Date | Date[] | null,
   scheduledTime: '',
-  productInterest: '',
+  productInterest: [] as string[],
   status: '' as DemonstrationStatus | '',
 })
 
@@ -154,16 +164,44 @@ const onPhoneChange = (value: string) => {
   errors.phone = ''
 }
 
+const toggleProduct = (product: string, checked: boolean) => {
+  if (checked) {
+    if (!form.productInterest.includes(product)) {
+      form.productInterest.push(product)
+    }
+  } else {
+    form.productInterest = form.productInterest.filter((item) => item !== product)
+  }
+
+  errors.productInterest = ''
+}
+
 const reset = () => {
   Object.assign(form, initialForm())
   Object.assign(errors, emptyDemonstrationFormErrors())
 }
 
 const setValues = (demonstration: DemonstrationResponse) => {
-  Object.assign(form, mapDemonstrationResponseToFormValues(demonstration))
+  const values = mapDemonstrationResponseToFormValues(demonstration)
+
+  form.name = values.name
+  form.email = values.email
+  form.phone = values.phone
+  form.scheduledDate = values.scheduledDate ?? null
+  form.scheduledTime = values.scheduledTime
+  form.status = values.status ?? ''
+  form.productInterest = [...values.productInterest]
   Object.assign(errors, emptyDemonstrationFormErrors())
 }
 
+watch(
+  () => props.initialDemonstration,
+  (demonstration) => {
+    if (props.mode !== 'edit' || !demonstration) return
+    setValues(demonstration)
+  },
+  { immediate: true },
+)
 
 const handleSubmit = () => {
   if (props.mode === 'edit') {

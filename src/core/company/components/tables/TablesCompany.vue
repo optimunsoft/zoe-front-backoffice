@@ -88,11 +88,10 @@
       </div>
     </div>
 
-    <div v-if="isLoading && !isInitialLoadDone" class="flex min-h-72 items-center justify-center rounded-xl bg-white shadow-xs dark:bg-gray-800">
-      <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
-        Cargando empresas...
-      </p>
-    </div>
+    <TableInitialLoader
+      v-if="showInitialLoader"
+      message="Cargando empresas..."
+    />
 
     <UTable
       v-else
@@ -100,7 +99,7 @@
       :count="totalCompanies"
       :columns="visibleColumns"
       :rows="rows"
-      :refreshing="isLoading && isInitialLoadDone"
+      :refreshing="isTableRefreshing"
       show-actions
       actions-mode="inline"
       actions-label="Acciones"
@@ -199,6 +198,7 @@
       :company="editingCompany"
       @close-modal="handleCloseEditModal"
       @updated="handleCompanyUpdated"
+      @status-updated="handleCompanyStatusUpdated"
     />
 
     <ModalPermissionRolUser
@@ -240,9 +240,10 @@ import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
 import { TableBadge } from '~/core/ui/badge'
 import { Tooltip } from '~/core/ui/Utooltip'
-import UTable from '~/core/ui/Tables/Utable.vue'
+import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableRow } from '~/core/ui/Tables/utable.types'
 import type { BadgeColor } from '~/core/ui/badge/badge.types'
+import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import { toTitleCase } from '~/shared/utils/format'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
 import { buildFilterPillOptions, filterItemsByPill } from '~/shared/utils/build-filter-pill-options'
@@ -281,7 +282,13 @@ const appliedStateId = ref('')
 const appliedMunicipalityId = ref('')
 const currentPage = ref(1)
 const amount = ref(10)
-const isLoading = ref(true)
+const {
+  isLoading,
+  isInitialLoadDone,
+  isTableRefreshing,
+  showInitialLoader,
+  withTableLoading,
+} = useTableRefresh(undefined, { initialLoading: true })
 const expandedUsersRowKey = ref<string | number | null>(null)
 
 const {
@@ -483,17 +490,14 @@ const applyLocationSearch = async () => {
 }
 
 const fetchCompanies = async (page: number, force = false) => {
-  isLoading.value = true
   currentPage.value = page
 
-  try {
+  await withTableLoading(async () => {
     await catalogStore.preload(force)
     await companyStore.getCompanies(buildCompaniesRequestParams(page), force)
     selectedItems.value = []
     expandedUsersRowKey.value = null
-  } finally {
-    isLoading.value = false
-  }
+  })
 }
 
 const handleCreateCompany = () => {
@@ -527,6 +531,15 @@ const handleClosePermissionsModal = () => {
     user: null,
   }
   closePermissionsModal()
+}
+
+const handleCompanyStatusUpdated = (active: boolean) => {
+  if (!editingCompany.value) return
+
+  editingCompany.value = {
+    ...editingCompany.value,
+    isActive: active,
+  }
 }
 
 const handleCompanyUpdated = async () => {
@@ -573,8 +586,6 @@ const handleLocationSearch = async () => {
   await applyLocationSearch()
 }
 
-const isInitialLoadDone = ref(false)
-
 watchDebounced(
   locationSearchDebounced,
   async (term) => {
@@ -616,6 +627,5 @@ watchDebounced(
 
 onMounted(async () => {
   await fetchCompanies(currentPage.value)
-  isInitialLoadDone.value = true
 })
 </script>

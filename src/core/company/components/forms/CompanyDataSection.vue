@@ -44,7 +44,8 @@
               label="NIT"
               placeholder="900123456"
               required
-              input-class="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              digits-only
+              :max-length="15"
               :error="errors.documentNumber"
               @update:model-value="onDocumentNumberChange"
             />
@@ -55,7 +56,9 @@
               label="DV"
               placeholder="--"
               disabled
-              input-class="text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              digits-only
+              :max-length="1"
+              input-class="text-center"
               :error="errors.verificationDigit"
             />
           </div>
@@ -215,11 +218,14 @@
         <div class="company-data-form__col">
           <InputText
             id="company-professional-card"
-            v-model="form.professionalCardNumber"
+            :model-value="form.professionalCardNumber"
             name="professionalCardNumber"
             label="N° Tarjeta profesional"
             placeholder="N° Tarjeta profesional"
+            digits-only
+            :max-length="30"
             :error="errors.professionalCardNumber"
+            @update:model-value="onProfessionalCardNumberChange"
           />
         </div>
       </div>
@@ -374,6 +380,7 @@ import type { Company } from '../../types/company.types'
 import {
   sanitizeCompanyDocumentNumber,
   sanitizeCompanyName,
+  sanitizeCompanyProfessionalCardNumber,
   type CompanyFormErrors,
   type CompanyFormValues,
 } from '../../schema/company.schema'
@@ -400,6 +407,8 @@ const props = defineProps<{
 
 const isEditMode = computed(() => props.mode === 'edit')
 
+type CompanyOwnerSelection = Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>
+
 const usersStore = useUsersStore()
 const companyStore = useCompanyStore()
 
@@ -414,8 +423,8 @@ const logoError = ref('')
 const ownerSearch = ref('')
 const ownerSearchDebounced = refDebounced(ownerSearch, 300)
 const ownerSearchResults = ref<User[]>([])
-const pendingOwner = ref<User | null>(null)
-const selectedOwner = ref<User | null>(null)
+const pendingOwner = ref<CompanyOwnerSelection | null>(null)
+const selectedOwner = ref<CompanyOwnerSelection | null>(null)
 const isSearchingOwners = ref(false)
 const isSyncingOwnerSearch = ref(false)
 
@@ -596,16 +605,11 @@ const removeOwner = () => {
   errors.value.ownerUserId = ''
 }
 
-const mapCompanyUserToOwner = (user: Company['users'][number]): User => ({
+const mapCompanyUserToOwner = (user: Company['users'][number]): CompanyOwnerSelection => ({
   id: user.id,
   firstName: user.firstName,
   lastName: user.lastName,
   email: user.email,
-  username: user.email,
-  userType: user.userType,
-  isActive: user.isActive,
-  isVerified: true,
-  isAdmin: false,
 })
 
 const clearPersonFields = () => {
@@ -657,6 +661,11 @@ const onSecondLastNameChange = (value: string) => {
 const onAccountantNameChange = (value: string) => {
   form.value.accountantName = sanitizeCompanyName(value)
   errors.value.accountantName = ''
+}
+
+const onProfessionalCardNumberChange = (value: string) => {
+  form.value.professionalCardNumber = sanitizeCompanyProfessionalCardNumber(value)
+  errors.value.professionalCardNumber = ''
 }
 
 watch(ownerSearchDebounced, async (term) => {

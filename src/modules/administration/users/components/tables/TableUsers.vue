@@ -88,11 +88,18 @@
       </div>
     </div>
 
+    <TableInitialLoader
+      v-if="showInitialLoader"
+      message="Cargando usuarios..."
+    />
+
     <UTable
+      v-else
       title="Todos los usuarios"
       :count="users.length"
       :columns="visibleColumns"
       :rows="users"
+      :refreshing="isTableRefreshing"
       show-actions
       actions-mode="inline"
       actions-label="Acciones"
@@ -184,7 +191,7 @@
       </template>
     </UTable>
 
-    <div class="mt-8">
+    <div class="mt-8" :class="{ 'pointer-events-none opacity-60': isLoading }">
       <PaginationClassic
         :page="currentPage"
         :amount="amount"
@@ -236,8 +243,9 @@ import { FilterPills } from '~/core/ui/filters'
 import { useModal } from '~/core/ui/modal'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
-import UTable from '~/core/ui/Tables/Utable.vue'
+import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableActionButton, UTableRow } from '~/core/ui/Tables/utable.types'
+import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import { mapUsersToTableRows, userColumns } from '~/modules/administration/users/mappers/user-tables-mappers'
 import { resolveUserTableActions } from '~/modules/administration/users/mappers/user-table.actions'
 import ModalCreate from '~/modules/administration/users/components/modals/ModalCreate.vue'
@@ -284,7 +292,13 @@ const selectedCompanyId = ref<string | undefined>()
 const userFilter = ref('all')
 const currentPage = ref(1)
 const amount = ref(10)
-const isLoading = ref(false)
+const {
+  isLoading,
+  isInitialLoadDone,
+  isTableRefreshing,
+  showInitialLoader,
+  withTableLoading,
+} = useTableRefresh()
 const createModalOpen = ref(false)
 const editModalOpen = ref(false)
 const editingUser = ref<User | null>(null)
@@ -430,11 +444,13 @@ watch(debouncedCompanySearch, async (term) => {
 })
 
 watch(debouncedSearch, () => {
+  if (!isInitialLoadDone.value) return
   currentPage.value = 1
   fetchUsers(1)
 })
 
 watch(userFilter, () => {
+  if (!isInitialLoadDone.value) return
   currentPage.value = 1
   fetchUsers(1)
 })
@@ -542,10 +558,9 @@ const hasUserEmail = (value: unknown) => {
 }
 
 const fetchUsers = async (page: number, force = false) => {
-  isLoading.value = true
   currentPage.value = page
 
-  try {
+  await withTableLoading(async () => {
     await usersStore.getUsers({
       amount: amount.value,
       page,
@@ -555,9 +570,7 @@ const fetchUsers = async (page: number, force = false) => {
     }, force)
     selectedItems.value = []
     expandedCompaniesRowKey.value = null
-  } finally {
-    isLoading.value = false
-  }
+  })
 }
 
 const handleCreateUser = () => {

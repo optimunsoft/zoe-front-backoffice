@@ -29,6 +29,118 @@ const LEGACY_STATUS_MAP: Record<string, DemonstrationStatus> = {
   CANCELLED: DemonstrationStatus.CANCELADA,
 }
 
+export const normalizeProductInterest = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.map(String).filter(Boolean)
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    return [value.trim()]
+  }
+
+  return []
+}
+
+type RawDemonstrationRecord = Record<string, unknown>
+
+const pickString = (source: RawDemonstrationRecord, ...keys: string[]) => {
+  for (const key of keys) {
+    const value = source[key]
+    if (typeof value === 'string') return value.trim()
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  }
+
+  return ''
+}
+
+const pickDateValue = (source: RawDemonstrationRecord, ...keys: string[]): Date | string => {
+  for (const key of keys) {
+    const value = source[key]
+    if (value instanceof Date) return value
+    if (typeof value === 'string' && value.trim()) return value
+  }
+
+  return ''
+}
+
+const pickTotal = (source: RawDemonstrationRecord, fallback: number) => {
+  const value = source.total
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+
+  return fallback
+}
+
+export const normalizeDemonstrationListItem = (
+  raw: DemonstrationResponse | RawDemonstrationRecord,
+): DemonstrationResponse => {
+  const item = raw as RawDemonstrationRecord
+
+  return {
+    id: pickString(item, 'id'),
+    name: pickString(item, 'name'),
+    email: pickString(item, 'email'),
+    scheduledAt: pickDateValue(item, 'scheduledAt', 'scheduled_at') as Date,
+    phone: pickString(item, 'phone'),
+    productInterest: normalizeProductInterest(
+      item.productInterest ?? item.product_interest,
+    ),
+    status: normalizeDemonstrationStatus(item.status) ?? DemonstrationStatus.PENDIENTE,
+    createdAt: pickDateValue(item, 'createdAt', 'created_at') as Date,
+    updatedAt: pickDateValue(item, 'updatedAt', 'updated_at') as Date,
+  }
+}
+
+export const normalizeDemonstrationsListResponse = (
+  response: unknown,
+): { demonstrations: DemonstrationResponse[]; total: number } => {
+  const mapItems = (items: unknown[]) =>
+    items.map((item) => normalizeDemonstrationListItem(item as RawDemonstrationRecord))
+
+  if (Array.isArray(response)) {
+    const demonstrations = mapItems(response)
+    return { demonstrations, total: demonstrations.length }
+  }
+
+  if (!response || typeof response !== 'object') {
+    return { demonstrations: [], total: 0 }
+  }
+
+  const record = response as RawDemonstrationRecord
+  const nested = record.data ?? record.items ?? record.demonstrations ?? record.results
+
+  if (Array.isArray(nested)) {
+    const demonstrations = mapItems(nested)
+    return {
+      demonstrations,
+      total: pickTotal(record, demonstrations.length),
+    }
+  }
+
+  if (nested && typeof nested === 'object') {
+    const paginated = nested as RawDemonstrationRecord
+    const data = paginated.data ?? paginated.items ?? paginated.demonstrations ?? paginated.results
+
+    if (Array.isArray(data)) {
+      const demonstrations = mapItems(data)
+      return {
+        demonstrations,
+        total: pickTotal(paginated, pickTotal(record, demonstrations.length)),
+      }
+    }
+  }
+
+  if ('id' in record) {
+    const demonstrations = [normalizeDemonstrationListItem(record)]
+    return { demonstrations, total: 1 }
+  }
+
+  return { demonstrations: [], total: 0 }
+}
+
 export const normalizeDemonstrationStatus = (value: unknown): DemonstrationStatus | undefined => {
   if (value == null || value === '') return undefined
 
@@ -66,9 +178,8 @@ export const demonstrationFormSchema = z.object({
     .min(1, 'La hora es obligatoria.')
     .regex(TIME_REGEX, 'Ingresa una hora válida (HH:mm).'),
   productInterest: z
-    .union([z.string(), z.number()])
-    .transform(String)
-    .pipe(z.string().min(1, 'Selecciona un producto.')),
+    .array(z.union([z.string(), z.number()]).transform(String))
+    .min(1, 'Selecciona al menos un producto.'),
 }).superRefine((data, ctx) => {
   if (!data.scheduledDate) {
     ctx.addIssue({
@@ -139,7 +250,7 @@ export const mapDemonstrationResponseToFormValues = (
     name: demonstration.name,
     email: demonstration.email,
     phone: sanitizeDemonstrationPhone(demonstration.phone),
-    productInterest: demonstration.productInterest,
+    productInterest: normalizeProductInterest(demonstration.productInterest),
     scheduledDate: scheduledAt,
     scheduledTime: formatTimeValue(scheduledAt),
     status: normalizeDemonstrationStatus(demonstration.status) ?? demonstration.status,
@@ -147,19 +258,10 @@ export const mapDemonstrationResponseToFormValues = (
 }
 
 export const normalizeDemonstrationResponse = (
-  response: DemonstrationResponse[] | PaginatedDemonstrationsResponse | DemonstrationResponse,
+  response: unknown,
 ): DemonstrationResponse | null => {
-  if (Array.isArray(response)) {
-    return response[0] ?? null
-  }
-
-  if ('id' in response && 'status' in response) {
-    return response
-  }
-
-  const paginated = response as PaginatedDemonstrationsResponse
-  const data = paginated.data ?? paginated.items ?? paginated.demonstrations ?? []
-  return data[0] ?? null
+  const { demonstrations } = normalizeDemonstrationsListResponse(response)
+  return demonstrations[0] ?? null
 }
 
 export const parseScheduledDate = (

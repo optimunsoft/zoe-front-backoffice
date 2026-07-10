@@ -112,10 +112,17 @@ export const useCompanyStore = defineStore('company', () => {
   const getStatusCompanies = async (companyId: string, active: boolean) => {
     const status = await useCompanyService().getStatusCompanies(companyId, active).then((result) => result.status)
 
-    const company = companies.value.find((item) => item.id === companyId)
-    if (company) {
-      company.isActive = active
+    const syncCompanyStatus = (company: CompanyList) => {
+      if (company.id === companyId) {
+        company.isActive = active
+      }
     }
+
+    companies.value.forEach(syncCompanyStatus)
+
+    Object.values(cachedPages.value).forEach((cached) => {
+      cached.companies.forEach(syncCompanyStatus)
+    })
 
     return status
   }

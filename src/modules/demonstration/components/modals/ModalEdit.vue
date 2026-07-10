@@ -4,8 +4,6 @@
       :modal-open="modalOpen"
       title="Editar demostración"
       description="Modifica los campos y guarda los cambios."
-      :loading="isLoading"
-      loading-text="Cargando demostración..."
       @close-modal="handleClose"
     >
       <template #icon>
@@ -16,22 +14,32 @@
         </div>
       </template>
 
+      <div
+        v-if="isInitializing"
+        class="flex items-center justify-center py-12"
+      >
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Cargando demostración...
+        </p>
+      </div>
+
       <FormDemonstration
-        v-if="modalOpen && demonstrationId"
-        :key="demonstrationId"
+        v-else-if="modalOpen && demonstration"
+        :key="demonstration.id"
         ref="formRef"
         mode="edit"
+        :initial-demonstration="demonstration"
         @submit="handleEdit"
       />
 
       <template #footer>
-        <Button variant="secondary" :disabled="isSubmitting || isLoading" @click="handleClose">
+        <Button variant="secondary" :disabled="isSubmitting || isInitializing" @click="handleClose">
           Cancelar
         </Button>
         <Button
           variant="primary"
           :loading="isSubmitting"
-          :disabled="isLoading"
+          :disabled="isInitializing || !demonstration"
           @click="submitForm"
         >
           Guardar
@@ -41,13 +49,13 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 
 import { Button } from '~/core/ui/buttons'
 import { ModalBasic } from '~/core/ui/modal'
 import { normalizeDemonstrationResponse } from '../../schema/demonstrations.schema'
 import { useDemonstrationsStore } from '../../store/demonstrations.store'
-import type { Demonstration, UpdateDemonstration } from '../../types/demonstration.types'
+import type { Demonstration, DemonstrationResponse, UpdateDemonstration } from '../../types/demonstration.types'
 import FormDemonstration from '../forms/forms.vue'
 
 const props = defineProps<{
@@ -63,46 +71,32 @@ const emit = defineEmits<{
 const demonstrationsStore = useDemonstrationsStore()
 const formRef = ref<InstanceType<typeof FormDemonstration> | null>(null)
 const isSubmitting = ref(false)
-const isLoading = ref(false)
+const isInitializing = ref(false)
+const demonstration = ref<DemonstrationResponse | null>(null)
 
-const waitForFormRef = async () => {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await nextTick()
-    if (formRef.value) return
-  }
-}
+const resolveDemonstration = async (id: string): Promise<DemonstrationResponse | null> => {
+  const fromList = demonstrationsStore.demonstrations.find((item) => item.id === id)
+  if (fromList) return fromList
 
-const loadDemonstration = async (id: string) => {
-  isLoading.value = true
-
-  try {
-    await waitForFormRef()
-
-    const fromList = demonstrationsStore.demonstrations.find((item) => item.id === id)
-    if (fromList) {
-      formRef.value?.setValues(fromList)
-      return
-    }
-
-    const response = await demonstrationsStore.getDemonstrationById(id)
-    const demonstration = normalizeDemonstrationResponse(response)
-
-    if (!demonstration) return
-
-    await waitForFormRef()
-    formRef.value?.setValues(demonstration)
-  } finally {
-    isLoading.value = false
-  }
+  const response = await demonstrationsStore.getDemonstrationById(id)
+  return normalizeDemonstrationResponse(response)
 }
 
 watch(
   () => [props.modalOpen, props.demonstrationId] as const,
   async ([isOpen, id]) => {
-    if (!isOpen || !id) return
+    if (!isOpen || !id) {
+      demonstration.value = null
+      return
+    }
 
-    await nextTick()
-    await loadDemonstration(id)
+    isInitializing.value = true
+
+    try {
+      demonstration.value = await resolveDemonstration(id)
+    } finally {
+      isInitializing.value = false
+    }
   },
 )
 

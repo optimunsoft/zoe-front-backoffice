@@ -1,3 +1,4 @@
+import { normalizeProductInterest } from "../schema/demonstrations.schema";
 import type { DemonstrationResponse, DemonstrationStatus } from "../types/demonstration.types";
 import type { UTableColumn, UTableRow } from "~/core/ui/Tables/utable.types";
 
@@ -42,7 +43,7 @@ export const demonstrationColumns: UTableColumn[] = [
     { key: 'phone', label: 'Teléfono' },
     {
         key: 'productInterest',
-        label: 'Producto de interés',
+        label: 'Productos de interés',
         type: 'badge',
         align: 'center',
         badgeColorFallback: 'info',
@@ -64,7 +65,7 @@ export const mapDemonstrationsToTableRows = (demonstrations: DemonstrationRespon
         scheduledDate: formatDemonstrationDate(demonstration.scheduledAt),
         scheduledTime: formatDemonstrationTime(demonstration.scheduledAt),
         phone: demonstration.phone,
-        productInterest: demonstration.productInterest || '-',
+        productInterest: normalizeProductInterest(demonstration.productInterest),
         status: STATUS_LABELS[demonstration.status] ?? demonstration.status,
     }));
 }

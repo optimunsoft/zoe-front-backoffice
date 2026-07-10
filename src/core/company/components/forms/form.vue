@@ -109,6 +109,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   submit: [payload: CompanyRequestBody | CompanyUpdateRequestBody]
+  'status-updated': [active: boolean]
 }>()
 
 const isEditMode = computed(() => props.mode === 'edit')
@@ -188,6 +189,7 @@ const onCompanyStatusChange = async (active: boolean) => {
 
   try {
     await companyStore.getStatusCompanies(editingCompanyId.value, active)
+    emit('status-updated', active)
   } catch {
     form.isActive = previousValue
   } finally {
