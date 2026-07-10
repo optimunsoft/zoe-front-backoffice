@@ -59,8 +59,6 @@
         <slot
           v-if="$slots[item.key]"
           :name="item.key"
-          :item="item"
-          :active="isActive(item.key)"
         />
       </div>
     </template>
@@ -132,4 +130,11 @@ const selectTab = (item: UiTabItem) => {
   model.value = item.key
   emit('change', item.key)
 }
+
+defineSlots<{
+  default?: (props: {
+    activeKey: string
+    activeItem: UiTabItem | null
+  }) => unknown
+}>()
 </script>

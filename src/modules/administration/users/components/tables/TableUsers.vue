@@ -28,6 +28,46 @@
         />
 
         <div class="flex w-full flex-wrap items-center justify-start sm:w-auto sm:justify-end gap-2 sm:gap-3">
+          <div class="relative w-full sm:w-72">
+            <InputSearch
+              v-model="companySearchQuery"
+              placeholder="Buscar por compañía..."
+              search-label="Buscar por compañía"
+              @submit="handleCompanySearch"
+            />
+
+            <div
+              v-if="showCompanySuggestions"
+              class="absolute top-full z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700/60 dark:bg-gray-800"
+            >
+              <button
+                v-for="company in companySearchResults"
+                :key="company.id"
+                type="button"
+                class="flex w-full border-b border-gray-100 px-3 py-2.5 text-left transition last:border-b-0 hover:bg-gray-50 dark:border-gray-700/60 dark:hover:bg-gray-800/60"
+                @click="selectCompanyOption(company)"
+              >
+                <span class="truncate text-sm text-gray-800 dark:text-gray-100">
+                  {{ company.label }}
+                </span>
+              </button>
+
+              <p
+                v-if="companySearchResults.length === 0 && !isSearchingCompanies"
+                class="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400"
+              >
+                No se encontraron compañías.
+              </p>
+
+              <p
+                v-else-if="isSearchingCompanies"
+                class="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400"
+              >
+                Buscando...
+              </p>
+            </div>
+          </div>
+
           <div class="w-full sm:w-64">
             <InputSearch
               v-model="searchQuery"
@@ -56,9 +96,57 @@
       show-actions
       actions-mode="inline"
       actions-label="Acciones"
-      :action-buttons="userTableActions"
+      :expanded-row-key="expandedCompaniesRowKey"
+      expanded-action-key="companies"
       @action="handleRowAction"
     >
+      <template #actions="{ row }">
+        <div class="flex justify-start space-x-1">
+          <Tooltip
+            v-for="action in resolveUserTableActions({
+              hasCompanies: Boolean(row.hasCompanies),
+              hasSessions: Boolean(row.hasSessions),
+            })"
+            :key="action.key"
+            bg="light"
+            position="top"
+          >
+            <template #trigger>
+              <button
+                type="button"
+                :class="[
+                  UI_TABLE_ICON_BUTTON_CLASSES,
+                  isCompaniesActionExpanded(row, action)
+                    ? 'text-brand-500 dark:text-brand-400'
+                    : 'text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400',
+                ]"
+                :aria-expanded="isCompaniesActionExpanded(row, action) || undefined"
+                :aria-label="action.label"
+                @click.stop="handleRowAction({ action: action.key, row })"
+              >
+                <span class="sr-only">{{ action.label }}</span>
+                <UiIcon
+                  v-if="action.icon"
+                  :name="action.icon"
+                  size="lg"
+                />
+              </button>
+            </template>
+            <div class="whitespace-nowrap text-xs font-medium">
+              {{ action.tooltip || action.label }}
+            </div>
+          </Tooltip>
+        </div>
+      </template>
+
+      <template #row-detail="{ row }">
+        <TableUserCompanies
+          v-if="getUserForRow(row)"
+          :user="getUserForRow(row)!"
+          @permissions="handleOpenPermissionsModal"
+        />
+      </template>
+
       <template #cell-email="{ row }">
         <span v-if="hasUserEmail(row.email)" class="text-gray-800 dark:text-gray-100">
           {{ row.email }}
@@ -71,6 +159,24 @@
       <template #cell-isAdmin="{ row }">
         <TableBadge v-if="row.isAdminUser" color="primary">
           Superusuario
+        </TableBadge>
+        <TableBadge v-else color="neutral">
+          No Aplica
+        </TableBadge>
+      </template>
+
+      <template #cell-isDemo="{ row }">
+        <TableBadge
+          v-if="row.isDemo === 'Sí'"
+          color="primary"
+        >
+          Sí
+        </TableBadge>
+        <TableBadge
+          v-else-if="row.isDemo === 'No'"
+          color="neutral"
+        >
+          No
         </TableBadge>
         <TableBadge v-else color="neutral">
           No Aplica
@@ -97,34 +203,84 @@
       :user="editingUser"
       @close-modal="closeEditModal"
     />
+
+    <ModalPermissionRolUser
+      :modal-open="permissionsModalOpen"
+      :company-id="permissionsContext.companyId"
+      :company-name="permissionsContext.companyName"
+      :user="permissionsContext.user"
+      @close-modal="handleClosePermissionsModal"
+    />
+
+    <ModalUserSessions
+      :modal-open="sessionsModalOpen"
+      :user="sessionsUser"
+      @close-modal="closeSessionsModal"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { refDebounced } from '@vueuse/core'
 
+import { useCompanyStore } from '~/core/company/store/company.store'
+import ModalPermissionRolUser from '~/core/company/components/modals/ModalPermissionRolUser.vue'
+import type { CompanyList, userCompany } from '~/core/company/types/company.types'
 import { Button, ReloadButton } from '~/core/ui/buttons'
 import { UiIcon } from '~/core/ui/icons'
 import { TableBadge } from '~/core/ui/badge'
+import { Tooltip } from '~/core/ui/utooltip'
 import TableColumnToggle from '~/core/ui/dropdown/TableColumnToggle.vue'
 import { FilterPills } from '~/core/ui/filters'
+import { useModal } from '~/core/ui/modal'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
 import UTable from '~/core/ui/Tables/Utable.vue'
-import type { UTableRow } from '~/core/ui/Tables/utable.types'
+import type { UTableActionButton, UTableRow } from '~/core/ui/Tables/utable.types'
 import { mapUsersToTableRows, userColumns } from '~/modules/administration/users/mappers/user-tables-mappers'
-import { userTableActions } from '~/modules/administration/users/mappers/user-table.actions'
+import { resolveUserTableActions } from '~/modules/administration/users/mappers/user-table.actions'
 import ModalCreate from '~/modules/administration/users/components/modals/ModalCreate.vue'
 import ModalEdit from '~/modules/administration/users/components/modals/ModalEdit.vue'
+import ModalUserSessions from '~/modules/administration/users/components/modals/ModalUserSessions.vue'
+import TableUserCompanies from '~/modules/administration/users/components/tables/TableUserCompanies.vue'
+import type { FilterPillOption } from '~/core/ui/filters/filter-pills.types'
 import { useUsersStore } from '~/modules/administration/users/store/users.store'
-import type { User } from '~/modules/administration/users/types/users.types'
+import { USER_TYPE, type GetUsersParams, type User } from '~/modules/administration/users/types/users.types'
+import { useToast } from '~/core/ui/toast'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
-import { buildFilterPillOptions, filterItemsByPill } from '~/shared/utils/build-filter-pill-options'
-import { filterTableRows } from '~/shared/utils/filter-table-rows'
+import { UI_TABLE_ICON_BUTTON_CLASSES } from '~/core/ui/interactive.classes'
+
+type PermissionsContext = {
+  companyId: string
+  companyName: string
+  user: userCompany | null
+}
+
+type CompanySearchOption = {
+  id: string
+  label: string
+}
 
 const usersStore = useUsersStore()
+const companyStore = useCompanyStore()
+const toast = useToast()
+const { modalOpen: permissionsModalOpen, open: openPermissionsModal, close: closePermissionsModal } = useModal()
+const permissionsContext = ref<PermissionsContext>({
+  companyId: '',
+  companyName: '',
+  user: null,
+})
 const selectedItems = ref<Array<string | number>>([])
 const searchQuery = ref('')
+const debouncedSearch = refDebounced(searchQuery, 400)
+const companySearchQuery = ref('')
+const debouncedCompanySearch = refDebounced(companySearchQuery, 400)
+const companySearchResults = ref<CompanySearchOption[]>([])
+const isSearchingCompanies = ref(false)
+const hasCompanySearchAttempt = ref(false)
+const appliedCompanyLabel = ref('')
+const selectedCompanyId = ref<string | undefined>()
 const userFilter = ref('all')
 const currentPage = ref(1)
 const amount = ref(10)
@@ -132,6 +288,17 @@ const isLoading = ref(false)
 const createModalOpen = ref(false)
 const editModalOpen = ref(false)
 const editingUser = ref<User | null>(null)
+const sessionsModalOpen = ref(false)
+const sessionsUser = ref<User | null>(null)
+const expandedCompaniesRowKey = ref<string | number | null>(null)
+
+const userFilterDefinitions = [
+  { key: 'all', label: 'Todos' },
+  { key: 'isAdmin', label: 'Superusuarios' },
+  { key: 'isDemo', label: 'Demo' },
+  { key: USER_TYPE.USUARIO, label: 'Usuario' },
+  { key: USER_TYPE.SUBUSUARIO, label: 'Subusuario' },
+] as const
 
 const {
   visibleKeys: visibleColumnKeys,
@@ -139,39 +306,140 @@ const {
   resetVisibleColumns,
 } = useVisibleTableColumns(userColumns, { storageKey: 'table-columns:users' })
 
-const userFilterOptions = computed(() =>
-  buildFilterPillOptions<User>({
-    items: usersStore.users,
-    options: [
-      { key: 'all', label: 'Todos' },
-      { key: 'active', label: 'Activos', match: (user) => user.isActive },
-      { key: 'inactive', label: 'Inactivos', match: (user) => !user.isActive },
-      { key: 'verified', label: 'Verificados', match: (user) => user.isVerified },
-      { key: 'unverified', label: 'No verificados', match: (user) => !user.isVerified },
-      { key: 'admin', label: 'Superusuarios', match: (user) => user.isAdmin },
-    ],
-  }),
+const userFilterOptions = computed<FilterPillOption[]>(() =>
+  userFilterDefinitions.map((option) => ({
+    key: option.key,
+    label: option.label,
+    count: userFilter.value === option.key ? usersStore.total : undefined,
+  })),
 )
 
-const users = computed(() => {
-  const byFilter = filterItemsByPill(
-    usersStore.users,
-    userFilter.value,
-    'all',
-    {
-      active: (user) => user.isActive,
-      inactive: (user) => !user.isActive,
-      verified: (user) => user.isVerified,
-      unverified: (user) => !user.isVerified,
-      admin: (user) => user.isAdmin,
-    },
-  )
+const resolveListQueryParams = (): Pick<GetUsersParams, 'isAdmin' | 'isDemo' | 'type'> => {
+  if (userFilter.value === 'isAdmin') {
+    return { isAdmin: true, isDemo: undefined, type: undefined }
+  }
 
-  return filterTableRows(
-    mapUsersToTableRows(byFilter),
-    searchQuery.value,
-  )
+  if (userFilter.value === 'isDemo') {
+    return { isDemo: true, isAdmin: undefined, type: undefined }
+  }
+
+  if (userFilter.value === USER_TYPE.USUARIO) {
+    return { type: USER_TYPE.USUARIO, isAdmin: undefined, isDemo: undefined }
+  }
+
+  if (userFilter.value === USER_TYPE.SUBUSUARIO) {
+    return { type: USER_TYPE.SUBUSUARIO, isAdmin: undefined, isDemo: undefined }
+  }
+
+  return { isAdmin: undefined, isDemo: undefined, type: undefined }
+}
+
+const formatCompanyLabel = (company: CompanyList) => {
+  const businessName = company.businessName?.trim()
+  if (businessName) return businessName
+
+  const tradeName = company.tradeName?.trim()
+  if (tradeName) return tradeName
+
+  const documentNumber = company.documentNumber?.trim()
+  if (documentNumber) return documentNumber
+
+  return company.id
+}
+
+const showCompanySuggestions = computed(() => {
+  const query = companySearchQuery.value.trim()
+  if (!query || query === appliedCompanyLabel.value.trim()) return false
+
+  return isSearchingCompanies.value || hasCompanySearchAttempt.value
 })
+
+const searchCompanies = async (term: string) => {
+  const normalized = term.trim()
+  companySearchResults.value = []
+
+  if (!normalized) {
+    hasCompanySearchAttempt.value = false
+    selectedCompanyId.value = undefined
+    appliedCompanyLabel.value = ''
+    return false
+  }
+
+  if (normalized === appliedCompanyLabel.value.trim()) {
+    return false
+  }
+
+  isSearchingCompanies.value = true
+  hasCompanySearchAttempt.value = true
+
+  try {
+    await companyStore.getCompanies({
+      page: 1,
+      amount: 10,
+      search: normalized,
+    })
+
+    companySearchResults.value = companyStore.companies.map((company) => ({
+      id: company.id,
+      label: formatCompanyLabel(company),
+    }))
+  } finally {
+    isSearchingCompanies.value = false
+  }
+
+  return true
+}
+
+const selectCompanyOption = async (company: CompanySearchOption) => {
+  selectedCompanyId.value = company.id
+  appliedCompanyLabel.value = company.label
+  companySearchQuery.value = company.label
+  companySearchResults.value = []
+  hasCompanySearchAttempt.value = false
+  currentPage.value = 1
+  await fetchUsers(1)
+}
+
+const handleCompanySearch = async () => {
+  const shouldRefetch = await searchCompanies(companySearchQuery.value)
+  if (!shouldRefetch) return
+
+  if (!companySearchQuery.value.trim()) {
+    currentPage.value = 1
+    await fetchUsers(1)
+  }
+}
+
+watch(debouncedCompanySearch, async (term) => {
+  const normalized = term.trim()
+
+  if (!normalized) {
+    if (selectedCompanyId.value || appliedCompanyLabel.value) {
+      selectedCompanyId.value = undefined
+      appliedCompanyLabel.value = ''
+      currentPage.value = 1
+      await fetchUsers(1)
+    }
+    return
+  }
+
+  if (normalized === appliedCompanyLabel.value.trim()) return
+
+  selectedCompanyId.value = undefined
+  await searchCompanies(normalized)
+})
+
+watch(debouncedSearch, () => {
+  currentPage.value = 1
+  fetchUsers(1)
+})
+
+watch(userFilter, () => {
+  currentPage.value = 1
+  fetchUsers(1)
+})
+
+const users = computed(() => mapUsersToTableRows(usersStore.users))
 
 const resolveUserFromRow = (row: UTableRow): User | null => {
   const rowId = row.id == null ? '' : String(row.id).trim()
@@ -179,6 +447,8 @@ const resolveUserFromRow = (row: UTableRow): User | null => {
 
   return usersStore.users.find((user) => user.id === rowId) ?? null
 }
+
+const getUserForRow = (row: UTableRow) => resolveUserFromRow(row)
 
 const openEditModal = async (row: UTableRow) => {
   const user = resolveUserFromRow(row)
@@ -194,11 +464,74 @@ const closeEditModal = () => {
   editingUser.value = null
 }
 
+const openSessionsModal = async (row: UTableRow) => {
+  const user = resolveUserFromRow(row)
+  if (!user) return
+
+  sessionsUser.value = user
+  await nextTick()
+  sessionsModalOpen.value = true
+}
+
+const closeSessionsModal = () => {
+  sessionsModalOpen.value = false
+  sessionsUser.value = null
+}
+
+const closeCreateModal = () => {
+  createModalOpen.value = false
+}
+
+const isCompaniesActionExpanded = (row: UTableRow, action: UTableActionButton) =>
+  expandedCompaniesRowKey.value != null
+  && row.id === expandedCompaniesRowKey.value
+  && action.key === 'companies'
+
+const handleOpenPermissionsModal = async (payload: PermissionsContext) => {
+  if (!payload.user?.roles.length) {
+    toast.warning('Este usuario no tiene roles asignados en esta compañía.')
+    return
+  }
+
+  permissionsContext.value = {
+    companyId: payload.companyId,
+    companyName: payload.companyName,
+    user: payload.user,
+  }
+  await nextTick()
+  openPermissionsModal()
+}
+
+const handleClosePermissionsModal = () => {
+  permissionsContext.value = {
+    companyId: '',
+    companyName: '',
+    user: null,
+  }
+  closePermissionsModal()
+}
+
 const handleRowAction = async ({ action, row }: { action: string, row: UTableRow }) => {
+  if (action === 'companies') {
+    const rowKey = row.id
+    if (rowKey == null) return
+    expandedCompaniesRowKey.value = expandedCompaniesRowKey.value === rowKey ? null : rowKey
+    return
+  }
+
+  if (expandedCompaniesRowKey.value != null) {
+    expandedCompaniesRowKey.value = null
+  }
+
   if (row.id == null) return
 
   if (action === 'edit') {
     await openEditModal(row)
+    return
+  }
+
+  if (action === 'sessions') {
+    await openSessionsModal(row)
   }
 }
 
@@ -216,8 +549,12 @@ const fetchUsers = async (page: number, force = false) => {
     await usersStore.getUsers({
       amount: amount.value,
       page,
+      search: debouncedSearch.value || undefined,
+      companyId: selectedCompanyId.value,
+      ...resolveListQueryParams(),
     }, force)
     selectedItems.value = []
+    expandedCompaniesRowKey.value = null
   } finally {
     isLoading.value = false
   }
@@ -225,10 +562,6 @@ const fetchUsers = async (page: number, force = false) => {
 
 const handleCreateUser = () => {
   createModalOpen.value = true
-}
-
-const closeCreateModal = () => {
-  createModalOpen.value = false
 }
 
 const handleChangePage = async (page: number) => {

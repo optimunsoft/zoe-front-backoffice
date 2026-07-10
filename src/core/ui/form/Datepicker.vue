@@ -29,6 +29,23 @@ import type flatpickr from 'flatpickr'
 
 import InputField from '~/core/ui/inputs/InputField.vue'
 
+const MONTH_LABELS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'] as const
+const MONTH_LABELS_FULL = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+] as const
+
+type QuickPickerView = 'days' | 'months' | 'years'
+
+type QuickNavState = {
+  view: QuickPickerView
+  yearGridAnchor: number
+  refreshHeader: () => void
+  closePanels: () => void
+}
+
+const quickNavState = new WeakMap<flatpickr.Instance, QuickNavState>()
+
 const props = withDefaults(defineProps<{
   modelValue?: string | Date | Date[] | null
   id?: string
@@ -38,12 +55,17 @@ const props = withDefaults(defineProps<{
   mode?: 'single' | 'range'
   dateFormat?: string
   fullWidth?: boolean
+  yearMonthDropdowns?: boolean
+  minYear?: number
+  maxYear?: number
+  maxDate?: Date | string
 }>(), {
   modelValue: null,
   required: false,
   mode: 'range',
   dateFormat: '',
   fullWidth: false,
+  yearMonthDropdowns: false,
 })
 
 const emit = defineEmits<{
@@ -58,6 +80,201 @@ const date = computed({
   set: (value) => emit('update:modelValue', value),
 })
 
+const currentCalendarYear = () => new Date().getFullYear()
+
+const resolvedMinYear = computed(() => props.minYear ?? currentCalendarYear() - 100)
+const resolvedMaxYear = computed(() => props.maxYear ?? currentCalendarYear())
+
+const clampYearGridAnchor = (anchor: number) =>
+  Math.max(resolvedMinYear.value, Math.min(anchor, resolvedMaxYear.value - 11))
+
+const setupQuickDateNavigation = (instance: flatpickr.Instance) => {
+  const calendar = instance.calendarContainer
+  const currentMonth = calendar.querySelector('.flatpickr-current-month')
+  const innerContainer = calendar.querySelector('.flatpickr-innerContainer')
+
+  if (!(currentMonth instanceof HTMLElement)
+    || !(innerContainer instanceof HTMLElement)) {
+    return
+  }
+
+  const daysWrapper = innerContainer.querySelector('.flatpickr-rContainer')
+  if (!(daysWrapper instanceof HTMLElement)) {
+    return
+  }
+
+  let panel = innerContainer.querySelector('.flatpickr-quick-panel')
+  if (!(panel instanceof HTMLElement)) {
+    panel = document.createElement('div')
+    panel.className = 'flatpickr-quick-panel'
+    innerContainer.appendChild(panel)
+  }
+
+  calendar.classList.add('flatpickr-birthdate')
+
+  currentMonth.querySelector('.numInputWrapper')?.remove()
+  currentMonth.querySelector('.flatpickr-monthDropdown-months')?.remove()
+  currentMonth.querySelector('.cur-month')?.remove()
+
+  const monthButton = document.createElement('button')
+  monthButton.type = 'button'
+  monthButton.className = 'flatpickr-quick-toggle'
+
+  const yearButton = document.createElement('button')
+  yearButton.type = 'button'
+  yearButton.className = 'flatpickr-quick-toggle'
+
+  const headerControls = document.createElement('div')
+  headerControls.className = 'flatpickr-quick-header'
+  headerControls.append(monthButton, yearButton)
+  currentMonth.prepend(headerControls)
+
+  const state: QuickNavState = {
+    view: 'days',
+    yearGridAnchor: clampYearGridAnchor(instance.currentYear - 5),
+    refreshHeader: () => {},
+    closePanels: () => {},
+  }
+
+  const updateHeader = () => {
+    monthButton.textContent = MONTH_LABELS_FULL[instance.currentMonth] ?? MONTH_LABELS_SHORT[instance.currentMonth]
+    yearButton.textContent = String(instance.currentYear)
+    monthButton.classList.toggle('is-active', state.view === 'months')
+    yearButton.classList.toggle('is-active', state.view === 'years')
+  }
+
+  const setView = (nextView: QuickPickerView) => {
+    state.view = nextView
+    calendar.classList.remove('flatpickr-quick-view-months', 'flatpickr-quick-view-years', 'flatpickr-quick-view-picker')
+
+    if (nextView === 'months') {
+      calendar.classList.add('flatpickr-quick-view-picker', 'flatpickr-quick-view-months')
+      renderMonthGrid()
+    } else if (nextView === 'years') {
+      calendar.classList.add('flatpickr-quick-view-picker', 'flatpickr-quick-view-years')
+      renderYearGrid()
+    }
+
+    updateHeader()
+  }
+
+  const renderMonthGrid = () => {
+    panel.replaceChildren()
+    const grid = document.createElement('div')
+    grid.className = 'flatpickr-quick-grid'
+
+    MONTH_LABELS_SHORT.forEach((label, monthIndex) => {
+      const cell = document.createElement('button')
+      cell.type = 'button'
+      cell.className = 'flatpickr-quick-cell'
+      cell.textContent = label
+      cell.setAttribute('aria-label', MONTH_LABELS_FULL[monthIndex])
+
+      if (monthIndex === instance.currentMonth) {
+        cell.classList.add('is-selected')
+      }
+
+      cell.addEventListener('click', () => {
+        instance.changeMonth(monthIndex, false)
+        setView('days')
+      })
+
+      grid.appendChild(cell)
+    })
+
+    panel.appendChild(grid)
+  }
+
+  const renderYearGrid = () => {
+    state.yearGridAnchor = clampYearGridAnchor(state.yearGridAnchor)
+    panel.replaceChildren()
+
+    const nav = document.createElement('div')
+    nav.className = 'flatpickr-quick-nav'
+
+    const prevButton = document.createElement('button')
+    prevButton.type = 'button'
+    prevButton.className = 'flatpickr-quick-nav-btn'
+    prevButton.setAttribute('aria-label', 'Años anteriores')
+    prevButton.textContent = '‹'
+    prevButton.disabled = state.yearGridAnchor <= resolvedMinYear.value
+
+    const rangeLabel = document.createElement('span')
+    rangeLabel.className = 'flatpickr-quick-nav-label'
+
+    const nextButton = document.createElement('button')
+    nextButton.type = 'button'
+    nextButton.className = 'flatpickr-quick-nav-btn'
+    nextButton.setAttribute('aria-label', 'Años siguientes')
+    nextButton.textContent = '›'
+    nextButton.disabled = state.yearGridAnchor + 12 > resolvedMaxYear.value
+
+    const grid = document.createElement('div')
+    grid.className = 'flatpickr-quick-grid flatpickr-quick-grid-years'
+
+    const rangeEnd = Math.min(state.yearGridAnchor + 11, resolvedMaxYear.value)
+    rangeLabel.textContent = `${state.yearGridAnchor} – ${rangeEnd}`
+
+    for (let year = state.yearGridAnchor; year <= rangeEnd; year += 1) {
+      const cell = document.createElement('button')
+      cell.type = 'button'
+      cell.className = 'flatpickr-quick-cell'
+      cell.textContent = String(year)
+
+      if (year === instance.currentYear) {
+        cell.classList.add('is-selected')
+      }
+
+      cell.addEventListener('click', () => {
+        instance.changeYear(year)
+        setView('days')
+      })
+
+      grid.appendChild(cell)
+    }
+
+    prevButton.addEventListener('click', () => {
+      state.yearGridAnchor = clampYearGridAnchor(state.yearGridAnchor - 12)
+      renderYearGrid()
+    })
+
+    nextButton.addEventListener('click', () => {
+      state.yearGridAnchor = clampYearGridAnchor(state.yearGridAnchor + 12)
+      renderYearGrid()
+    })
+
+    nav.append(prevButton, rangeLabel, nextButton)
+    panel.append(nav, grid)
+  }
+
+  state.refreshHeader = () => {
+    updateHeader()
+    if (state.view !== 'days') {
+      setView('days')
+    }
+  }
+
+  state.closePanels = () => setView('days')
+
+  monthButton.addEventListener('click', () => {
+    setView(state.view === 'months' ? 'days' : 'months')
+  })
+
+  yearButton.addEventListener('click', () => {
+    if (state.view !== 'years') {
+      state.yearGridAnchor = clampYearGridAnchor(instance.currentYear - 5)
+    }
+    setView(state.view === 'years' ? 'days' : 'years')
+  })
+
+  quickNavState.set(instance, state)
+  updateHeader()
+}
+
+const syncQuickDateNavigation = (instance: flatpickr.Instance) => {
+  quickNavState.get(instance)?.refreshHeader()
+}
+
 const config = computed(() => {
   const isRange = props.mode === 'range'
   const format = props.dateFormat || (isRange ? 'M j, Y' : 'd/m/Y')
@@ -67,27 +284,49 @@ const config = computed(() => {
     appendTo: import.meta.client ? document.body : undefined,
     monthSelectorType: 'static' as const,
     dateFormat: format,
+    ...(props.yearMonthDropdowns
+      ? { maxDate: props.maxDate ?? new Date() }
+      : {}),
     ...(isRange
       ? { defaultDate: [new Date().setDate(new Date().getDate() - 6), new Date()] }
       : {}),
     prevArrow: '<svg class="fill-current" width="7" height="11" viewBox="0 0 7 11"><path d="M5.4 10.8l1.4-1.4-4-4 4-4L5.4 0 0 5.4z" /></svg>',
     nextArrow: '<svg class="fill-current" width="7" height="11" viewBox="0 0 7 11"><path d="M1.4 10.8L0 9.4l4-4-4-4L1.4 0l5.4 5.4z" /></svg>',
-    onReady: (_selectedDates: Date[], dateStr: string, instance: flatpickr.Instance) => {
+    onReady: (selectedDates: Date[], dateStr: string, instance: flatpickr.Instance) => {
       if (isRange) {
         (instance.element as HTMLInputElement).value = dateStr.replace('to', '-')
       }
       const customClass = props.align ?? ''
       instance.calendarContainer.classList.add(`flatpickr-${customClass}`)
       instance.calendarContainer.classList.add('flatpickr-overlay')
+
+      if (props.yearMonthDropdowns) {
+        setupQuickDateNavigation(instance)
+      }
     },
-    onChange: (_selectedDates: Date[], dateStr: string, instance: flatpickr.Instance) => {
+    onOpen: (_selectedDates: Date[], _dateStr: string, instance: flatpickr.Instance) => {
+      if (props.yearMonthDropdowns) {
+        quickNavState.get(instance)?.closePanels()
+      }
+    },
+    onMonthChange: (_selectedDates: Date[], _dateStr: string, instance: flatpickr.Instance) => {
+      if (props.yearMonthDropdowns) {
+        syncQuickDateNavigation(instance)
+      }
+    },
+    onYearChange: (_selectedDates: Date[], _dateStr: string, instance: flatpickr.Instance) => {
+      if (props.yearMonthDropdowns) {
+        syncQuickDateNavigation(instance)
+      }
+    },
+    onChange: (selectedDates: Date[], dateStr: string, instance: flatpickr.Instance) => {
       if (isRange) {
         const input = instance.element as HTMLInputElement
         input.value = dateStr.replace('to', '-')
         emit('update:modelValue', input.value)
         return
       }
-      emit('update:modelValue', dateStr)
+      emit('update:modelValue', selectedDates[0] ?? null)
     },
   }
 })

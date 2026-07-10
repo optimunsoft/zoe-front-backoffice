@@ -1,11 +1,16 @@
 import { z } from 'zod'
 
+import {
+  resolveDefaultPhonePrefix,
+  resolvePhonePrefixOption,
+} from '~/core/ubication/utils/phone.utils'
+import { isPasswordValid } from '~/shared/utils/password.utils'
 import { BACKOFFICE_ROLE, USER_TYPE, type UserCreate, type UserList, type UserUpdate } from '../types/users.types'
+import { resolveUserAccountDemo } from '../utils/user-account.utils'
 
 const NAME_REGEX = /^[\p{L}\s'.-]+$/u
 const USERNAME_REGEX = /^[a-zA-Z0-9_.@-]+$/
 const PHONE_REGEX = /^\d{7,15}$/
-const MIN_PASSWORD_LENGTH = 8
 
 export const sanitizeUserName = (value: string) =>
   value.replace(/[^\p{L}\s'.-]/gu, '')
@@ -13,8 +18,8 @@ export const sanitizeUserName = (value: string) =>
 export const sanitizeUsername = (value: string) =>
   value.replace(/[^a-zA-Z0-9_.@-]/g, '').slice(0, 50)
 
-export const sanitizePhoneNumber = (value: string) =>
-  value.replace(/\D/g, '').slice(0, 15)
+export const sanitizePhoneNumber = (value: unknown) =>
+  String(value ?? '').replace(/\D/g, '').slice(0, 15)
 
 const birthDateValue = z.union([
   z.string(),
@@ -89,7 +94,7 @@ export const emptyUserFormValues = (): UserFormValues => ({
   email: '',
   municipalityId: '',
   birthDate: null,
-  phonePrefix: '',
+  phonePrefix: resolveDefaultPhonePrefix([]),
   phoneNumber: '',
   backofficeRole: '',
   isVerified: false,
@@ -113,10 +118,39 @@ export const emptyUserFormErrors = (): UserFormErrors => ({
   userType: '',
 })
 
+const parseDmyDate = (value: string): Date | null => {
+  const match = value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (!match) return null
+
+  const day = Number(match[1])
+  const month = Number(match[2])
+  const year = Number(match[3])
+  const date = new Date(year, month - 1, day)
+
+  if (
+    date.getFullYear() !== year
+    || date.getMonth() !== month - 1
+    || date.getDate() !== day
+  ) {
+    return null
+  }
+
+  return date
+}
+
 const parseBirthDate = (value: string | Date | null) => {
   if (!value) return null
 
-  const date = value instanceof Date ? value : new Date(value)
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10)
+  }
+
+  const fromDmy = parseDmyDate(value)
+  if (fromDmy) {
+    return fromDmy.toISOString().slice(0, 10)
+  }
+
+  const date = new Date(value)
   if (Number.isNaN(date.getTime())) return null
 
   return date.toISOString().slice(0, 10)
@@ -155,10 +189,12 @@ const validatePassword = (
     return
   }
 
-  if (password.trim() && password.length < MIN_PASSWORD_LENGTH) {
+  if (!password.trim()) return
+
+  if (!isPasswordValid(password)) {
     ctx.addIssue({
       code: 'custom',
-      message: `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+      message: 'La contraseña no cumple los requisitos de seguridad.',
       path: ['password'],
     })
   }
@@ -276,9 +312,15 @@ const buildUserBasePayload = (values: UserFormValues) => {
     ...(backofficeRole ? { backofficeRole } : {}),
     isVerified: values.isVerified,
     isAdmin,
-    isDemo: false,
   }
 }
+
+const buildUserCreatePayload = (values: UserFormValues): UserCreate => ({
+  ...buildUserBasePayload(values),
+  isDemo: values.isDemo,
+  password: values.password,
+  userType: USER_TYPE.USUARIO,
+})
 
 export const parseUserCreateForm = (
   values: UserFormValues,
@@ -294,11 +336,7 @@ export const parseUserCreateForm = (
   try {
     return {
       success: true,
-      data: {
-        ...buildUserBasePayload(values),
-        password: values.password,
-        userType: USER_TYPE.USUARIO,
-      },
+      data: buildUserCreatePayload(values),
     }
   } catch {
     return {
@@ -323,15 +361,9 @@ export const parseUserUpdateForm = (
   }
 
   try {
-    const payload: UserUpdate = buildUserBasePayload(values)
-
-    if (values.password.trim()) {
-      payload.password = values.password
-    }
-
     return {
       success: true,
-      data: payload,
+      data: buildUserBasePayload(values),
     }
   } catch {
     return {
@@ -355,23 +387,27 @@ export const normalizeBackofficeRole = (value: unknown): string => {
   return ''
 }
 
-export const mapUserListToFormValues = (user: UserList): UserFormValues => {
+export const mapUserListToFormValues = (
+  user: UserList,
+  countries: Array<{ phonePrefix: string }> = [],
+): UserFormValues => {
   const birthDate = user.birthDate ? new Date(user.birthDate) : null
   const parsedBirthDate = birthDate && !Number.isNaN(birthDate.getTime()) ? birthDate : null
+  const accountDemo = resolveUserAccountDemo(user)
 
   return {
     firstName: user.firstName ?? '',
     lastName: user.lastName ?? '',
-    username: user.username ?? '',
+    username: '',
     email: user.email ?? '',
     municipalityId: user.municipalityId ?? '',
     birthDate: parsedBirthDate,
-    phonePrefix: user.phonePrefix ?? '',
-    phoneNumber: sanitizePhoneNumber(user.phoneNumber ?? ''),
+    phonePrefix: resolvePhonePrefixOption(user.phonePrefix ?? '', countries),
+    phoneNumber: String(user.phoneNumber ?? ''),
     backofficeRole: normalizeBackofficeRole(user.backofficeRole),
     isVerified: user.isVerified ?? false,
     isAdmin: user.isAdmin ?? false,
-    isDemo: false,
+    isDemo: accountDemo ?? false,
     password: '',
     userType: USER_TYPE.USUARIO,
   }

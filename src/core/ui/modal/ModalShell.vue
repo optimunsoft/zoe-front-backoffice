@@ -153,6 +153,9 @@ const sizeClass = computed(() => {
     '3xl': 'max-w-3xl',
     '4xl': 'max-w-4xl',
     '5xl': 'max-w-5xl',
+    '6xl': 'max-w-6xl',
+    '7xl': 'max-w-7xl',
+    full: 'max-w-[calc(100vw-2rem)]',
   }
 
   return sizes[props.size]

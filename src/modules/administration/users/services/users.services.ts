@@ -1,70 +1,80 @@
-import type { GetUsersParams, GetUsersResponse, UserRequestBody, UserUpdate } from '../types/users.types';
+import type { GetUsersParams, GetUsersResponse, UserRequestBody, UserUpdate } from '../types/users.types'
 
- export const useUsersService = () => {
-    const { $apiBackoffice } = useNuxtApp();
+const buildGetUsersQuery = (params: GetUsersParams): Record<string, string | number | boolean> => {
+  const query: Record<string, string | number | boolean> = {
+    amount: params.amount,
+    page: params.page,
+  }
 
-    const getUsers = async (params: GetUsersParams): Promise<GetUsersResponse> => {
-        const query: Record<string, string | number | boolean> = {
-            amount: params.amount,
-            page: params.page,
-        }
+  const search = params.search?.trim()
+  if (search) {
+    query.search = search
+  }
 
-        const search = params.search?.trim()
-        if (search) query.search = search
+  const companyId = params.companyId?.trim()
+  if (companyId) {
+    query.companyId = companyId
+  }
 
-        const companyId = params.companyId?.trim()
-        if (companyId) query.companyId = companyId
+  if (params.isAdmin !== undefined) {
+    query.isAdmin = params.isAdmin
+  }
 
-        if (params.isAdmin !== undefined) query.isAdmin = params.isAdmin
-        if (params.isDemo !== undefined) query.isDemo = params.isDemo
+  if (params.isDemo !== undefined) {
+    query.isDemo = params.isDemo
+  }
 
-        const type = params.type?.trim()
-        if (type) query.type = type
+  const type = params.type?.trim()
+  if (type) {
+    query.type = type
+  }
 
-        return $apiBackoffice<GetUsersResponse>('administration/users/list', {
-            method: 'GET',
-            query,
-        });
-    }
+  return query
+}
 
-    const createUser = async (user: UserRequestBody): Promise<GetUsersResponse> => {
-        return $apiBackoffice<GetUsersResponse>('administration/users/create', {
-            method: 'POST',
-            body: user,
-        });
-    }
+export const useUsersService = () => {
+  const { $apiBackoffice } = useNuxtApp()
 
-    const updateUser = async (userId: string, user: UserUpdate): Promise<GetUsersResponse> => {
-        return $apiBackoffice<GetUsersResponse>(`administration/users/edit/${userId}`, {
-            method: 'PUT',
-            body: user,
-        });
-    }
+  const getUsers = async (params: GetUsersParams): Promise<GetUsersResponse> => {
+    return $apiBackoffice<GetUsersResponse>('administration/users/list', {
+      method: 'GET',
+      query: buildGetUsersQuery(params),
+    })
+  }
 
-    const changesStatusUser = async (userId: string, status: boolean): Promise<GetUsersResponse> => {
-        return $apiBackoffice<GetUsersResponse>(`administration/users/${userId}/status`, {
-            method: 'PUT',
-            body: { active: status },
-        });
-    }
+  const createUser = async (user: UserRequestBody): Promise<GetUsersResponse> => {
+    return $apiBackoffice<GetUsersResponse>('administration/users/create', {
+      method: 'POST',
+      body: user,
+    })
+  }
 
+  const updateUser = async (userId: string, user: UserUpdate): Promise<GetUsersResponse> => {
+    return $apiBackoffice<GetUsersResponse>(`administration/users/edit/${userId}`, {
+      method: 'PUT',
+      body: user,
+    })
+  }
 
-    const changesStatusDemoUser = async (userId: string, demo: boolean): Promise<GetUsersResponse> => {
-        return $apiBackoffice<GetUsersResponse>(`administration/users/${userId}/demo`, {
-            method: 'PUT',
-            body: { isDemo: demo },
-        });
-    }
+  const changesStatusUser = async (userId: string, status: boolean): Promise<GetUsersResponse> => {
+    return $apiBackoffice<GetUsersResponse>(`administration/users/${userId}/status`, {
+      method: 'PATCH',
+      body: { active: status },
+    })
+  }
 
+  const changesStatusDemoUser = async (accountId: string, demo: boolean): Promise<GetUsersResponse> => {
+    return $apiBackoffice<GetUsersResponse>(`administration/accounts/${accountId}/demo`, {
+      method: 'PATCH',
+      body: { isDemo: demo },
+    })
+  }
 
-
-
-
-    return {
-        getUsers,
-        createUser,
-        updateUser,
-        changesStatusUser,
-        changesStatusDemoUser,
-    }
+  return {
+    getUsers,
+    createUser,
+    updateUser,
+    changesStatusUser,
+    changesStatusDemoUser,
+  }
 }

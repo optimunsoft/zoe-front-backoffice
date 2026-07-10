@@ -8,6 +8,7 @@ export { default as InputSwitch } from './InputSwitch.vue'
 export { default as InputPage } from './InputPage.vue'
 export { default as InputFileUpload } from './InputFileUpload.vue'
 export { default as InputMunicipalitySearch } from './InputMunicipalitySearch.vue'
+export { default as PasswordRequirements } from './PasswordRequirements.vue'
 
 export type {
   InputSize,

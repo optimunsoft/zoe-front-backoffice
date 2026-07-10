@@ -67,6 +67,13 @@ export const uiIcons = {
       'M6 0a6 6 0 0 0-6 6c0 1.077.304 2.083.78 2.988L0 12.016l3.243-.78A5.97 5.97 0 0 0 6 12a6 6 0 1 0 0-12Zm1 8H5V5h2v3ZM8 5h2v3H8V5Z',
     ],
   },
+  company: {
+    viewBox: '0 0 32 32',
+    fillRule: 'evenodd',
+    paths: [
+      'M6 14 16 5l10 9v14H6V14zM10 16h3v3h-3v-3zm9 0h3v3h-3v-3zm-9 4h3v3H10v-3zm9 0h3v3h-3v-3zM14 24h4v4h-4v-4z',
+    ],
+  },
   messages: {
     viewBox: '0 0 16 16',
     paths: [
@@ -91,6 +98,13 @@ export const uiIcons = {
     paths: [
       'M7.5 1v6h1V1h-1z',
       'M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm0 14.5A6.5 6.5 0 0 1 3.5 8 6.5 6.5 0 0 1 8 1.5 6.5 6.5 0 0 1 12.5 8 6.5 6.5 0 0 1 8 14.5Z',
+    ],
+  },
+  history: {
+    viewBox: '0 0 32 32',
+    paths: [
+      'M16 4a12 12 0 1 0 0 24 12 12 0 0 0 0-24zm0 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20z',
+      'M16 9v7l5 3 .9-1.5-4.4-2.6V9H16z',
     ],
   },
 } as const satisfies Record<string, UiIconDefinition>

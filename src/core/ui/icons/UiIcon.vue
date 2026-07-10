@@ -9,6 +9,7 @@
       v-for="(path, index) in definition.paths"
       :key="index"
       :d="path"
+      :fill-rule="definition.fillRule ?? 'nonzero'"
     />
   </svg>
 </template>

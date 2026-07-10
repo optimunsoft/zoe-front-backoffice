@@ -1,6 +1,9 @@
 <template>
-  <div class="company-data-form">
-    <aside class="company-data-form__sidebar">
+  <div
+    class="company-data-form"
+    :class="{ 'company-data-form--single-column': !isEditMode }"
+  >
+    <aside v-if="isEditMode" class="company-data-form__sidebar">
       <InputFileUpload
         id="company-photo"
         v-model="companyPhoto"
@@ -88,51 +91,61 @@
         </div>
       </div>
 
-      <div
-        v-if="isNaturalPerson"
-        class="company-data-form__row company-data-form__row--full"
-      >
-        <div class="grid gap-3 sm:grid-cols-2">
-          <InputText
-            id="company-first-name"
-            :model-value="form.firstName"
-            name="firstName"
-            label="Primer nombre"
-            placeholder="Primer nombre"
-            required
-            :error="errors.firstName"
-            @update:model-value="onFirstNameChange"
-          />
-          <InputText
-            id="company-middle-name"
-            :model-value="form.middleName"
-            name="middleName"
-            label="Segundo nombre"
-            placeholder="Segundo nombre"
-            :error="errors.middleName"
-            @update:model-value="onMiddleNameChange"
-          />
-          <InputText
-            id="company-last-name"
-            :model-value="form.lastName"
-            name="lastName"
-            label="Primer apellido"
-            placeholder="Primer apellido"
-            required
-            :error="errors.lastName"
-            @update:model-value="onLastNameChange"
-          />
-          <InputText
-            id="company-second-last-name"
-            :model-value="form.secondLastName"
-            name="secondLastName"
-            label="Segundo apellido"
-            placeholder="Segundo apellido"
-            :error="errors.secondLastName"
-            @update:model-value="onSecondLastNameChange"
-          />
+      <template v-if="isNaturalPerson">
+        <div class="company-data-form__row">
+          <div class="company-data-form__col">
+            <InputText
+              id="company-first-name"
+              :model-value="form.firstName"
+              name="firstName"
+              label="Primer nombre"
+              placeholder="Primer nombre"
+              required
+              :error="errors.firstName"
+              @update:model-value="onFirstNameChange"
+            />
+          </div>
+
+          <div class="company-data-form__col">
+            <InputText
+              id="company-middle-name"
+              :model-value="form.middleName"
+              name="middleName"
+              label="Segundo nombre"
+              placeholder="Segundo nombre"
+              :error="errors.middleName"
+              @update:model-value="onMiddleNameChange"
+            />
+          </div>
         </div>
-      </div>
+
+        <div class="company-data-form__row">
+          <div class="company-data-form__col">
+            <InputText
+              id="company-last-name"
+              :model-value="form.lastName"
+              name="lastName"
+              label="Primer apellido"
+              placeholder="Primer apellido"
+              required
+              :error="errors.lastName"
+              @update:model-value="onLastNameChange"
+            />
+          </div>
+
+          <div class="company-data-form__col">
+            <InputText
+              id="company-second-last-name"
+              :model-value="form.secondLastName"
+              name="secondLastName"
+              label="Segundo apellido"
+              placeholder="Segundo apellido"
+              :error="errors.secondLastName"
+              @update:model-value="onSecondLastNameChange"
+            />
+          </div>
+        </div>
+      </template>
 
       <div class="company-data-form__row">
         <div class="company-data-form__col">
@@ -340,15 +353,6 @@
         </div>
       </InputField>
     </div>
-
-    <div class="lg:w-1/3">
-      <CompanyModulesSection
-        v-if="!isEditMode"
-        ref="modulesSectionRef"
-        mode="create"
-        :company-id="companyId"
-      />
-    </div>
   </div>
 </template>
 
@@ -374,7 +378,6 @@ import {
   type CompanyFormValues,
 } from '../../schema/company.schema'
 import { useAnchoredOverlay } from '../../composables/use-anchored-overlay'
-import CompanyModulesSection from './CompanyModulesSection.vue'
 import { useCompanyStore } from '../../store/company.store'
 defineOptions({
   name: 'CompanyDataSection',
@@ -401,8 +404,6 @@ const usersStore = useUsersStore()
 const companyStore = useCompanyStore()
 
 const municipalityFieldRef = ref<InstanceType<typeof InputMunicipalitySearch> | null>(null)
-
-const modulesSectionRef = ref<InstanceType<typeof CompanyModulesSection> | null>(null)
 
 const photoAccept = '.png,.jpg,.jpeg,image/png,image/jpeg'
 const companyPhoto = ref<File | null>(null)
@@ -667,14 +668,12 @@ const reset = () => {
   removeOwner()
   municipalityFieldRef.value?.reset()
   resetCompanyLogo()
-  modulesSectionRef.value?.reset()
 }
 
 const setFromCompany = async (company: Company, options: { mode: 'create' | 'edit' }) => {
   removeOwner()
 
   if (options.mode !== 'edit') {
-    modulesSectionRef.value?.setModules(company.modules ?? [])
     const owner = company.users?.find((user) => user.isOwner)
     if (owner) {
       selectedOwner.value = mapCompanyUserToOwner(owner)
@@ -763,6 +762,10 @@ defineExpose({
     grid-template-columns: minmax(0, 2fr) minmax(14rem, 1fr);
     column-gap: 1.25rem;
     align-items: start;
+  }
+
+  .company-data-form--single-column {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .company-data-form__sidebar {

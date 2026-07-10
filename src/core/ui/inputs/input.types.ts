@@ -6,4 +6,5 @@ export type InputSelectOption = {
   label: string
   value: string | number
   disabled?: boolean
+  selectedLabel?: string
 }

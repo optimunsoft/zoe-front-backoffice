@@ -15,22 +15,37 @@
         :placeholder="placeholder"
         :disabled="disabled"
         class="form-input w-full"
+        role="combobox"
+        aria-autocomplete="list"
+        :aria-expanded="showSuggestions"
+        :aria-controls="listboxId"
+        :aria-activedescendant="activeDescendantId"
         @input="onSearchInput(($event.target as HTMLInputElement).value)"
+        @keydown="onKeydown"
       >
     </div>
 
     <Teleport to="body">
       <div
         v-if="showSuggestions && panelStyle"
+        :id="listboxId"
+        ref="panelRef"
+        role="listbox"
         class="fixed max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700/60 dark:bg-gray-800"
         :style="panelStyle"
       >
         <button
-          v-for="municipality in results"
+          v-for="(municipality, index) in results"
+          :id="`${listboxId}-option-${index}`"
           :key="municipality.id"
           type="button"
+          role="option"
+          tabindex="-1"
+          :aria-selected="highlightedIndex === index"
           class="flex w-full items-center border-b border-gray-100 px-3 py-2.5 text-left transition last:border-b-0 hover:bg-gray-50 dark:border-gray-700/60 dark:hover:bg-gray-800/60"
+          :class="highlightedIndex === index ? 'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300' : ''"
           @mousedown.prevent="selectMunicipality(municipality)"
+          @mouseenter="highlightedIndex = index"
         >
           <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
             {{ municipality.label }}
@@ -101,26 +116,97 @@ const municipalityService = useMunicipalityService()
 
 const generatedId = useId()
 const inputId = computed(() => props.id ?? generatedId)
+const listboxId = computed(() => `${inputId.value}-listbox`)
 
 const search = ref('')
 const searchDebounced = refDebounced(search, 300)
 const results = ref<Array<{ id: string, label: string }>>([])
 const isSearching = ref(false)
 const isSyncingSearch = ref(false)
+const suppressSuggestions = ref(false)
+const highlightedIndex = ref(-1)
+const panelRef = ref<HTMLElement | null>(null)
 
 const resolvedCountryId = computed(() =>
   props.countryId?.trim() || authStore.user?.countryId,
 )
 
 const showSuggestions = computed(() =>
-  !props.modelValue && search.value.trim().length > 0,
+  !props.modelValue
+  && search.value.trim().length > 0
+  && !suppressSuggestions.value,
 )
 
+const activeDescendantId = computed(() => {
+  if (highlightedIndex.value < 0) return undefined
+
+  return `${listboxId.value}-option-${highlightedIndex.value}`
+})
+
 const { anchorRef, panelStyle } = useAnchoredOverlay(showSuggestions)
+
+const resetHighlight = () => {
+  highlightedIndex.value = -1
+}
+
+const scrollHighlightedIntoView = async () => {
+  await nextTick()
+
+  if (highlightedIndex.value < 0 || !panelRef.value) return
+
+  const option = panelRef.value.querySelector<HTMLElement>(
+    `#${listboxId.value}-option-${highlightedIndex.value}`,
+  )
+
+  option?.scrollIntoView({ block: 'nearest' })
+}
+
+const onKeydown = async (event: KeyboardEvent) => {
+  if (props.disabled) return
+
+  if (event.key === 'Escape') {
+    if (!showSuggestions.value) return
+
+    event.preventDefault()
+    suppressSuggestions.value = true
+    resetHighlight()
+    return
+  }
+
+  if (!results.value.length || isSearching.value) return
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    highlightedIndex.value = highlightedIndex.value < 0
+      ? 0
+      : Math.min(highlightedIndex.value + 1, results.value.length - 1)
+    await scrollHighlightedIntoView()
+    return
+  }
+
+  if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    highlightedIndex.value = highlightedIndex.value <= 0
+      ? 0
+      : highlightedIndex.value - 1
+    await scrollHighlightedIntoView()
+    return
+  }
+
+  if (event.key === 'Enter' && highlightedIndex.value >= 0) {
+    event.preventDefault()
+    const municipality = results.value[highlightedIndex.value]
+    if (municipality) {
+      await selectMunicipality(municipality)
+    }
+  }
+}
 
 const onSearchInput = (value: string) => {
   if (isSyncingSearch.value) return
 
+  suppressSuggestions.value = false
+  resetHighlight()
   emit('update:modelValue', '')
 
   if (!value.trim()) {
@@ -130,6 +216,8 @@ const onSearchInput = (value: string) => {
 
 const selectMunicipality = async (municipality: { id: string, label: string }) => {
   isSyncingSearch.value = true
+  suppressSuggestions.value = false
+  resetHighlight()
   emit('update:modelValue', municipality.id)
   search.value = municipality.label
   results.value = []
@@ -189,8 +277,14 @@ const setMunicipality = async (
 const reset = () => {
   search.value = ''
   results.value = []
+  suppressSuggestions.value = false
+  resetHighlight()
   emit('update:modelValue', '')
 }
+
+watch(results, () => {
+  resetHighlight()
+})
 
 watch(searchDebounced, async (term) => {
   if (props.modelValue) return

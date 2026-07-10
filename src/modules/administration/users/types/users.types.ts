@@ -1,4 +1,5 @@
 import type { ApiResponse } from '~/shared/interfaces/api';
+import type { Municipality } from '~/core/ubication/types/municipality.interface';
 
 export const USER_TYPE = {
     USUARIO: 'USUARIO',
@@ -44,16 +45,19 @@ export interface UserCompany {
     tradeName: string | null;
     email: string;
     isOwner: boolean;
+    roles: {
+        id: string;
+        name: string;
+    }[]
 }
-
 
 export interface UserAccount {
     id: string;
-    accountNumber: string;
-    accountType: string;
-    accountBalance: number;
-    accountStatus: string;
-    accountCreatedAt: string;
+    code: string;
+    isActive: boolean;
+    isDeleted: boolean;
+    isDemo: boolean;
+    createdAt: string;
 }
 
 
@@ -62,9 +66,9 @@ export interface UserSession {
     loginAt: string;
     logoutAt: string | null;
     device: string | null;
-    browser: string | null;
-    operatingSystem: string | null;
-    ip: string | null;
+    browser: string;
+    operatingSystem: string;
+    ip: string;
     country: string | null;
     city: string | null;
     refreshCount: number;
@@ -81,8 +85,14 @@ export interface UserList extends UserBase {
     isActive: boolean;
     createdAt?: string;
     companies?: UserCompany[];
+    account?: UserAccount | UserAccount[];
     accounts?: UserAccount[];
     sessions?: UserSession[];
+    birthDate: string;
+    municipalityId: string;
+    municipality?: Municipality;
+    phonePrefix: string;
+    phoneNumber: string;
 }
 
 export type User = UserList;
@@ -99,13 +109,11 @@ export type PaginatedUsersResponse = {
 
 
 export interface UserCreate extends UserBase {
-    password: string;        
+    password: string;
     userType: UserType;
 }
 
-export interface UserUpdate extends UserBase {
-    password?: string;
-}
+export type UserUpdate = Omit<UserBase, 'isDemo'>
 
 
 

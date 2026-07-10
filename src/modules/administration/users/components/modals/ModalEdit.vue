@@ -3,7 +3,7 @@
     id="edit-user-modal"
     :modal-open="modalOpen"
     title="Editar usuario"
-    description="Actualiza los datos del usuario. El nombre de usuario y el tipo no se pueden modificar."
+    description="Actualiza los datos del usuario. El tipo no se puede modificar."
     size="4xl"
     @close-modal="handleClose"
   >
@@ -20,6 +20,7 @@
       :key="user.id"
       ref="formRef"
       mode="edit"
+      :initial-user="user"
       @submit="handleEdit"
     />
 
@@ -40,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { ref } from 'vue'
 
 import { Button } from '~/core/ui/buttons'
 import { ModalBasic } from '~/core/ui/modal'
@@ -61,32 +62,6 @@ const emit = defineEmits<{
 const usersStore = useUsersStore()
 const formRef = ref<InstanceType<typeof FormUser> | null>(null)
 const isSubmitting = ref(false)
-
-const waitForFormRef = async () => {
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    await nextTick()
-    if (formRef.value) return true
-  }
-
-  return false
-}
-
-const loadUser = async (user: User) => {
-  const isReady = await waitForFormRef()
-  if (!isReady) return
-
-  await formRef.value?.setValues(user)
-}
-
-watch(
-  () => [props.modalOpen, props.user] as const,
-  async ([isOpen, user]) => {
-    if (!isOpen || !user) return
-
-    await nextTick()
-    await loadUser(user)
-  },
-)
 
 const handleClose = () => {
   if (isSubmitting.value) return
