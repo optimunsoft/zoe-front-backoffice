@@ -71,7 +71,7 @@
           <div class="w-full sm:w-64">
             <InputSearch
               v-model="searchQuery"
-              placeholder="Buscar..."
+              placeholder="Buscar por Nombre..."
               search-label="Buscar"
             />
           </div>

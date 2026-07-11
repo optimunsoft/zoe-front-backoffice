@@ -26,7 +26,7 @@
         </div>
 
         <div class="company-config-panel__body">
-          <div class="space-y-2">
+          <div class="company-config-panel__toolbar">
             <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
               Tipo de asignación
             </p>
@@ -168,6 +168,7 @@
         class="company-config-panel"
         mode="edit"
         :company-id="companyId"
+        align-toolbar
       />
     </div>
   </div>

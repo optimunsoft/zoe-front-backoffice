@@ -7,6 +7,12 @@
     </div>
 
     <div class="company-config-panel__body">
+      <div
+        v-if="alignToolbar"
+        class="company-config-panel__toolbar"
+        aria-hidden="true"
+      />
+
       <div ref="moduleAnchorRef" class="company-config-panel__search">
         <input
           id="company-module-search"
@@ -235,6 +241,7 @@ defineOptions({
 const props = defineProps<{
   mode: 'create' | 'edit'
   companyId?: string | null
+  alignToolbar?: boolean
 }>()
 
 const modulesStore = useModulesStore()

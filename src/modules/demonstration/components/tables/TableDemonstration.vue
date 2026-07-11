@@ -121,7 +121,6 @@ import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableRow } from '~/core/ui/Tables/utable.types'
 import { useTableRefresh } from '~/shared/composables/use-table-refresh'
-import { DATE_PERIOD_DEFAULT } from '~/shared/constants/date-periods'
 import type { DatePeriodId } from '~/shared/constants/date-periods'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
 import { buildFilterPillOptions, filterItemsByPill } from '~/shared/utils/build-filter-pill-options'
@@ -144,7 +143,7 @@ const emit = defineEmits<{
 
 const demonstrationsStore = useDemonstrationsStore()
 const searchQuery = ref('')
-const datePeriod = ref<DatePeriodId>(DATE_PERIOD_DEFAULT)
+const datePeriod = ref<DatePeriodId>(4)
 const statusFilter = ref('all')
 const {
     isLoading,

@@ -64,14 +64,52 @@ const pickDateValue = (source: RawDemonstrationRecord, ...keys: string[]): Date 
 }
 
 const pickTotal = (source: RawDemonstrationRecord, fallback: number) => {
-  const value = source.total
-  if (typeof value === 'number' && Number.isFinite(value)) return value
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Number(value)
-    if (Number.isFinite(parsed)) return parsed
+  const pagination = source.pagination ?? source.meta ?? source.metadata
+  const paginationRecord = pagination && typeof pagination === 'object'
+    ? pagination as RawDemonstrationRecord
+    : null
+
+  const candidates: unknown[] = [
+    source.total,
+    source.totalCount,
+    source.total_count,
+    source.count,
+    source.totalRecords,
+    source.total_records,
+    source.totalElements,
+    source.total_elements,
+    paginationRecord?.total,
+    paginationRecord?.totalCount,
+    paginationRecord?.total_count,
+    paginationRecord?.count,
+  ]
+
+  for (const value of candidates) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number(value)
+      if (Number.isFinite(parsed)) return parsed
+    }
   }
 
   return fallback
+}
+
+const pickListItems = (source: RawDemonstrationRecord): unknown[] | null => {
+  const nested = source.data ?? source.items ?? source.demonstrations ?? source.results
+    ?? source.rows ?? source.content ?? source.records
+
+  if (Array.isArray(nested)) return nested
+
+  if (nested && typeof nested === 'object') {
+    const paginated = nested as RawDemonstrationRecord
+    const data = paginated.data ?? paginated.items ?? paginated.demonstrations ?? paginated.results
+      ?? paginated.rows ?? paginated.content ?? paginated.records
+
+    if (Array.isArray(data)) return data
+  }
+
+  return null
 }
 
 export const normalizeDemonstrationListItem = (
@@ -110,26 +148,13 @@ export const normalizeDemonstrationsListResponse = (
   }
 
   const record = response as RawDemonstrationRecord
-  const nested = record.data ?? record.items ?? record.demonstrations ?? record.results
+  const listItems = pickListItems(record)
 
-  if (Array.isArray(nested)) {
-    const demonstrations = mapItems(nested)
+  if (listItems) {
+    const demonstrations = mapItems(listItems)
     return {
       demonstrations,
       total: pickTotal(record, demonstrations.length),
-    }
-  }
-
-  if (nested && typeof nested === 'object') {
-    const paginated = nested as RawDemonstrationRecord
-    const data = paginated.data ?? paginated.items ?? paginated.demonstrations ?? paginated.results
-
-    if (Array.isArray(data)) {
-      const demonstrations = mapItems(data)
-      return {
-        demonstrations,
-        total: pickTotal(paginated, pickTotal(record, demonstrations.length)),
-      }
     }
   }
 

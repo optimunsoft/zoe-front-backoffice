@@ -81,6 +81,21 @@
 
         <div class="company-data-form__col">
           <InputSelect
+            id="company-vat-regime"
+            v-model="form.vatRegimeId"
+            name="vatRegimeId"
+            label="Régimen de IVA"
+            placeholder="Seleccionar"
+            required
+            :options="vatRegimeOptions"
+            :error="errors.vatRegimeId"
+          />
+        </div>
+      </div>
+
+      <div class="company-data-form__row">
+        <div class="company-data-form__col">
+          <InputSelect
             id="company-business-nature"
             v-model="form.businessNatureId"
             name="businessNatureId"
@@ -90,6 +105,18 @@
             :options="businessNatureOptions"
             :error="errors.businessNatureId"
             @update:model-value="onBusinessNatureChange"
+          />
+        </div>
+
+        <div class="company-data-form__col">
+          <InputText
+            id="company-business-name"
+            v-model="form.businessName"
+            name="businessName"
+            label="Razón social"
+            placeholder="Razón social"
+            :required="isJuridicaPerson"
+            :error="errors.businessName"
           />
         </div>
       </div>
@@ -153,18 +180,6 @@
       <div class="company-data-form__row">
         <div class="company-data-form__col">
           <InputText
-            id="company-business-name"
-            v-model="form.businessName"
-            name="businessName"
-            label="Razón social"
-            placeholder="Razón social"
-            :required="isJuridicaPerson"
-            :error="errors.businessName"
-          />
-        </div>
-
-        <div class="company-data-form__col">
-          <InputText
             id="company-address"
             v-model="form.address"
             name="address"
@@ -174,9 +189,7 @@
             :error="errors.address"
           />
         </div>
-      </div>
 
-      <div class="company-data-form__row">
         <div class="company-data-form__col">
           <InputText
             id="company-email"
@@ -189,7 +202,9 @@
             :error="errors.email"
           />
         </div>
+      </div>
 
+      <div class="company-data-form__row">
         <div class="company-data-form__col">
           <InputMunicipalitySearch
             id="company-municipality-search"
@@ -200,9 +215,7 @@
             @update:model-value="errors.municipalityId = ''"
           />
         </div>
-      </div>
 
-      <div class="company-data-form__row">
         <div class="company-data-form__col">
           <InputText
             id="company-accountant-name"
@@ -214,7 +227,9 @@
             @update:model-value="onAccountantNameChange"
           />
         </div>
+      </div>
 
+      <div class="company-data-form__row">
         <div class="company-data-form__col">
           <InputText
             id="company-professional-card"
@@ -230,20 +245,7 @@
         </div>
       </div>
 
-      <div class="company-data-form__row company-data-form__row--single">
-        <div class="company-data-form__col">
-          <InputSelect
-            id="company-vat-regime"
-            v-model="form.vatRegimeId"
-            name="vatRegimeId"
-            label="Régimen de IVA"
-            placeholder="Seleccionar"
-            required
-            :options="vatRegimeOptions"
-            :error="errors.vatRegimeId"
-          />
-        </div>
-      </div>
+
     </div>
   </div>
 
