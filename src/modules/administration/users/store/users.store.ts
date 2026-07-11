@@ -9,8 +9,6 @@ export const useUsersStore = defineStore('users', () => {
     const total = ref(0);
     const page = ref(1);
     const amount = ref(10);
-    const cachedPages = ref<Record<string, { users: UserList[]; total: number }>>({});
-    const pendingRequests = new Map<string, Promise<void>>();
 
     const normalizeUserListItem = (user: UserList): UserList => {
         if (user.accounts?.length) return user
@@ -36,62 +34,15 @@ export const useUsersStore = defineStore('users', () => {
         };
     };
 
-    const queryFilters = ref<Pick<GetUsersParams, 'search' | 'companyId' | 'isAdmin' | 'isDemo' | 'type'>>({});
+    const getUsers = async (params: GetUsersParams) => {
+        page.value = params.page;
+        amount.value = params.amount;
 
-    const buildCacheKey = (params: GetUsersParams) =>
-        `${params.page}:${params.amount}:${params.search ?? ''}:${params.companyId ?? ''}:${params.isAdmin ?? ''}:${params.isDemo ?? ''}:${params.type ?? ''}`;
+        const { response } = await useUsersService().getUsers(params);
+        const normalized = normalizeResponse(response);
 
-    const getUsers = async (params: GetUsersParams, force = false) => {
-        const mergedParams: GetUsersParams = {
-            page: params.page,
-            amount: params.amount,
-            search: 'search' in params ? params.search : queryFilters.value.search,
-            companyId: 'companyId' in params ? params.companyId : queryFilters.value.companyId,
-            isAdmin: 'isAdmin' in params ? params.isAdmin : queryFilters.value.isAdmin,
-            isDemo: 'isDemo' in params ? params.isDemo : queryFilters.value.isDemo,
-            type: 'type' in params ? params.type : queryFilters.value.type,
-        };
-
-        queryFilters.value = {
-            search: mergedParams.search,
-            companyId: mergedParams.companyId,
-            isAdmin: mergedParams.isAdmin,
-            isDemo: mergedParams.isDemo,
-            type: mergedParams.type,
-        };
-
-        const cacheKey = buildCacheKey(mergedParams);
-        page.value = mergedParams.page;
-        amount.value = mergedParams.amount;
-
-        if (!force && cachedPages.value[cacheKey]) {
-            users.value = cachedPages.value[cacheKey].users;
-            total.value = cachedPages.value[cacheKey].total;
-            return;
-        }
-
-        const pendingRequest = pendingRequests.get(cacheKey);
-        if (!force && pendingRequest) {
-            await pendingRequest;
-            return;
-        }
-
-        const request = (async () => {
-            const { response } = await useUsersService().getUsers(mergedParams);
-            const normalized = normalizeResponse(response);
-
-            users.value = normalized.users;
-            total.value = normalized.total;
-            cachedPages.value[cacheKey] = normalized;
-        })();
-
-        pendingRequests.set(cacheKey, request);
-
-        try {
-            await request;
-        } finally {
-            pendingRequests.delete(cacheKey);
-        }
+        users.value = normalized.users;
+        total.value = normalized.total;
     }
 
     const createUser = async (user: UserRequestBody) => {
@@ -118,7 +69,6 @@ export const useUsersStore = defineStore('users', () => {
         total,
         page,
         amount,
-        cachedPages,
         getUsers,
         createUser,
         updateUser,

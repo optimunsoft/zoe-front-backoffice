@@ -22,6 +22,7 @@
         mode="edit"
         :initial-user="user"
         @submit="handleEdit"
+        @refresh="emit('updated')"
       />
     </template>
 
@@ -87,10 +88,6 @@ const handleEdit = async (payload: UserCreate | UserUpdate) => {
 
   try {
     await usersStore.updateUser(userId, payload as UserUpdate)
-    await usersStore.getUsers({
-      amount: usersStore.amount,
-      page: usersStore.page,
-    }, true)
     formRef.value?.reset()
     emit('updated')
     emit('close-modal')

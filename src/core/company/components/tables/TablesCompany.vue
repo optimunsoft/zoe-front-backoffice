@@ -208,6 +208,14 @@
       :user="permissionsContext.user"
       @close-modal="handleClosePermissionsModal"
     />
+
+    <ModalAssignUsers
+      :modal-open="assignUsersModalOpen"
+      :company-id="assignUsersContext.companyId"
+      :company-name="assignUsersContext.companyName"
+      @close-modal="handleCloseAssignUsersModal"
+      @updated="handleAssignUsersUpdated"
+    />
   </div>
 </template>
 
@@ -250,6 +258,7 @@ import { buildFilterPillOptions, filterItemsByPill } from '~/shared/utils/build-
 import ModalCreate from '../modals/ModalCreate.vue'
 import ModalEdit from '../modals/ModalEdit.vue'
 import ModalPermissionRolUser from '../modals/ModalPermissionRolUser.vue'
+import ModalAssignUsers from '../modals/ModalAssignUsers.vue'
 import TableCompanyUsers from './TableCompanyUsers.vue'
 import { useAuthStore } from '~/core/auth/store/auth.store'
 import { useMunicipalityService } from '~/core/ubication/services/municipality.service'
@@ -258,6 +267,11 @@ type PermissionsContext = {
   companyId: string
   companyName: string
   user: userCompany | null
+}
+
+type AssignUsersContext = {
+  companyId: string
+  companyName: string
 }
 
 const catalogStore = useCatalogStore()
@@ -300,11 +314,16 @@ const {
 const { modalOpen: createModalOpen, open: openCreateModal, close: closeCreateModal } = useModal()
 const { modalOpen: editModalOpen, open: openEditModal, close: closeEditModal } = useModal()
 const { modalOpen: permissionsModalOpen, open: openPermissionsModal, close: closePermissionsModal } = useModal()
+const { modalOpen: assignUsersModalOpen, open: openAssignUsersModal, close: closeAssignUsersModal } = useModal()
 const editingCompany = ref<Company | null>(null)
 const permissionsContext = ref<PermissionsContext>({
   companyId: '',
   companyName: '',
   user: null,
+})
+const assignUsersContext = ref<AssignUsersContext>({
+  companyId: '',
+  companyName: '',
 })
 
 const totalCompanies = computed(() => companyStore.total)
@@ -442,6 +461,16 @@ const handleRowAction = ({ action, row }: { action: string, row: UTableRow }) =>
     expandedUsersRowKey.value = null
   }
 
+  if (action === 'assign-users') {
+    if (row.id == null) return
+
+    handleOpenAssignUsersModal({
+      companyId: String(row.id),
+      companyName: formatTableText(row.businessName),
+    })
+    return
+  }
+
   if (action === 'edit') {
     if (row.id == null) return
 
@@ -531,6 +560,28 @@ const handleClosePermissionsModal = () => {
     user: null,
   }
   closePermissionsModal()
+}
+
+const handleOpenAssignUsersModal = (payload: { companyId: string, companyName: string }) => {
+  const company = companyStore.getCompanyFromList(payload.companyId)
+
+  assignUsersContext.value = {
+    companyId: payload.companyId,
+    companyName: payload.companyName || company?.businessName || company?.tradeName || '',
+  }
+  openAssignUsersModal()
+}
+
+const handleCloseAssignUsersModal = () => {
+  assignUsersContext.value = {
+    companyId: '',
+    companyName: '',
+  }
+  closeAssignUsersModal()
+}
+
+const handleAssignUsersUpdated = async () => {
+  await fetchCompanies(currentPage.value, true)
 }
 
 const handleCompanyStatusUpdated = (active: boolean) => {

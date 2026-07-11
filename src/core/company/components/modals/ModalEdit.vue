@@ -106,12 +106,13 @@ const handleStatusUpdated = (active: boolean) => {
 }
 
 const handleEdit = async (payload: CompanyUpdateRequestBody) => {
-  if (isSubmitting.value || !props.company?.id) return
+  const companyId = props.company?.id
+  if (isSubmitting.value || !companyId) return
 
   isSubmitting.value = true
 
   try {
-    await companyStore.updateCompany(props.company.id, payload)
+    await companyStore.updateCompany(companyId, payload)
     formRef.value?.reset()
     emit('close-modal')
     emit('updated')

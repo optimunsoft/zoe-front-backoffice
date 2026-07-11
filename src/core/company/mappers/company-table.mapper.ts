@@ -40,7 +40,7 @@ export const companyColumns: UTableColumn[] = [
   { key: 'municipality', label: 'Ciudad' },
   {
     key: 'hasApiKey',
-    label: 'API',
+    label: 'API KEY',
     type: 'badge',
     align: 'center',
     badgeColorMap: API_KEY_BADGE_COLORS,

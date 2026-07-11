@@ -110,10 +110,7 @@
       <template #actions="{ row }">
         <div class="flex justify-start space-x-1">
           <Tooltip
-            v-for="action in resolveUserTableActions({
-              hasCompanies: Boolean(row.hasCompanies),
-              hasSessions: Boolean(row.hasSessions),
-            })"
+            v-for="action in resolveUserTableActions()"
             :key="action.key"
             bg="light"
             position="top"
@@ -203,12 +200,14 @@
     <ModalCreate
       :modal-open="createModalOpen"
       @close-modal="closeCreateModal"
+      @created="handleUsersMutated"
     />
 
     <ModalEdit
       :modal-open="editModalOpen"
       :user="editingUser"
       @close-modal="closeEditModal"
+      @updated="handleUsersMutated"
     />
 
     <ModalPermissionRolUser
@@ -557,7 +556,7 @@ const hasUserEmail = (value: unknown) => {
   return email.length > 0 && email !== '-'
 }
 
-const fetchUsers = async (page: number, force = false) => {
+const fetchUsers = async (page: number) => {
   currentPage.value = page
 
   await withTableLoading(async () => {
@@ -567,10 +566,14 @@ const fetchUsers = async (page: number, force = false) => {
       search: debouncedSearch.value || undefined,
       companyId: selectedCompanyId.value,
       ...resolveListQueryParams(),
-    }, force)
+    })
     selectedItems.value = []
     expandedCompaniesRowKey.value = null
   })
+}
+
+const handleUsersMutated = async () => {
+  await fetchUsers(currentPage.value)
 }
 
 const handleCreateUser = () => {
@@ -584,7 +587,7 @@ const handleChangePage = async (page: number) => {
 
 const handleReload = async () => {
   if (isLoading.value) return
-  await fetchUsers(currentPage.value, true)
+  await fetchUsers(currentPage.value)
 }
 
 onMounted(() => {

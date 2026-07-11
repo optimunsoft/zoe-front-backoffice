@@ -74,7 +74,7 @@ const handleConfirm = async () => {
   isDeleting.value = true
 
   try {
-    await demonstrationsStore.deleteDemonstration(props.demonstrationId)
+    await demonstrationsStore.deleteDemonstration(props.demonstrationId!)
 
     const isLastItemOnPage = demonstrationsStore.demonstrations.length === 1
     const shouldGoToPreviousPage = isLastItemOnPage && demonstrationsStore.page > 1

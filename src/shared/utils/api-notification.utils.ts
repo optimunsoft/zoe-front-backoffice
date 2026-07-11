@@ -44,16 +44,14 @@ export const shouldSkipApiNotification = (
 }
 
 export const shouldShowApiSuccessNotification = (
-  request: unknown,
-  response: FetchResponse<unknown>,
-  options: ApiRequestOptions,
+  _request: unknown,
+  _response: FetchResponse<unknown>,
+  _options: ApiRequestOptions,
 ) => {
-  if (shouldSkipApiNotification(request, options)) return false
-  if (response.status < 200 || response.status >= 300) return false
-  if (!MUTATION_METHODS.has(getRequestMethod(options))) return false
-
-  const requestUrl = getRequestUrl(request)
-  return !matchesPath(requestUrl, NOTIFICATION_SUCCESS_SILENT_PATHS)
+  // La retroalimentación de éxito ahora es el spinner inline en la acción
+  // (Button :loading / Spinner) y el cierre del modal.
+  // El modal de alerta solo se muestra en errores.
+  return false
 }
 
 export const shouldShowApiErrorNotification = (

@@ -118,7 +118,7 @@ const handleEdit = async (payload: Demonstration | UpdateDemonstration) => {
   isSubmitting.value = true
 
   try {
-    await demonstrationsStore.UpdateDemonstration(props.demonstrationId, demonstration)
+    await demonstrationsStore.UpdateDemonstration(props.demonstrationId!, demonstration)
     await demonstrationsStore.getDemonstrations({
       amount: demonstrationsStore.amount,
       page: demonstrationsStore.page,

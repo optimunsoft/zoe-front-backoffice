@@ -29,11 +29,12 @@
           type="button"
           class="company-config-panel__search-action"
           aria-label="Agregar módulo"
-          :disabled="isSearchingModules"
+          :disabled="isSearchingModules || addingModuleId !== null"
           @mousedown.prevent
           @click="confirmAddModule"
         >
-          <UiIcon name="plus" size="sm" />
+          <Spinner v-if="addingModuleId !== null" size="sm" />
+          <UiIcon v-else name="plus" size="sm" />
         </button>
       </div>
 
@@ -122,7 +123,13 @@
               </p>
             </div>
           </div>
+          <Spinner
+            v-if="updatingModuleId === module.value"
+            size="md"
+            class="shrink-0 text-sky-500 dark:text-sky-300"
+          />
           <InputSwitch
+            v-else
             :id="`company-module-active-${module.value}`"
             :model-value="isModuleActive(module.value)"
             :label="`Estado del módulo ${module.label}`"
@@ -222,6 +229,7 @@ import { refDebounced } from '@vueuse/core'
 import { useModulesStore } from '~/modules/modules/store/modules.store'
 import { Button } from '~/core/ui/buttons'
 import { ModalAction } from '~/core/ui/modal'
+import { Spinner } from '~/core/ui/loader'
 import InputSwitch from '~/core/ui/inputs/InputSwitch.vue'
 import { UiIcon, type UiIconName } from '~/core/ui/icons'
 import { ActiveModule, type CompanyModule } from '../../types/company.types'
@@ -260,6 +268,8 @@ const moduleSearch = ref('')
 const moduleSearchDebounced = refDebounced(moduleSearch, 300)
 const isSearchingModules = ref(false)
 const isUpdatingModuleStatus = ref(false)
+const updatingModuleId = ref<string | null>(null)
+const addingModuleId = ref<string | null>(null)
 const showModuleSuggestions = ref(false)
 
 const moduleStatusModalOpen = ref(false)
@@ -366,10 +376,14 @@ const addModule = async (moduleId: string) => {
       }
 
   if (props.companyId && isEditMode.value) {
+    addingModuleId.value = moduleId
+
     try {
-      await companyStore.assignModulesToCompany(props.companyId, moduleId, ActiveModule.ACTIVO)
+      await companyStore.assignModulesToCompany(props.companyId!, moduleId, ActiveModule.ACTIVO)
     } catch {
       return
+    } finally {
+      addingModuleId.value = null
     }
   }
 
@@ -389,13 +403,15 @@ const setModuleActive = async (moduleId: string, active: boolean) => {
 
   if (props.companyId && isEditMode.value) {
     isUpdatingModuleStatus.value = true
+    updatingModuleId.value = moduleId
 
     try {
-      await companyStore.assignModulesToCompany(props.companyId, moduleId, nextAction)
+      await companyStore.assignModulesToCompany(props.companyId!, moduleId, nextAction)
     } catch {
       return
     } finally {
       isUpdatingModuleStatus.value = false
+      updatingModuleId.value = null
     }
   }
 
@@ -465,6 +481,9 @@ const reset = () => {
   pendingModuleId.value = null
   pendingModuleActive.value = null
   pendingModuleName.value = ''
+  updatingModuleId.value = null
+  addingModuleId.value = null
+  isUpdatingModuleStatus.value = false
   syncModuleAssignments([])
 }
 

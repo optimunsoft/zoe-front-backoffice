@@ -74,7 +74,7 @@ const handleConfirm = async () => {
   isDeleting.value = true
 
   try {
-    await modulesStore.deleteModule(props.moduleId)
+    await modulesStore.deleteModule(props.moduleId!)
     await modulesStore.fetchModules(true)
     emit('deleted')
     emit('close-modal')

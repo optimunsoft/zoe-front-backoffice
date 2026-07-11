@@ -188,7 +188,7 @@ const onCompanyStatusChange = async (active: boolean) => {
   isUpdatingCompanyStatus.value = true
 
   try {
-    await companyStore.getStatusCompanies(editingCompanyId.value, active)
+    await companyStore.getStatusCompanies(editingCompanyId.value!, active)
     emit('status-updated', active)
   } catch {
     form.isActive = previousValue

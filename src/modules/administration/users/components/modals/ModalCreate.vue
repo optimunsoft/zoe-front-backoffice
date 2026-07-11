@@ -77,10 +77,6 @@ const handleCreate = async (payload: UserCreate | UserUpdate) => {
 
   try {
     await usersStore.createUser(payload as UserCreate)
-    await usersStore.getUsers({
-      amount: usersStore.amount,
-      page: usersStore.page,
-    }, true)
     formRef.value?.reset()
     emit('created')
     emit('close-modal')

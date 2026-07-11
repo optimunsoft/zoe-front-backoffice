@@ -183,17 +183,24 @@
                 >
                   Usuario activo
                 </label>
-                <InputSwitch
-                  id="user-is-active"
-                  :model-value="userIsActive"
-                  label="Usuario activo"
-                  :show-state-label="false"
-                  on-label="Activo"
-                  off-label="Inactivo"
-                  wrapper-class="shrink-0"
-                  :disabled="isUpdatingUserStatus"
-                  @update:model-value="onUserStatusChange"
-                />
+                <div class="flex shrink-0 items-center gap-2">
+                  <Spinner
+                    v-if="isUpdatingUserStatus"
+                    size="md"
+                    class="text-violet-500 dark:text-violet-300"
+                  />
+                  <InputSwitch
+                    id="user-is-active"
+                    :model-value="userIsActive"
+                    label="Usuario activo"
+                    :show-state-label="false"
+                    on-label="Activo"
+                    off-label="Inactivo"
+                    wrapper-class="shrink-0"
+                    :disabled="isUpdatingUserStatus"
+                    @update:model-value="onUserStatusChange"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -214,17 +221,24 @@
                 >
                   Usuario demo
                 </label>
-                <InputSwitch
-                  id="user-is-demo"
-                  :model-value="userIsDemo"
-                  label="Usuario demo"
-                  :show-state-label="false"
-                  on-label="Sí"
-                  off-label="No"
-                  wrapper-class="shrink-0"
-                  :disabled="!canEditModulesAndBackoffice || isUpdatingDemoStatus || !editingAccountId"
-                  @update:model-value="onUserDemoStatusChange"
-                />
+                <div class="flex shrink-0 items-center gap-2">
+                  <Spinner
+                    v-if="isUpdatingDemoStatus"
+                    size="md"
+                    class="text-violet-500 dark:text-violet-300"
+                  />
+                  <InputSwitch
+                    id="user-is-demo"
+                    :model-value="userIsDemo"
+                    label="Usuario demo"
+                    :show-state-label="false"
+                    on-label="Sí"
+                    off-label="No"
+                    wrapper-class="shrink-0"
+                    :disabled="!canEditModulesAndBackoffice || isUpdatingDemoStatus || !editingAccountId"
+                    @update:model-value="onUserDemoStatusChange"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -308,6 +322,7 @@ import InputText from '~/core/ui/inputs/InputText.vue'
 import { UTabs } from '~/core/ui/tabs'
 import type { UiTabItem } from '~/core/ui/tabs'
 import type { InputSelectOption } from '~/core/ui/inputs/input.types'
+import { Spinner } from '~/core/ui/loader'
 import { BACKOFFICE_ROLE, USER_TYPE, type User, type UserCreate, type UserUpdate } from '../../types/users.types'
 import { getPrimaryUserAccount, resolveUserAccountDemo } from '../../utils/user-account.utils'
 import { useUsersStore } from '../../store/users.store'
@@ -340,6 +355,7 @@ const isCreateMode = computed(() => props.mode === 'create')
 
 const emit = defineEmits<{
   submit: [payload: UserCreate | UserUpdate]
+  refresh: []
 }>()
 
 const ubicationStore = useUbicationStore()
@@ -466,11 +482,8 @@ const onPhoneNumberChange = (value: string) => {
   errors.phoneNumber = ''
 }
 
-const refreshUsersList = async () => {
-  await usersStore.getUsers({
-    amount: usersStore.amount,
-    page: usersStore.page,
-  }, true)
+const refreshUsersList = () => {
+  emit('refresh')
 }
 
 const onUserStatusChange = async (active: boolean) => {
@@ -481,7 +494,7 @@ const onUserStatusChange = async (active: boolean) => {
   isUpdatingUserStatus.value = true
 
   try {
-    await usersStore.changesStatusUser(editingUserId.value, active)
+    await usersStore.changesStatusUser(editingUserId.value!, active)
     await refreshUsersList()
   } catch {
     userIsActive.value = previousValue
@@ -498,7 +511,7 @@ const onUserDemoStatusChange = async (demo: boolean) => {
   isUpdatingDemoStatus.value = true
 
   try {
-    await usersStore.changesStatusDemoUser(editingAccountId.value, demo)
+    await usersStore.changesStatusDemoUser(editingAccountId.value!, demo)
     form.isDemo = demo
     await refreshUsersList()
   } catch {
