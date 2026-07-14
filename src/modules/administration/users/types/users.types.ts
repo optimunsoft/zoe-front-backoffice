@@ -22,6 +22,7 @@ export type GetUsersParams = {
     companyId?: string;
     isAdmin?: boolean;
     isDemo?: boolean;
+    isActive?: boolean;
     type?: UserType | string;
 };
 export interface UserBase {
@@ -84,6 +85,8 @@ export interface UserList extends UserBase {
     userType: string;
     isActive: boolean;
     createdAt?: string;
+    last_login_at: string | null;
+    total_sessions: number;
     companies?: UserCompany[];
     account?: UserAccount | UserAccount[];
     accounts?: UserAccount[];

@@ -1,5 +1,11 @@
 import { z } from 'zod'
 
+import {
+  DEFAULT_PHONE_PREFIX,
+  normalizePhonePrefixDigits,
+  resolveDefaultPhonePrefix,
+  resolvePhonePrefixOption,
+} from '~/core/ubication/utils/phone.utils'
 import type {
   Demonstration,
   DemonstrationResponse,
@@ -17,6 +23,57 @@ export const sanitizeDemonstrationName = (value: string) =>
 
 export const sanitizeDemonstrationPhone = (value: string) =>
   value.replace(/\D/g, '').slice(0, 15)
+
+export const splitDemonstrationPhone = (
+  phone: string,
+  countries: Array<{ phonePrefix: string }> = [],
+): { phonePrefix: string, phoneNumber: string } => {
+  const digits = sanitizeDemonstrationPhone(phone)
+  const defaultPrefix = resolveDefaultPhonePrefix(countries)
+
+  if (!digits) {
+    return {
+      phonePrefix: defaultPrefix,
+      phoneNumber: '',
+    }
+  }
+
+  const prefixes = [
+    ...new Set(
+      countries
+        .map((country) => normalizePhonePrefixDigits(country.phonePrefix))
+        .filter(Boolean)
+        .sort((a, b) => b.length - a.length),
+    ),
+  ]
+
+  if (!prefixes.includes(DEFAULT_PHONE_PREFIX)) {
+    prefixes.push(DEFAULT_PHONE_PREFIX)
+  }
+
+  for (const prefix of prefixes) {
+    if (digits.startsWith(prefix) && digits.length > prefix.length + 6) {
+      return {
+        phonePrefix: resolvePhonePrefixOption(prefix, countries),
+        phoneNumber: digits.slice(prefix.length),
+      }
+    }
+  }
+
+  return {
+    phonePrefix: defaultPrefix,
+    phoneNumber: digits,
+  }
+}
+
+export const buildDemonstrationPhone = (phonePrefix: string, phoneNumber: string) => {
+  const prefix = phonePrefix.trim().replace(/^\+/, '')
+  const number = sanitizeDemonstrationPhone(phoneNumber)
+
+  if (!prefix || !number) return number
+
+  return `+${prefix}${number}`
+}
 
 const scheduledDateValue = z.union([
   z.string(),
@@ -191,7 +248,11 @@ export const demonstrationFormSchema = z.object({
     .trim()
     .min(1, 'El email es obligatorio.')
     .email('Ingresa un email válido.'),
-  phone: z
+  phonePrefix: z
+    .string()
+    .trim()
+    .min(1, 'Selecciona el prefijo telefónico.'),
+  phoneNumber: z
     .string()
     .trim()
     .min(1, 'El teléfono es obligatorio.')
@@ -246,14 +307,22 @@ export const demonstrationUpdateFormSchema = demonstrationFormSchema.extend({
 export type DemonstrationFormValues = z.input<typeof demonstrationFormSchema>
 export type DemonstrationUpdateFormValues = z.input<typeof demonstrationUpdateFormSchema>
 export type DemonstrationFormErrors = Record<
-  'name' | 'email' | 'phone' | 'scheduledDate' | 'scheduledTime' | 'productInterest' | 'status',
+  | 'name'
+  | 'email'
+  | 'phonePrefix'
+  | 'phoneNumber'
+  | 'scheduledDate'
+  | 'scheduledTime'
+  | 'productInterest'
+  | 'status',
   string
 >
 
 export const emptyDemonstrationFormErrors = (): DemonstrationFormErrors => ({
   name: '',
   email: '',
-  phone: '',
+  phonePrefix: '',
+  phoneNumber: '',
   scheduledDate: '',
   scheduledTime: '',
   productInterest: '',
@@ -268,13 +337,16 @@ const formatTimeValue = (date: Date) => {
 
 export const mapDemonstrationResponseToFormValues = (
   demonstration: DemonstrationResponse,
+  countries: Array<{ phonePrefix: string }> = [],
 ): DemonstrationUpdateFormValues => {
   const scheduledAt = new Date(demonstration.scheduledAt)
+  const { phonePrefix, phoneNumber } = splitDemonstrationPhone(demonstration.phone, countries)
 
   return {
     name: demonstration.name,
     email: demonstration.email,
-    phone: sanitizeDemonstrationPhone(demonstration.phone),
+    phonePrefix,
+    phoneNumber,
     productInterest: normalizeProductInterest(demonstration.productInterest),
     scheduledDate: scheduledAt,
     scheduledTime: formatTimeValue(scheduledAt),
@@ -379,7 +451,7 @@ export const parseDemonstrationForm = (
     data: {
       name: result.data.name,
       email: result.data.email,
-      phone: result.data.phone,
+      phone: buildDemonstrationPhone(result.data.phonePrefix, result.data.phoneNumber),
       productInterest: result.data.productInterest,
       scheduledAt,
     },
@@ -420,7 +492,7 @@ export const parseDemonstrationUpdateForm = (
     data: {
       name: result.data.name,
       email: result.data.email,
-      phone: result.data.phone,
+      phone: buildDemonstrationPhone(result.data.phonePrefix, result.data.phoneNumber),
       productInterest: result.data.productInterest,
       scheduledAt,
       status: result.data.status,

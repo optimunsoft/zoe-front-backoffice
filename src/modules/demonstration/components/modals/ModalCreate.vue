@@ -14,7 +14,12 @@
         </div>
       </template>
 
-      <FormDemonstration ref="formRef" @submit="handleCreate" />
+      <FormDemonstration
+        v-if="modalOpen"
+        ref="formRef"
+        mode="create"
+        @submit="handleCreate"
+      />
 
       <template #footer>
         <Button variant="secondary" :disabled="isSubmitting" @click="handleClose">

@@ -1,5 +1,5 @@
 export type ApiResponse<T> = {
   response: T
   message?: string
-  status?: number
+  status?: boolean | number
 }

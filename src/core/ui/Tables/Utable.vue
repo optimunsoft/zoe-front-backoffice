@@ -9,11 +9,14 @@
       </h2>
     </header>
 
-    <div class="overflow-x-auto">
+    <div
+      class="overflow-auto"
+      :style="bodyMaxHeightStyle"
+    >
         <table class="table-auto w-full text-gray-600 dark:text-gray-300">
-          <thead class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/20 border-t border-b border-gray-100 dark:border-gray-700/60">
+          <thead class="sticky top-0 z-10 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border-t border-b border-gray-100 dark:border-gray-700/60 shadow-[inset_0_-1px_0_0_rgba(229,231,235,1)] dark:shadow-[inset_0_-1px_0_0_rgba(55,65,81,0.6)]">
             <tr>
-              <th v-if="selectable" class="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap w-px text-center">
+              <th v-if="selectable" class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap w-px text-center bg-gray-50 dark:bg-gray-900">
                 <div class="flex items-center justify-center">
                   <label class="inline-flex">
                     <span class="sr-only">Seleccionar todo</span>
@@ -24,7 +27,7 @@
               <th
                 v-for="column in columns"
                 :key="column.key"
-                class="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap text-left"
+                class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap text-left bg-gray-50 dark:bg-gray-900"
               >
                 <slot :name="`header-${column.key}`" :column="column">
                   <div class="font-semibold text-left">
@@ -32,7 +35,7 @@
                   </div>
                 </slot>
               </th>
-              <th v-if="showActions" class="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap text-left">
+              <th v-if="showActions" class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap text-left bg-gray-50 dark:bg-gray-900">
                 <slot name="header-actions">
                   <div v-if="actionsLabel" class="font-semibold text-left">{{ actionsLabel }}</div>
                   <span v-else class="sr-only">Menú</span>
@@ -44,7 +47,7 @@
           <tbody class="text-sm divide-y divide-gray-100 dark:divide-gray-700/60">
             <template v-for="row in rows" :key="getRowKey(row)">
               <tr>
-              <td v-if="selectable" class="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap w-px text-center">
+              <td v-if="selectable" class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap w-px text-center">
                 <div class="flex items-center justify-center">
                   <label class="inline-flex">
                     <span class="sr-only">Seleccionar</span>
@@ -62,9 +65,15 @@
               <td
                 v-for="column in columns"
                 :key="column.key"
-                class="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap text-left"
+                class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap text-left"
               >
-                <slot :name="`cell-${column.key}`" :row="row" :column="column" :value="row[column.key]">
+                <slot
+                  :name="`cell-${column.key}`"
+                  :row="row"
+                  :column="column"
+                  :value="row[column.key]"
+                  :formatted="formatCellValue(row[column.key])"
+                >
                   <!-- image-label -->
                   <div
                     v-if="column.type === 'image-label'"
@@ -126,7 +135,7 @@
                 </slot>
               </td>
 
-              <td v-if="showActions" class="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap w-px text-left">
+              <td v-if="showActions" class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap w-px text-left">
                 <slot name="actions" :row="row">
                   <!-- inline: botones por fila -->
                   <div v-if="actionsMode === 'inline'" class="flex justify-start space-x-1">
@@ -197,7 +206,7 @@
                 :id="`row-detail-${getRowKey(row)}`"
                 role="region"
               >
-                <td :colspan="columnCount" class="px-2 first:pl-5 last:pr-5 py-3">
+                <td :colspan="columnCount" class="px-2 first:pl-5 last:pr-5 py-1.5">
                   <slot name="row-detail" :row="row" />
                 </td>
               </tr>
@@ -217,7 +226,7 @@
 <script lang="ts">
 import { computed, ref, watch } from 'vue'
 
-import { toTitleCase } from '~/shared/utils/format'
+import { formatTableText } from '~/shared/utils/format'
 import { TableBadge } from '~/core/ui/badge'
 import type { BadgeColor } from '~/core/ui/badge/badge.types'
 import { UiIcon, resolveUiIconName } from '~/core/ui/icons'
@@ -304,11 +313,26 @@ export default {
       type: Boolean,
       default: false,
     },
+    /**
+     * Altura máxima del cuerpo de la tabla (CSS).
+     * Por defecto usa el espacio restante de la vista; si el contenido cabe, no aparece scroll.
+     * Vacío = sin límite de altura.
+     */
+    bodyMaxHeight: {
+      type: String,
+      default: 'calc(100dvh - 20rem)',
+    },
   },
   emits: ['change-selection', 'action'],
   setup(props, { emit }) {
     const selectAll = ref(false)
     const selected = ref<Array<string | number>>([])
+
+    const bodyMaxHeightStyle = computed(() => {
+      const maxHeight = props.bodyMaxHeight?.trim()
+      if (!maxHeight) return undefined
+      return { maxHeight }
+    })
 
     const columnCount = computed(() => {
       let count = props.columns.length
@@ -348,11 +372,7 @@ export default {
       selectAll.value = false
     })
 
-    const formatCellValue = (value: unknown) => {
-      if (typeof value !== 'string') return String(value ?? '')
-      if (value === '-') return value
-      return toTitleCase(value)
-    }
+    const formatCellValue = (value: unknown) => formatTableText(value)
 
     const cellVariantClass = (variant?: UTableColumn['variant']) => {
       if (variant === 'link') return 'font-medium text-sky-600'
@@ -378,9 +398,14 @@ export default {
     const resolveBadgeColor = (row: UTableRow, column: UTableColumn): BadgeColor => {
       const mapKey = resolveMapKey(row, column)
       const key = String(mapKey ?? row[column.key] ?? '')
+      const formattedKey = formatTableText(key)
 
       if (column.badgeColorMap?.[key]) {
         return column.badgeColorMap[key]
+      }
+
+      if (formattedKey && column.badgeColorMap?.[formattedKey]) {
+        return column.badgeColorMap[formattedKey]
       }
 
       return column.badgeColorFallback ?? 'neutral'
@@ -437,6 +462,7 @@ export default {
       selectAll,
       selected,
       columnCount,
+      bodyMaxHeightStyle,
       getRowKey,
       isRowSelected,
       toggleRow,

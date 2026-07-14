@@ -149,34 +149,16 @@
 
       <template #configuration>
         <section class="space-y-6">
-          <div class="space-y-3">
+          <div
+            v-if="isEditMode && editingUserId"
+            class="space-y-3"
+          >
             <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400">
               General
             </h3>
 
             <div class="flex flex-col gap-2">
               <div class="flex min-h-[3.75rem] items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2.5 dark:border-gray-700/60">
-                <label
-                  class="text-sm font-medium text-gray-800 dark:text-gray-100"
-                  for="user-is-verified"
-                >
-                  Verificado
-                </label>
-                <InputSwitch
-                  id="user-is-verified"
-                  v-model="form.isVerified"
-                  label="Verificado"
-                  :show-state-label="false"
-                  on-label="Sí"
-                  off-label="No"
-                  wrapper-class="shrink-0"
-                />
-              </div>
-
-              <div
-                v-if="isEditMode && editingUserId"
-                class="flex min-h-[3.75rem] items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2.5 dark:border-gray-700/60"
-              >
                 <label
                   class="text-sm font-medium text-gray-800 dark:text-gray-100"
                   for="user-is-active"
@@ -199,44 +181,6 @@
                     wrapper-class="shrink-0"
                     :disabled="isUpdatingUserStatus"
                     @update:model-value="onUserStatusChange"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="space-y-3">
-            <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400">
-              Módulos
-            </h3>
-
-            <div
-              class="flex flex-col gap-2"
-              :class="{ 'opacity-60': !canEditModulesAndBackoffice }"
-            >
-              <div class="flex min-h-[3.75rem] items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2.5 dark:border-gray-700/60">
-                <label
-                  class="text-sm font-medium text-gray-800 dark:text-gray-100"
-                  for="user-is-demo"
-                >
-                  Usuario demo
-                </label>
-                <div class="flex shrink-0 items-center gap-2">
-                  <Spinner
-                    v-if="isUpdatingDemoStatus"
-                    size="md"
-                    class="text-violet-500 dark:text-violet-300"
-                  />
-                  <InputSwitch
-                    id="user-is-demo"
-                    :model-value="userIsDemo"
-                    label="Usuario demo"
-                    :show-state-label="false"
-                    on-label="Sí"
-                    off-label="No"
-                    wrapper-class="shrink-0"
-                    :disabled="!canEditModulesAndBackoffice || isUpdatingDemoStatus || !editingAccountId"
-                    @update:model-value="onUserDemoStatusChange"
                   />
                 </div>
               </div>
@@ -324,7 +268,6 @@ import type { UiTabItem } from '~/core/ui/tabs'
 import type { InputSelectOption } from '~/core/ui/inputs/input.types'
 import { Spinner } from '~/core/ui/loader'
 import { BACKOFFICE_ROLE, USER_TYPE, type User, type UserCreate, type UserUpdate } from '../../types/users.types'
-import { getPrimaryUserAccount, resolveUserAccountDemo } from '../../utils/user-account.utils'
 import { useUsersStore } from '../../store/users.store'
 import {
   emptyUserFormErrors,
@@ -366,11 +309,8 @@ const errors = reactive<UserFormErrors>(emptyUserFormErrors())
 const municipalityFieldRef = ref<InstanceType<typeof InputMunicipalitySearch> | null>(null)
 const activeFormTab = ref('user-data')
 const editingUserId = ref<string | null>(null)
-const editingAccountId = ref<string | null>(null)
 const userIsActive = ref(true)
-const userIsDemo = ref(false)
 const isUpdatingUserStatus = ref(false)
-const isUpdatingDemoStatus = ref(false)
 
 const formTabs = computed<UiTabItem[]>(() => {
   const tabs: UiTabItem[] = [
@@ -426,6 +366,7 @@ const phonePrefixOptions = computed<InputSelectOption[]>(() => {
 const phoneFieldError = computed(() => errors.phonePrefix || errors.phoneNumber)
 
 const showPasswordRequirements = computed(() => {
+  if (errors.password) return true
   if (!form.password.length) return false
 
   return !arePasswordRequirementsComplete(form.password)
@@ -503,24 +444,6 @@ const onUserStatusChange = async (active: boolean) => {
   }
 }
 
-const onUserDemoStatusChange = async (demo: boolean) => {
-  if (!editingAccountId.value || userIsDemo.value === demo || isUpdatingDemoStatus.value) return
-
-  const previousValue = userIsDemo.value
-  userIsDemo.value = demo
-  isUpdatingDemoStatus.value = true
-
-  try {
-    await usersStore.changesStatusDemoUser(editingAccountId.value!, demo)
-    form.isDemo = demo
-    await refreshUsersList()
-  } catch {
-    userIsDemo.value = previousValue
-  } finally {
-    isUpdatingDemoStatus.value = false
-  }
-}
-
 const reset = () => {
   Object.assign(form, emptyUserFormValues())
   form.userType = USER_TYPE.USUARIO
@@ -532,21 +455,14 @@ const reset = () => {
   Object.assign(errors, emptyUserFormErrors())
   activeFormTab.value = 'user-data'
   editingUserId.value = null
-  editingAccountId.value = null
   userIsActive.value = true
-  userIsDemo.value = false
   isUpdatingUserStatus.value = false
-  isUpdatingDemoStatus.value = false
   municipalityFieldRef.value?.reset()
 }
 
 const setValues = async (user: User) => {
-  const account = getPrimaryUserAccount(user)
-
   editingUserId.value = user.id
-  editingAccountId.value = account?.id ?? null
   userIsActive.value = user.isActive
-  userIsDemo.value = account?.isDemo ?? false
 
   if (!ubicationStore.allCountries.length) {
     await ubicationStore.getAllCountries()

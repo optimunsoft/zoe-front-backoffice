@@ -2,19 +2,33 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { normalizeDemonstrationsListResponse } from '../schema/demonstrations.schema';
 import { useDemonstrationService } from '../services/demonstration.services';
-import type { Demonstration, DemonstrationResponse, UpdateDemonstration } from '../types/demonstration.types';
+import type {
+    Demonstration,
+    DemonstrationResponse,
+    GetDemonstrationsParams,
+    UpdateDemonstration,
+} from '../types/demonstration.types';
 
 export const useDemonstrationsStore = defineStore('demonstrations', () => {
     const demonstrations = ref<DemonstrationResponse[]>([]);
     const total = ref(0);
     const page = ref(1);
     const amount = ref(10);
+    const search = ref('');
 
-    const getDemonstrations = async (params: { amount: number, page: number }) => {
+    const getDemonstrations = async (params: GetDemonstrationsParams) => {
         page.value = params.page;
         amount.value = params.amount;
 
-        const { response } = await useDemonstrationService().getDemonstrations(params);
+        if ('search' in params) {
+            search.value = params.search?.trim() ?? '';
+        }
+
+        const { response } = await useDemonstrationService().getDemonstrations({
+            amount: params.amount,
+            page: params.page,
+            ...(search.value ? { search: search.value } : {}),
+        });
         const normalized = normalizeDemonstrationsListResponse(response);
 
         demonstrations.value = normalized.demonstrations;
@@ -46,6 +60,7 @@ export const useDemonstrationsStore = defineStore('demonstrations', () => {
         total,
         page,
         amount,
+        search,
         getDemonstrations,
         getDemonstrationById,
         createDemonstration,

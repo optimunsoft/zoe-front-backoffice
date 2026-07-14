@@ -24,6 +24,10 @@ const buildGetUsersQuery = (params: GetUsersParams): Record<string, string | num
     query.isDemo = params.isDemo
   }
 
+  if (params.isActive !== undefined) {
+    query.isActive = params.isActive
+  }
+
   const type = params.type?.trim()
   if (type) {
     query.type = type
@@ -63,18 +67,12 @@ export const useUsersService = () => {
     })
   }
 
-  const changesStatusDemoUser = async (accountId: string, demo: boolean): Promise<GetUsersResponse> => {
-    return $apiBackoffice<GetUsersResponse>(`administration/accounts/${accountId}/demo`, {
-      method: 'PATCH',
-      body: { isDemo: demo },
-    })
-  }
+
 
   return {
     getUsers,
     createUser,
     updateUser,
     changesStatusUser,
-    changesStatusDemoUser,
   }
 }

@@ -5,7 +5,7 @@
         label="Código"
         html-for="module-code"
         required
-        hint="Código numérico de exactamente 3 dígitos."
+        hint="Código alfanumérico. Puede incluir guiones (-)."
         :error="errors.code"
       >
         <input
@@ -13,13 +13,10 @@
           :value="form.code"
           name="code"
           type="text"
-          inputmode="numeric"
           autocomplete="off"
-          maxlength="3"
-          placeholder="ej. 001"
-          class="form-input w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          placeholder="ej. MOD-A01"
+          class="form-input w-full"
           :class="errors.code ? 'border-red-300 dark:border-red-500/50' : ''"
-          @keydown="blockNonDigitKeydown"
           @paste="onCodePaste"
           @input="onCodeInput"
           @blur="validateField('code')"
@@ -142,7 +139,7 @@ const onCodeInput = (event: Event) => {
 
 const onCodePaste = (event: ClipboardEvent) => {
   event.preventDefault()
-  form.code = sanitizeModuleCode(extractDigitsFromClipboard(event))
+  form.code = sanitizeModuleCode(event.clipboardData?.getData('text') ?? '')
   errors.code = ''
 }
 

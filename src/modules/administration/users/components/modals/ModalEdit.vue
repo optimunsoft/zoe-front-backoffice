@@ -2,7 +2,7 @@
   <ModalBasic
     id="edit-user-modal"
     :modal-open="modalOpen"
-    title="Editar usuario"
+    :title="modalTitle"
     description="Actualiza los datos del usuario. El tipo no se puede modificar."
     size="4xl"
     @close-modal="handleClose"
@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import { Button } from '~/core/ui/buttons'
 import { ModalBasic } from '~/core/ui/modal'
@@ -56,7 +56,7 @@ type UserFormExpose = {
   reset: () => void
 }
 
-const { modalOpen, user } = defineProps<{
+const props = defineProps<{
   modalOpen: boolean
   user: User | null
 }>()
@@ -70,6 +70,15 @@ const usersStore = useUsersStore()
 const formRef = ref<UserFormExpose | null>(null)
 const isSubmitting = ref(false)
 
+const modalTitle = computed(() => {
+  if (!props.user) return 'Editar usuario'
+
+  const name = [props.user.firstName, props.user.lastName].filter(Boolean).join(' ').trim()
+  if (!name) return 'Editar usuario'
+
+  return `Editar usuario - ${name}`
+})
+
 const handleClose = () => {
   if (isSubmitting.value) return
   formRef.value?.reset()
@@ -81,7 +90,7 @@ const submitForm = () => {
 }
 
 const handleEdit = async (payload: UserCreate | UserUpdate) => {
-  const userId = user?.id
+  const userId = props.user?.id
   if (isSubmitting.value || !userId) return
 
   isSubmitting.value = true

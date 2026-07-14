@@ -38,7 +38,7 @@
             <td class="py-2 pr-4">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="font-medium text-gray-800 dark:text-gray-100">
-                  {{ formatCompanyUserName(user) }}
+                  {{ formatTableText(formatCompanyUserName(user)) }}
                 </span>
                 <TableBadge
                   v-if="user.isOwner"
@@ -54,13 +54,13 @@
                 v-if="user.email?.trim()"
                 class="text-gray-600 dark:text-gray-300"
               >
-                {{ user.email }}
+                {{ formatTableText(user.email) }}
               </span>
               <TableBadge
                 v-else
                 color="neutral"
               >
-                No Aplica
+                {{ formatTableText('No Aplica') }}
               </TableBadge>
             </td>
             <td class="py-2 pr-4">
@@ -68,18 +68,18 @@
                 v-if="formatCompanyUserType(user.userType)"
                 color="neutral"
               >
-                {{ formatCompanyUserType(user.userType) }}
+                {{ formatTableText(formatCompanyUserType(user.userType)) }}
               </TableBadge>
               <TableBadge
                 v-else
                 color="neutral"
               >
-                No Aplica
+                {{ formatTableText('No Aplica') }}
               </TableBadge>
             </td>
             <td class="py-2 pr-4">
               <TableBadge :color="user.isActive ? 'success' : 'neutral'">
-                {{ user.isActive ? 'Activo' : 'Inactivo' }}
+                {{ formatTableText(user.isActive ? 'Activo' : 'Inactivo') }}
               </TableBadge>
             </td>
             <td class="py-2 pr-4">
@@ -93,14 +93,14 @@
                   color="violet"
                   badge-class="shrink-0"
                 >
-                  {{ formatRoleName(role.name) }}
+                  {{ formatTableText(role.name) }}
                 </TableBadge>
               </div>
               <TableBadge
                 v-else
                 color="neutral"
               >
-                No Aplica
+                {{ formatTableText('No Aplica') }}
               </TableBadge>
             </td>
           </tr>
@@ -123,7 +123,7 @@ import type { Company, userCompany } from '~/core/company/types/company.types'
 import { useCompanyStore } from '~/core/company/store/company.store'
 
 import { TableBadge } from '~/core/ui/badge'
-import { toTitleCase } from '~/shared/utils/format'
+import { formatTableText } from '~/shared/utils/format'
 
 const props = defineProps<{
   companyId: string
@@ -140,11 +140,5 @@ const users = computed(() => {
   const company = companyStore.getCompanyFromList(props.companyId)
   return getVisibleCompanyUsers(company?.users as Company['users'] | undefined)
 })
-
-const formatRoleName = (value: string) => {
-  if (!value.trim()) return '-'
-  return toTitleCase(value)
-}
-
 
 </script>

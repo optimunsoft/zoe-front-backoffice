@@ -9,7 +9,6 @@ export type CompanyCatalogItem = {
 
 export type CompanyTableCatalogs = {
   businessNatures?: CompanyCatalogItem[]
-  taxResponsibilities?: CompanyCatalogItem[]
   documentTypes?: CompanyCatalogItem[]
   vatRegimes?: CompanyCatalogItem[]
 }
@@ -35,7 +34,6 @@ export const companyColumns: UTableColumn[] = [
     align: 'center',
     badgeColorMap: COMPANY_STATUS_BADGE_COLORS,
   },
-  { key: 'taxResponsibility', label: 'Responsabilidad fiscal' },
   { key: 'businessNature', label: 'Naturaleza' },
   { key: 'municipality', label: 'Ciudad' },
   {
@@ -130,7 +128,6 @@ export const mapCompaniesToTableRows = (
       businessName: getDisplayName(company),
       tradeName: company.tradeName || '-',
       email: company.email || '-',
-      taxResponsibility: findCatalogName(catalogs.taxResponsibilities, company.taxResponsibilityId),
       businessNature: findCatalogName(catalogs.businessNatures, company.businessNatureId),
       municipality: municipality.city,
       municipalityCity: municipality.city,

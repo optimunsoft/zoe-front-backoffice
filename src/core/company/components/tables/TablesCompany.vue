@@ -109,28 +109,24 @@
       @action="handleRowAction"
     >
       <template #cell-documentNumber="{ row }">
-        <div class="inline-flex items-center gap-2 text-left">
-          <span class="min-w-[11ch] shrink-0 text-right font-medium tabular-nums text-gray-800 dark:text-gray-100">
-            {{ row.documentNumber }}
-          </span>
+        <div class="inline-flex min-w-[16ch] items-center justify-between gap-2">
           <TableBadge
             v-if="row.documentType && row.documentType !== '-'"
             color="violet"
             badge-class="shrink-0"
           >
-            {{ row.documentType }}
+            {{ formatTableText(row.documentType) }}
           </TableBadge>
+          <span
+            v-else
+            class="shrink-0 text-gray-400 dark:text-gray-500"
+          >
+            -
+          </span>
+          <span class="min-w-0 flex-1 text-right font-medium tabular-nums text-gray-800 dark:text-gray-100">
+            {{ row.documentNumber }}
+          </span>
         </div>
-      </template>
-
-      <template #cell-taxResponsibility="{ row }">
-        <TableBadge
-          v-if="row.taxResponsibility && row.taxResponsibility !== '-'"
-          :color="isTaxResponsibilityNoAplica(row.taxResponsibility) ? 'neutral' : 'info'"
-        >
-          {{ formatTableText(row.taxResponsibility) }}
-        </TableBadge>
-        <span v-else class="text-gray-400 dark:text-gray-500">-</span>
       </template>
 
       <template #cell-businessNature="{ row }">
@@ -178,12 +174,13 @@
       </template>
     </UTable>
 
-    <div class="mt-8" :class="{ 'pointer-events-none opacity-60': isLoading }">
+    <div class="mt-4" :class="{ 'pointer-events-none opacity-60': isLoading }">
       <PaginationClassic
         :page="currentPage"
         :amount="amount"
         :total="totalCompanies"
         @change-page="handleChangePage"
+        @change-amount="handleChangeAmount"
       />
     </div>
 
@@ -237,7 +234,6 @@ import { companyTableActions } from '~/core/company/mappers/company-table.action
 import type { Company, userCompany } from '~/core/company/types/company.types'
 import { useCompanyStore } from '~/core/company/store/company.store'
 import { useDocumentTypeStore } from '~/core/documentType/store/documentType.store'
-import { useTaxResponsibilityStore } from '~/core/taxResponsibility/store/taxResponsibility.store'
 import { useVatRegimeStore } from '~/core/vatRegime/store/vatRegime.store'
 import { Button, ReloadButton } from '~/core/ui/buttons'
 import { UiIcon } from '~/core/ui/icons'
@@ -252,7 +248,7 @@ import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableRow } from '~/core/ui/Tables/utable.types'
 import type { BadgeColor } from '~/core/ui/badge/badge.types'
 import { useTableRefresh } from '~/shared/composables/use-table-refresh'
-import { toTitleCase } from '~/shared/utils/format'
+import { formatTableText } from '~/shared/utils/format'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
 import { buildFilterPillOptions, filterItemsByPill } from '~/shared/utils/build-filter-pill-options'
 import ModalCreate from '../modals/ModalCreate.vue'
@@ -279,7 +275,6 @@ const authStore = useAuthStore()
 const businessNatureStore = useBusinessNatureStore()
 const companyStore = useCompanyStore()
 const documentTypeStore = useDocumentTypeStore()
-const taxResponsibilityStore = useTaxResponsibilityStore()
 const vatRegimeStore = useVatRegimeStore()
 const municipalityService = useMunicipalityService()
 
@@ -443,7 +438,6 @@ const filteredCompanies = computed(() =>
 const rows = computed<UTableRow[]>(() =>
   mapCompaniesToTableRows(filteredCompanies.value, {
     businessNatures: businessNatureStore.businessNatures,
-    taxResponsibilities: taxResponsibilityStore.taxResponsibilities,
     documentTypes: documentTypeStore.documentTypes,
     vatRegimes: vatRegimeStore.vatRegimes,
   }),
@@ -597,16 +591,6 @@ const handleCompanyUpdated = async () => {
   await fetchCompanies(currentPage.value, true)
 }
 
-const formatTableText = (value: unknown) => {
-  if (typeof value !== 'string' || value === '-') return String(value ?? '')
-  return toTitleCase(value)
-}
-
-const isTaxResponsibilityNoAplica = (value: unknown) => {
-  if (typeof value !== 'string') return false
-  return value.trim().toLowerCase() === 'no aplica'
-}
-
 const getBusinessNatureBadgeColor = (value: unknown): BadgeColor => {
   if (typeof value !== 'string') return 'neutral'
 
@@ -621,6 +605,12 @@ const getBusinessNatureBadgeColor = (value: unknown): BadgeColor => {
 const handleChangePage = async (page: number) => {
   if (isLoading.value || page === currentPage.value) return
   await fetchCompanies(page)
+}
+
+const handleChangeAmount = async (nextAmount: number) => {
+  if (isLoading.value || nextAmount === amount.value) return
+  amount.value = nextAmount
+  await fetchCompanies(1, true)
 }
 
 const handleReload = async () => {

@@ -31,8 +31,8 @@
           <div class="relative w-full sm:w-72">
             <InputSearch
               v-model="companySearchQuery"
-              placeholder="Buscar por compañía..."
-              search-label="Buscar por compañía"
+              placeholder="Buscar por empresa..."
+              search-label="Buscar por empresa"
               @submit="handleCompanySearch"
             />
 
@@ -56,7 +56,7 @@
                 v-if="companySearchResults.length === 0 && !isSearchingCompanies"
                 class="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400"
               >
-                No se encontraron compañías.
+                No se encontraron empresas.
               </p>
 
               <p
@@ -156,44 +156,27 @@
           {{ row.email }}
         </span>
         <TableBadge v-else color="neutral">
-          No Aplica
+          {{ formatTableText('No Aplica') }}
         </TableBadge>
       </template>
 
       <template #cell-isAdmin="{ row }">
         <TableBadge v-if="row.isAdminUser" color="primary">
-          Superusuario
+          {{ formatTableText('Superusuario') }}
         </TableBadge>
         <TableBadge v-else color="neutral">
-          No Aplica
-        </TableBadge>
-      </template>
-
-      <template #cell-isDemo="{ row }">
-        <TableBadge
-          v-if="row.isDemo === 'Sí'"
-          color="primary"
-        >
-          Sí
-        </TableBadge>
-        <TableBadge
-          v-else-if="row.isDemo === 'No'"
-          color="neutral"
-        >
-          No
-        </TableBadge>
-        <TableBadge v-else color="neutral">
-          No Aplica
+          {{ formatTableText('No Aplica') }}
         </TableBadge>
       </template>
     </UTable>
 
-    <div class="mt-8" :class="{ 'pointer-events-none opacity-60': isLoading }">
+    <div class="mt-4" :class="{ 'pointer-events-none opacity-60': isLoading }">
       <PaginationClassic
         :page="currentPage"
         :amount="amount"
         :total="usersStore.total as number"
         @change-page="handleChangePage"
+        @change-amount="handleChangeAmount"
       />
     </div>
 
@@ -244,6 +227,7 @@ import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
 import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableActionButton, UTableRow } from '~/core/ui/Tables/utable.types'
+import { formatTableText } from '~/shared/utils/format'
 import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import { mapUsersToTableRows, userColumns } from '~/modules/administration/users/mappers/user-tables-mappers'
 import { resolveUserTableActions } from '~/modules/administration/users/mappers/user-table.actions'
@@ -307,8 +291,9 @@ const expandedCompaniesRowKey = ref<string | number | null>(null)
 
 const userFilterDefinitions = [
   { key: 'all', label: 'Todos' },
+  { key: 'active', label: 'Activos' },
+  { key: 'inactive', label: 'Inactivos' },
   { key: 'isAdmin', label: 'Superusuarios' },
-  { key: 'isDemo', label: 'Demo' },
   { key: USER_TYPE.USUARIO, label: 'Usuario' },
   { key: USER_TYPE.SUBUSUARIO, label: 'Subusuario' },
 ] as const
@@ -327,24 +312,28 @@ const userFilterOptions = computed<FilterPillOption[]>(() =>
   })),
 )
 
-const resolveListQueryParams = (): Pick<GetUsersParams, 'isAdmin' | 'isDemo' | 'type'> => {
-  if (userFilter.value === 'isAdmin') {
-    return { isAdmin: true, isDemo: undefined, type: undefined }
+const resolveListQueryParams = (): Pick<GetUsersParams, 'isAdmin' | 'isActive' | 'type'> => {
+  if (userFilter.value === 'active') {
+    return { isActive: true, isAdmin: undefined, type: undefined }
   }
 
-  if (userFilter.value === 'isDemo') {
-    return { isDemo: true, isAdmin: undefined, type: undefined }
+  if (userFilter.value === 'inactive') {
+    return { isActive: false, isAdmin: undefined, type: undefined }
+  }
+
+  if (userFilter.value === 'isAdmin') {
+    return { isAdmin: true, isActive: undefined, type: undefined }
   }
 
   if (userFilter.value === USER_TYPE.USUARIO) {
-    return { type: USER_TYPE.USUARIO, isAdmin: undefined, isDemo: undefined }
+    return { type: USER_TYPE.USUARIO, isAdmin: undefined, isActive: undefined }
   }
 
   if (userFilter.value === USER_TYPE.SUBUSUARIO) {
-    return { type: USER_TYPE.SUBUSUARIO, isAdmin: undefined, isDemo: undefined }
+    return { type: USER_TYPE.SUBUSUARIO, isAdmin: undefined, isActive: undefined }
   }
 
-  return { isAdmin: undefined, isDemo: undefined, type: undefined }
+  return { isAdmin: undefined, isActive: undefined, type: undefined }
 }
 
 const formatCompanyLabel = (company: CompanyList) => {
@@ -504,7 +493,7 @@ const isCompaniesActionExpanded = (row: UTableRow, action: UTableActionButton) =
 
 const handleOpenPermissionsModal = async (payload: PermissionsContext) => {
   if (!payload.user?.roles.length) {
-    toast.warning('Este usuario no tiene roles asignados en esta compañía.')
+    toast.warning('Este usuario no tiene roles asignados en esta empresa.')
     return
   }
 
@@ -583,6 +572,12 @@ const handleCreateUser = () => {
 const handleChangePage = async (page: number) => {
   if (isLoading.value || page === currentPage.value) return
   await fetchUsers(page)
+}
+
+const handleChangeAmount = async (nextAmount: number) => {
+  if (isLoading.value || nextAmount === amount.value) return
+  amount.value = nextAmount
+  await fetchUsers(1)
 }
 
 const handleReload = async () => {

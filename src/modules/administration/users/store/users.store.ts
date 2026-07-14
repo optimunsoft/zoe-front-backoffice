@@ -60,10 +60,6 @@ export const useUsersStore = defineStore('users', () => {
         return response;
     }
 
-    const changesStatusDemoUser = async (accountId: string, demo: boolean) => {
-        const { response } = await useUsersService().changesStatusDemoUser(accountId, demo);
-        return response;
-    }
     return {
         users,
         total,
@@ -73,6 +69,5 @@ export const useUsersStore = defineStore('users', () => {
         createUser,
         updateUser,
         changesStatusUser,
-        changesStatusDemoUser,
     }
 })

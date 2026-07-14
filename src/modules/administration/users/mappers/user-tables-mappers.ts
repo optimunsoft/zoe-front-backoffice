@@ -1,10 +1,13 @@
 import type { User } from '~/modules/administration/users/types/users.types'
-import { mapUserDemoLabel } from '~/modules/administration/users/utils/user-account.utils'
 import type { UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
 
+const formatFullName = (user: Pick<User, 'firstName' | 'lastName'>) => {
+  const name = [user.firstName, user.lastName].map((part) => part?.trim()).filter(Boolean).join(' ')
+  return name || '-'
+}
+
 export const userColumns: UTableColumn[] = [
-  { key: 'firstName', label: 'Nombre', variant: 'emphasis', toggleable: false },
-  { key: 'lastName', label: 'Apellido' },
+  { key: 'fullName', label: 'Nombre y apellidos', variant: 'emphasis', toggleable: false },
   { key: 'email', label: 'Email' },
   {
     key: 'role',
@@ -18,7 +21,7 @@ export const userColumns: UTableColumn[] = [
   },
   {
     key: 'isActive',
-    label: 'Activo',
+    label: 'Estado',
     type: 'badge',
     align: 'center',
     badgeColorMap: {
@@ -32,36 +35,23 @@ export const userColumns: UTableColumn[] = [
     type: 'badge',
     align: 'center',
     badgeColorMap: {
-      Verificado: 'success',
-      'No verificado': 'danger',
+      Sí: 'success',
+      No: 'danger',
     },
   },
   { key: 'isAdmin', label: 'SuperUsuario' },
-  {
-    key: 'isDemo',
-    label: 'Demo',
-    type: 'badge',
-    align: 'center',
-    badgeColorMap: {
-      Sí: 'primary',
-      No: 'neutral',
-      'No Aplica': 'neutral',
-    },
-  },
 ]
 
 export const mapUsersToTableRows = (userList: User[]): UTableRow[] => {
   return userList.map((user) => ({
     id: user.id,
-    firstName: user.firstName,
-    lastName: user.lastName,
+    fullName: formatFullName(user),
     email: user.email?.trim() ?? '',
     isAdminUser: user.isAdmin,
     role: user.userType === 'USUARIO' ? 'Usuario' : 'Subusuario',
     isActive: user.isActive ? 'Activo' : 'Inactivo',
-    isVerified: user.isVerified ? 'Verificado' : 'No verificado',
+    isVerified: user.isVerified ? 'Sí' : 'No',
     isAdmin: user.isAdmin ? 'Soporte' : '-',
-    isDemo: mapUserDemoLabel(user),
     hasCompanies: (user.companies?.length ?? 0) > 0,
     hasSessions: (user.sessions?.length ?? 0) > 0,
   }))

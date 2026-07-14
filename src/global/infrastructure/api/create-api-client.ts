@@ -6,8 +6,10 @@ import { HEADER_FORCE_AUTH, HEADER_SKIP_AUTH } from '~/shared/constants/headers'
 import {
   extractApiErrorMessage,
   extractApiSuccessMessage,
+  isApiBusinessFailure,
   shouldShowApiErrorNotification,
   shouldShowApiSuccessNotification,
+  shouldSkipApiNotification,
 } from '~/shared/utils/api-notification.utils';
 
 type ApiClient = ReturnType<typeof $fetch.create>;
@@ -31,8 +33,8 @@ const isAuthBypassPath = (requestUrl: string): boolean =>
   AUTH_BYPASS_PATHS.some((path) => requestUrl.includes(path));
 
 const createResponseError = (response: ApiResponseErrorContext['response']) => {
-  const data = response._data as { message?: string } | undefined;
-  const error = new Error(data?.message ?? `La solicitud falló con el estado ${response.status}`) as Error & {
+  const message = extractApiErrorMessage(null, response)
+  const error = new Error(message) as Error & {
     data?: unknown;
     response: typeof response;
     status: number;
@@ -46,6 +48,20 @@ const createResponseError = (response: ApiResponseErrorContext['response']) => {
 
   return error;
 };
+
+const notifyApiError = (
+  nuxtApp: ApiPluginNuxtApp,
+  request: unknown,
+  response: ApiResponseErrorContext['response'],
+  options: ApiRequestOptions,
+) => {
+  if (!shouldShowApiErrorNotification(request, response, options)) return
+
+  nuxtApp.runWithContext(() => {
+    const message = extractApiErrorMessage(request, response)
+    useNotificationAlertStore().showError(message)
+  })
+}
 
 export function createApiClient(
   nuxtApp: ApiPluginNuxtApp,
@@ -76,6 +92,14 @@ export function createApiClient(
       options.headers = headers;
     },
     onResponse({ request, response, options }) {
+      // Fallo de negocio con HTTP 2xx: no éxito, alertar con `message` y fallar la promesa.
+      if (isApiBusinessFailure(response._data)) {
+        if (!shouldSkipApiNotification(request, options)) {
+          notifyApiError(nuxtApp, request, response, options as ApiRequestOptions)
+        }
+        throw createResponseError(response)
+      }
+
       if (!shouldShowApiSuccessNotification(request, response, options)) return;
 
       nuxtApp.runWithContext(() => {
@@ -87,13 +111,7 @@ export function createApiClient(
       })
     },
     async onResponseError({ request, response, options }) {
-      if (shouldShowApiErrorNotification(request, response, options)) {
-        nuxtApp.runWithContext(() => {
-          const message = extractApiErrorMessage(request, response)
-
-          useNotificationAlertStore().showError(message)
-        })
-      }
+      notifyApiError(nuxtApp, request, response, options as ApiRequestOptions)
 
       const authStore = useAuthStore();
       const requestOptions = options as ApiRequestOptions;

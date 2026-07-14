@@ -43,8 +43,15 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
         key: 'administration',
         label: 'Administración',
         icon: 'administration',
-        active: ({ route }: SidebarMenuContext) =>
-          route.path.includes('/empresas') || route.path.includes('/usuarios') || route.path.includes('/modulos'),
+        active: ({ route }: SidebarMenuContext) => {
+          const path = route.path
+          return (
+            path.includes('/empresas')
+            || path.includes('/usuarios/')
+            || path.endsWith('/usuarios')
+            || path.includes('/modulos')
+          )
+        },
         children: [
           {
             key: 'empresas-list',
@@ -65,11 +72,22 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
       },
       {
         key: 'scheduling',
-        label: 'Agendamientos',
+        label: 'Demostraciones',
         icon: 'scheduling',
-        to: `${BACKOFFICE_DASHBOARD_PATH}/demonstrations`,
-        active: ({ route }: SidebarMenuContext) => route.path.includes('/demonstrations'),
-
+        active: ({ route }: SidebarMenuContext) =>
+          route.path.includes('/demonstrations') || route.path.includes('/usuarios-demo'),
+        children: [
+          {
+            key: 'agendamientos-list',
+            label: 'Agendamientos',
+            to: `${BACKOFFICE_DASHBOARD_PATH}/demonstrations`,
+          },
+          {
+            key: 'users-demo-list',
+            label: 'Usuarios de Demo',
+            to: `${BACKOFFICE_DASHBOARD_PATH}/usuarios-demo`,
+          },
+        ],
       },
     ],
   },

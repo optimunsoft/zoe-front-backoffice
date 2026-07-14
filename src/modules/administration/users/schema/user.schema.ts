@@ -194,7 +194,7 @@ const validatePassword = (
   if (!isPasswordValid(password)) {
     ctx.addIssue({
       code: 'custom',
-      message: 'La contraseña no cumple los requisitos de seguridad.',
+      message: 'La contraseña debe tener al menos 8 caracteres, incluir mayúsculas, minúsculas, un número y un carácter especial.',
       path: ['password'],
     })
   }

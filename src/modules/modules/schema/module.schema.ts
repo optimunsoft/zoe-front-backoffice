@@ -8,7 +8,7 @@ import {
 import type { Module, ModuleList } from '../types/modules.types'
 
 export const sanitizeModuleCode = (value: string) =>
-  sanitizeDigitsInput(value, 3)
+  value.replace(/[^a-zA-Z0-9-]/g, '')
 
 export const sanitizeModulePrice = (value: string) =>
   sanitizeDigitsInput(value, 12)
@@ -35,8 +35,7 @@ export const moduleFormSchema = z.object({
     .string()
     .trim()
     .min(1, 'El código es obligatorio.')
-    .regex(/^\d+$/, 'El código solo puede contener números.')
-    .length(3, 'El código debe tener exactamente 3 dígitos.'),
+    .regex(/^[a-zA-Z0-9-]+$/, 'El código solo puede contener letras, números y guiones.'),
   name: z
     .string()
     .trim()

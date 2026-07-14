@@ -9,6 +9,7 @@ export default defineNuxtConfig({
 
   app: {
     head: {
+      title: 'Zoe Backoffice',
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
       ],

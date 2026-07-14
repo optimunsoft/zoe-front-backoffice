@@ -13,13 +13,6 @@
         <span>Al menos 8 caracteres</span>
       </li>
 
-      <li :class="itemClass(requirements.characterTypesRequirementMet)">
-        <RequirementIcon :met="requirements.characterTypesRequirementMet" />
-        <span>Al menos 3 de los siguientes:</span>
-      </li>
-    </ul>
-
-    <ul class="mt-2 space-y-2 pl-6">
       <li :class="itemClass(requirements.lowercase)">
         <RequirementIcon :met="requirements.lowercase" />
         <span>Letras minúsculas (a-z)</span>

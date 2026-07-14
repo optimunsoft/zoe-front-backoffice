@@ -2,7 +2,7 @@
   <ModalBasic
     id="edit-company-modal"
     :modal-open="modalOpen"
-    title="Editar empresa"
+    :title="modalTitle"
     description="Modifica los datos de la empresa."
     size="5xl"
     @close-modal="handleClose"
@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import { Button } from '~/core/ui/buttons'
 import { ModalBasic } from '~/core/ui/modal'
@@ -64,6 +64,31 @@ const companyStore = useCompanyStore()
 const formRef = ref<InstanceType<typeof FormCompany> | null>(null)
 const isSubmitting = ref(false)
 const isInitializing = ref(false)
+
+const resolveCompanyDisplayName = (company: Company | null) => {
+  if (!company) return ''
+
+  const businessName = company.businessName?.trim()
+  if (businessName) return businessName
+
+  const tradeName = company.tradeName?.trim()
+  if (tradeName) return tradeName
+
+  return [
+    company.firstName,
+    company.middleName,
+    company.lastName,
+    company.secondLastName,
+  ]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(' ')
+}
+
+const modalTitle = computed(() => {
+  const name = resolveCompanyDisplayName(props.company)
+  return name ? `Editar empresa - ${name}` : 'Editar empresa'
+})
 
 const waitForFormRef = async () => {
   for (let attempt = 0; attempt < 20; attempt += 1) {

@@ -115,6 +115,12 @@ export const uiIcons = {
       'M16 9v7l5 3 .9-1.5-4.4-2.6V9H16z',
     ],
   },
+  copy: {
+    viewBox: '0 0 16 16',
+    paths: [
+      'M4 2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a2 2 0 0 0 2 2h6a1 1 0 1 0 0-2H3a1 1 0 0 1-1-1V6a1 1 0 0 0-1-1Z',
+    ],
+  },
 } as const satisfies Record<string, UiIconDefinition>
 
 export type UiIconName = keyof typeof uiIcons

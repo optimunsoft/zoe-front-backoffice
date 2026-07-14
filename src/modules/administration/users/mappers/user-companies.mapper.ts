@@ -6,7 +6,7 @@ export type UserCompanyDetailColumn = {
 }
 
 export const userCompanyDetailColumns: UserCompanyDetailColumn[] = [
-  { key: 'name', label: 'Compañía' },
+  { key: 'name', label: 'Empresa' },
   { key: 'documentNumber', label: 'NIT' },
   { key: 'email', label: 'Email' },
   { key: 'roles', label: 'Roles' },

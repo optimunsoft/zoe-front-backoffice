@@ -34,6 +34,7 @@ export interface UpdateDemonstration extends Demonstration {
 export type GetDemonstrationsParams = {
     amount: number;
     page: number;
+    search?: string;
 };
 
 export type PaginatedDemonstrationsResponse = {

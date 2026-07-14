@@ -3,7 +3,7 @@
     <div class="mb-8 flex flex-col gap-6">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
             <h1 class="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
-                Demostraciones
+                Agendamientos
             </h1>
 
             <Button
@@ -52,12 +52,12 @@
 
     <TableInitialLoader
         v-if="showInitialLoader"
-        message="Cargando demostraciones..."
+        message="Cargando agendamientos..."
     />
 
     <UTable
         v-else
-        title="Todas las demostraciones"
+        title="Todos los agendamientos"
         :count="demonstrations.length"
         :columns="visibleColumns"
         :rows="demonstrations"
@@ -68,40 +68,93 @@
         :action-buttons="demonstrationTableActions"
         @action="handleRowAction"
     >
-        <template #cell-scheduledAt="{ row }">
-            <div class="flex flex-col items-start gap-1">
-                <span class="text-gray-800 dark:text-gray-100">
-                    {{ row.scheduledDate }}
-                </span>
-                <TableBadge color="info">
-                    {{ row.scheduledTime }}
-                </TableBadge>
-            </div>
+        <template #cell-scheduledTime="{ row }">
+            <TableBadge
+                v-if="hasScheduledTime(row.scheduledTime)"
+                color="info"
+            >
+                {{ row.scheduledTime }}
+            </TableBadge>
+            <span v-else class="text-gray-400 dark:text-gray-500">-</span>
+        </template>
+
+        <template #cell-phone="{ row }">
+            <UBadge
+                v-if="hasPhoneNumber(row.phone)"
+                tag="button"
+                type="button"
+                color="primary"
+                appearance="soft"
+                size="md"
+                badge-class="cursor-pointer"
+                :aria-label="`Copiar teléfono ${row.phone}`"
+                @click.stop="copyPhoneNumber(String(row.phone))"
+            >
+                <UiIcon
+                    name="copy"
+                    size="sm"
+                    class="shrink-0"
+                />
+                {{ row.phone }}
+            </UBadge>
+            <UBadge
+                v-else
+                color="neutral"
+                size="md"
+            >
+                No Aplica
+            </UBadge>
         </template>
 
         <template #cell-productInterest="{ row }">
             <div
-                v-if="Array.isArray(row.productInterest) && row.productInterest.length"
-                class="flex flex-wrap items-center justify-center gap-1"
+                v-if="resolveProductInterest(row).length === 1"
+                class="flex items-center justify-start"
             >
-                <TableBadge
-                    v-for="product in row.productInterest"
-                    :key="product"
-                    color="info"
-                >
-                    {{ product }}
+                <TableBadge color="info">
+                    {{ formatTableText(resolveProductInterest(row)[0]) }}
                 </TableBadge>
             </div>
+            <Tooltip
+                v-else-if="resolveProductInterest(row).length > 1"
+                bg="light"
+                position="top"
+            >
+                <template #trigger>
+                    <button
+                        type="button"
+                        class="inline-flex items-center justify-start gap-1"
+                        :aria-label="`Ver productos de interés: ${resolveProductInterest(row).join(', ')}`"
+                    >
+                        <TableBadge color="info">
+                            {{ formatTableText(resolveProductInterest(row)[0]) }}
+                        </TableBadge>
+                        <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            ...
+                        </span>
+                    </button>
+                </template>
+                <div class="space-y-1 px-0.5 py-0.5 text-xs font-medium">
+                    <p
+                        v-for="product in resolveProductInterest(row).slice(1)"
+                        :key="product"
+                        class="whitespace-nowrap"
+                    >
+                        {{ formatTableText(product) }}
+                    </p>
+                </div>
+            </Tooltip>
             <span v-else class="text-gray-400 dark:text-gray-500">-</span>
         </template>
     </UTable>
 
-    <div class="mt-8" :class="{ 'pointer-events-none opacity-60': isLoading }">
+    <div class="mt-4" :class="{ 'pointer-events-none opacity-60': isLoading }">
         <PaginationClassic
             :page="currentPage"
             :amount="amount"
             :total="total"
             @change-page="handleChangePage"
+            @change-amount="handleChangeAmount"
         />
     </div>
 </div>
@@ -109,23 +162,27 @@
 
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { refDebounced } from '@vueuse/core'
 
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
 import { Button, ReloadButton } from '~/core/ui/buttons'
-import { TableBadge } from '~/core/ui/badge'
+import { TableBadge, UBadge } from '~/core/ui/badge'
+import { UiIcon } from '~/core/ui/icons'
 import DateSelect from '~/core/ui/form/DateSelect.vue'
 import TableColumnToggle from '~/core/ui/dropdown/TableColumnToggle.vue'
 import { FilterPills } from '~/core/ui/filters'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableRow } from '~/core/ui/Tables/utable.types'
+import { useToast } from '~/core/ui/toast'
+import { formatTableText } from '~/shared/utils/format'
+import { Tooltip } from '~/core/ui/utooltip'
 import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import type { DatePeriodId } from '~/shared/constants/date-periods'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
 import { buildFilterPillOptions, filterItemsByPill } from '~/shared/utils/build-filter-pill-options'
 import { filterItemsByDatePeriod } from '~/shared/utils/date-range-filter'
-import { filterTableRows } from '~/shared/utils/filter-table-rows'
 import {
     demonstrationColumns,
     mapDemonstrationsToTableRows,
@@ -142,7 +199,9 @@ const emit = defineEmits<{
 }>()
 
 const demonstrationsStore = useDemonstrationsStore()
+const toast = useToast()
 const searchQuery = ref('')
+const debouncedSearch = refDebounced(searchQuery, 400)
 const datePeriod = ref<DatePeriodId>(4)
 const statusFilter = ref('all')
 const {
@@ -151,6 +210,38 @@ const {
     showInitialLoader,
     withTableLoading,
 } = useTableRefresh()
+
+const hasPhoneNumber = (value: unknown) => {
+    if (typeof value !== 'string') return false
+    const phone = value.trim()
+    return phone.length > 0 && phone !== '-'
+}
+
+const hasScheduledTime = (value: unknown) => {
+    if (typeof value !== 'string') return false
+    const time = value.trim()
+    return time.length > 0 && time !== '-'
+}
+
+const resolveProductInterest = (row: UTableRow): string[] => {
+    if (!Array.isArray(row.productInterest)) return []
+
+    return row.productInterest
+        .map((product) => String(product ?? '').trim())
+        .filter(Boolean)
+}
+
+const copyPhoneNumber = async (phone: string) => {
+    const normalized = phone.trim()
+    if (!normalized) return
+
+    try {
+        await navigator.clipboard.writeText(normalized)
+        toast.success('Teléfono copiado')
+    } catch {
+        toast.error('No se pudo copiar el teléfono')
+    }
+}
 
 const {
     visibleKeys: visibleColumnKeys,
@@ -202,10 +293,7 @@ const demonstrations = computed(() => {
         },
     )
 
-    return filterTableRows(
-        mapDemonstrationsToTableRows(byStatus),
-        searchQuery.value,
-    )
+    return mapDemonstrationsToTableRows(byStatus)
 })
 
 const total = computed(() => demonstrationsStore.total)
@@ -235,6 +323,7 @@ const fetchDemonstrations = async (page: number) => {
         await demonstrationsStore.getDemonstrations({
             amount: amount.value,
             page,
+            search: debouncedSearch.value.trim() || undefined,
         })
     })
 }
@@ -248,6 +337,21 @@ const handleChangePage = async (page: number) => {
     if (isLoading.value) return
     await fetchDemonstrations(page)
 }
+
+const handleChangeAmount = async (nextAmount: number) => {
+    if (isLoading.value || nextAmount === amount.value) return
+    await withTableLoading(async () => {
+        await demonstrationsStore.getDemonstrations({
+            amount: nextAmount,
+            page: 1,
+            search: debouncedSearch.value.trim() || undefined,
+        })
+    })
+}
+
+watch(debouncedSearch, async () => {
+    await fetchDemonstrations(1)
+})
 
 onMounted(async () => {
     await fetchDemonstrations(currentPage.value)

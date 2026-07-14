@@ -23,18 +23,45 @@
       :error="errors.email"
     />
 
-    <InputText
-      id="demonstration-phone"
-      :model-value="form.phone"
-      name="phone"
-      type="tel"
-      label="Teléfono"
-      placeholder="3000000000"
-      required
-      input-class="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-      :error="errors.phone"
-      @update:model-value="onPhoneChange"
-    />
+    <div>
+      <InputField
+        label="Teléfono"
+        html-for="demonstration-phone-number"
+        required
+        :error="phoneFieldError"
+      >
+        <div class="flex items-start gap-2">
+          <div class="w-25 shrink-0">
+            <InputSelect
+              id="demonstration-phone-prefix"
+              :model-value="form.phonePrefix"
+              name="phonePrefix"
+              placeholder="Prefijo"
+              required
+              compact-selected
+              teleport-dropdown
+              :options="phonePrefixOptions"
+              select-class="!pr-8"
+              @update:model-value="onPhonePrefixChange"
+            />
+          </div>
+
+          <div class="min-w-0 flex-1">
+            <InputText
+              id="demonstration-phone-number"
+              :model-value="form.phoneNumber"
+              name="phoneNumber"
+              type="tel"
+              placeholder="3000000000"
+              required
+              digits-only
+              :max-length="15"
+              @update:model-value="onPhoneNumberChange"
+            />
+          </div>
+        </div>
+      </InputField>
+    </div>
 
     <div class="grid gap-4 sm:grid-cols-2">
       <Datepicker
@@ -45,14 +72,14 @@
         full-width
         required
       />
-      <InputText
+      <InputTime
         id="demonstration-time"
         v-model="form.scheduledTime"
         name="scheduledTime"
-        type="time"
         label="Hora"
         required
         :error="errors.scheduledTime"
+        @update:model-value="errors.scheduledTime = ''"
       />
     </div>
     <p v-if="errors.scheduledDate" class="text-xs text-red-500 -mt-2">
@@ -87,18 +114,25 @@
       :options="statusOptions"
       :error="errors.status"
     />
-
   </form>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { computed, onMounted, reactive, watch } from 'vue'
 
+import { useUbicationStore } from '~/core/ubication/store/ubication.store'
+import {
+  DEFAULT_PHONE_PREFIX,
+  formatPhonePrefixLabel,
+  normalizePhonePrefixDigits,
+  resolveDefaultPhonePrefix,
+} from '~/core/ubication/utils/phone.utils'
 import Datepicker from '~/core/ui/form/Datepicker.vue'
 import InputCheckbox from '~/core/ui/inputs/InputCheckbox.vue'
 import InputField from '~/core/ui/inputs/InputField.vue'
 import InputSelect from '~/core/ui/inputs/InputSelect.vue'
 import InputText from '~/core/ui/inputs/InputText.vue'
+import InputTime from '~/core/ui/inputs/InputTime.vue'
 import type { InputSelectOption } from '~/core/ui/inputs/input.types'
 import type { Demonstration, DemonstrationResponse, UpdateDemonstration } from '../../types/demonstration.types'
 import { DemonstrationStatus } from '../../types/demonstration.types'
@@ -128,6 +162,8 @@ const emit = defineEmits<{
   submit: [payload: Demonstration | UpdateDemonstration]
 }>()
 
+const ubicationStore = useUbicationStore()
+
 const productOptions: InputSelectOption[] = [
   { label: 'Contabilidad', value: 'Contabilidad' },
   { label: 'Factura Electronica', value: 'Factura Electronica' },
@@ -143,7 +179,8 @@ const statusOptions: InputSelectOption[] = [
 const initialForm = () => ({
   name: '',
   email: '',
-  phone: '',
+  phonePrefix: resolveDefaultPhonePrefix([]),
+  phoneNumber: '',
   scheduledDate: null as string | Date | Date[] | null,
   scheduledTime: '',
   productInterest: [] as string[],
@@ -151,17 +188,59 @@ const initialForm = () => ({
 })
 
 const form = reactive(initialForm())
-
 const errors = reactive<DemonstrationFormErrors>(emptyDemonstrationFormErrors())
+
+const phonePrefixOptions = computed<InputSelectOption[]>(() => {
+  const seen = new Set<string>()
+  const options: InputSelectOption[] = []
+
+  for (const country of ubicationStore.allCountries) {
+    const value = normalizePhonePrefixDigits(country.phonePrefix)
+    if (!value || seen.has(value)) continue
+
+    seen.add(value)
+    options.push({
+      label: `${country.name} (${formatPhonePrefixLabel(value)})`,
+      selectedLabel: formatPhonePrefixLabel(value),
+      value,
+    })
+  }
+
+  const currentPrefix = normalizePhonePrefixDigits(form.phonePrefix) || DEFAULT_PHONE_PREFIX
+  if (!seen.has(currentPrefix)) {
+    options.unshift({
+      label: formatPhonePrefixLabel(currentPrefix),
+      selectedLabel: formatPhonePrefixLabel(currentPrefix),
+      value: currentPrefix,
+    })
+  }
+
+  if (!options.length) {
+    options.push({
+      label: formatPhonePrefixLabel(DEFAULT_PHONE_PREFIX),
+      selectedLabel: formatPhonePrefixLabel(DEFAULT_PHONE_PREFIX),
+      value: DEFAULT_PHONE_PREFIX,
+    })
+  }
+
+  return options
+})
+
+const phoneFieldError = computed(() => errors.phonePrefix || errors.phoneNumber)
 
 const onNameChange = (value: string) => {
   form.name = sanitizeDemonstrationName(value)
   errors.name = ''
 }
 
-const onPhoneChange = (value: string) => {
-  form.phone = sanitizeDemonstrationPhone(value)
-  errors.phone = ''
+const onPhonePrefixChange = (value: string | number) => {
+  form.phonePrefix = normalizePhonePrefixDigits(String(value))
+  errors.phonePrefix = ''
+}
+
+const onPhoneNumberChange = (value: string) => {
+  form.phoneNumber = sanitizeDemonstrationPhone(value)
+  errors.phoneNumber = ''
 }
 
 const toggleProduct = (product: string, checked: boolean) => {
@@ -178,27 +257,38 @@ const toggleProduct = (product: string, checked: boolean) => {
 
 const reset = () => {
   Object.assign(form, initialForm())
+  if (ubicationStore.allCountries.length) {
+    form.phonePrefix = resolveDefaultPhonePrefix(ubicationStore.allCountries)
+  }
   Object.assign(errors, emptyDemonstrationFormErrors())
 }
 
-const setValues = (demonstration: DemonstrationResponse) => {
-  const values = mapDemonstrationResponseToFormValues(demonstration)
+const setValues = async (demonstration: DemonstrationResponse) => {
+  if (!ubicationStore.allCountries.length) {
+    await ubicationStore.getAllCountries()
+  }
+
+  const values = mapDemonstrationResponseToFormValues(
+    demonstration,
+    ubicationStore.allCountries,
+  )
 
   form.name = values.name
   form.email = values.email
-  form.phone = values.phone
+  form.phonePrefix = String(values.phonePrefix ?? DEFAULT_PHONE_PREFIX)
+  form.phoneNumber = String(values.phoneNumber ?? '')
   form.scheduledDate = values.scheduledDate ?? null
   form.scheduledTime = values.scheduledTime
-  form.status = values.status ?? ''
-  form.productInterest = [...values.productInterest]
+  form.status = (values.status ?? '') as DemonstrationStatus | ''
+  form.productInterest = values.productInterest.map((item) => String(item))
   Object.assign(errors, emptyDemonstrationFormErrors())
 }
 
 watch(
   () => props.initialDemonstration,
-  (demonstration) => {
+  async (demonstration) => {
     if (props.mode !== 'edit' || !demonstration) return
-    setValues(demonstration)
+    await setValues(demonstration)
   },
   { immediate: true },
 )
@@ -208,7 +298,8 @@ const handleSubmit = () => {
     const result = parseDemonstrationUpdateForm({
       name: form.name,
       email: form.email,
-      phone: form.phone,
+      phonePrefix: form.phonePrefix,
+      phoneNumber: form.phoneNumber,
       scheduledDate: form.scheduledDate,
       scheduledTime: form.scheduledTime,
       productInterest: form.productInterest,
@@ -235,6 +326,19 @@ const handleSubmit = () => {
   Object.assign(errors, emptyDemonstrationFormErrors())
   emit('submit', result.data)
 }
+
+onMounted(async () => {
+  await ubicationStore.getAllCountries()
+
+  if (props.mode === 'create') {
+    form.phonePrefix = resolveDefaultPhonePrefix(ubicationStore.allCountries) || DEFAULT_PHONE_PREFIX
+    return
+  }
+
+  if (props.initialDemonstration) {
+    await setValues(props.initialDemonstration)
+  }
+})
 
 defineExpose({
   submit: handleSubmit,

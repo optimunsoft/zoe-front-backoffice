@@ -36,16 +36,26 @@ const formatDemonstrationTime = (value: Date | string): string => {
     }).format(date)
 }
 
+const formatDemonstrationPhone = (value?: string | null): string => {
+    if (!value?.trim()) return '-'
+
+    const withoutCountryCode = value.trim().replace(/^\+?57\s*/, '')
+    const digits = withoutCountryCode.replace(/\D/g, '')
+
+    return digits || '-'
+}
+
 export const demonstrationColumns: UTableColumn[] = [
     { key: 'name', label: 'Nombre', toggleable: false },
     { key: 'email', label: 'Email' },
-    { key: 'scheduledAt', label: 'Fecha programada' },
+    { key: 'scheduledDate', label: 'Fecha' },
+    { key: 'scheduledTime', label: 'Hora' },
     { key: 'phone', label: 'Teléfono' },
     {
         key: 'productInterest',
         label: 'Productos de interés',
         type: 'badge',
-        align: 'center',
+        align: 'left',
         badgeColorFallback: 'info',
     },
     {
@@ -64,7 +74,7 @@ export const mapDemonstrationsToTableRows = (demonstrations: DemonstrationRespon
         email: demonstration.email,
         scheduledDate: formatDemonstrationDate(demonstration.scheduledAt),
         scheduledTime: formatDemonstrationTime(demonstration.scheduledAt),
-        phone: demonstration.phone,
+        phone: formatDemonstrationPhone(demonstration.phone),
         productInterest: normalizeProductInterest(demonstration.productInterest),
         status: STATUS_LABELS[demonstration.status] ?? demonstration.status,
     }));

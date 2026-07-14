@@ -55,19 +55,19 @@
     >
       <template #cell-description="{ row }">
         <span v-if="hasModuleCellValue(row.description)" class="text-gray-800 dark:text-gray-100">
-          {{ row.description }}
+          {{ formatTableText(row.description) }}
         </span>
         <TableBadge v-else color="neutral">
-          No Aplica
+          {{ formatTableText('No Aplica') }}
         </TableBadge>
       </template>
 
       <template #cell-price="{ row }">
         <span v-if="hasModuleCellValue(row.price)" class="font-medium text-gray-800 dark:text-gray-100">
-          {{ row.price }}
+          {{ formatTableText(row.price) }}
         </span>
         <TableBadge v-else color="neutral">
-          No Aplica
+          {{ formatTableText('No Aplica') }}
         </TableBadge>
       </template>
     </UTable>
@@ -103,6 +103,7 @@ import { UiIcon } from '~/core/ui/icons'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableRow } from '~/core/ui/Tables/utable.types'
+import { formatTableText } from '~/shared/utils/format'
 import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import {
   hasModuleCellValue,

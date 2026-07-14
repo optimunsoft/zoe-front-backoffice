@@ -4,11 +4,14 @@ export const useDemonstrationService = () => {
     const { $apiBackoffice } = useNuxtApp();
 
     const getDemonstrations = async (params: GetDemonstrationsParams): Promise<GetDemonstrationsResponse> => {
+        const search = params.search?.trim()
+
         return $apiBackoffice<GetDemonstrationsResponse>('demonstrations/list', {
             method: 'GET',
             query: {
                 amount: params.amount,
                 page: params.page,
+                ...(search ? { search } : {}),
             },
         });
     }

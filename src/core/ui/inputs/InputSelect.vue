@@ -176,7 +176,7 @@ const teleportPanelStyle = computed(() => {
 })
 
 const selectedOption = computed(() =>
-  props.options.find((option) => option.value === props.modelValue),
+  props.options.find((option) => String(option.value) === String(props.modelValue ?? '')),
 )
 
 const selectedDisplayLabel = computed(() => {

@@ -2,10 +2,10 @@
   <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-950/15 -mt-1">
     <div class="mb-3 flex items-center justify-between gap-3">
       <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-100">
-        Compañías asociadas
+        Empresas asociadas
       </h3>
       <TableBadge color="info">
-        {{ companies.length }} compañías
+        {{ companies.length }} empresas
       </TableBadge>
     </div>
 
@@ -13,7 +13,7 @@
       v-if="companies.length === 0"
       class="text-sm text-gray-500 dark:text-gray-400"
     >
-      Este usuario no tiene compañías asociadas.
+      Este usuario no tiene empresas asociadas.
     </p>
 
     <div v-else class="overflow-x-auto">
@@ -38,7 +38,7 @@
             <td class="py-2 pr-4">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="font-medium text-gray-800 dark:text-gray-100">
-                  {{ formatUserCompanyName(company) }}
+                  {{ formatTableText(formatUserCompanyName(company)) }}
                 </span>
                 <TableBadge
                   v-if="company.isOwner"
@@ -60,7 +60,7 @@
                 v-else
                 color="neutral"
               >
-                No Aplica
+                {{ formatTableText('No Aplica') }}
               </TableBadge>
             </td>
             <td class="py-2 pr-4">
@@ -68,13 +68,13 @@
                 v-if="company.email?.trim()"
                 class="text-gray-600 dark:text-gray-300"
               >
-                {{ company.email }}
+                {{ formatTableText(company.email) }}
               </span>
               <TableBadge
                 v-else
                 color="neutral"
               >
-                No Aplica
+                {{ formatTableText('No Aplica') }}
               </TableBadge>
             </td>
             <td class="py-2 pr-4">
@@ -88,14 +88,14 @@
                   color="violet"
                   badge-class="shrink-0"
                 >
-                  {{ formatRoleName(role.name) }}
+                  {{ formatTableText(role.name) }}
                 </TableBadge>
               </div>
               <TableBadge
                 v-else
                 color="neutral"
               >
-                No Aplica
+                {{ formatTableText('No Aplica') }}
               </TableBadge>
             </td>
             <td class="py-2">
@@ -126,7 +126,7 @@
                 v-else
                 color="neutral"
               >
-                No Aplica
+                {{ formatTableText('No Aplica') }}
               </TableBadge>
             </td>
           </tr>
@@ -151,7 +151,7 @@ import {
 } from '~/modules/administration/users/mappers/user-companies.mapper'
 import type { User, UserCompany } from '~/modules/administration/users/types/users.types'
 import { buildUserCompanyPermissionsPayload } from '~/modules/administration/users/utils/user-permissions.utils'
-import { toTitleCase } from '~/shared/utils/format'
+import { formatTableText } from '~/shared/utils/format'
 
 const props = defineProps<{
   user: User
@@ -162,11 +162,6 @@ const emit = defineEmits<{
 }>()
 
 const companies = computed(() => getVisibleUserCompanies(props.user.companies))
-
-const formatRoleName = (value: string) => {
-  if (!value.trim()) return '-'
-  return toTitleCase(value)
-}
 
 const handleOpenPermissions = (company: UserCompany) => {
   const payload = buildUserCompanyPermissionsPayload(props.user, company)

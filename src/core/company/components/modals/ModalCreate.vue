@@ -2,7 +2,7 @@
     <ModalBasic
       id="create-company-modal"
       :modal-open="modalOpen"
-      title="Nueva empresa"
+      :title="modalTitle"
       description="Registra los datos de la empresa."
       size="5xl"
       @close-modal="handleClose"
@@ -39,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import { Button } from '~/core/ui/buttons'
 import { ModalBasic } from '~/core/ui/modal'
@@ -60,6 +60,11 @@ const companyStore = useCompanyStore()
 const formRef = ref<InstanceType<typeof FormCompany> | null>(null)
 const isSubmitting = ref(false)
 const isInitializing = ref(false)
+
+const modalTitle = computed(() => {
+  const name = String(formRef.value?.displayName ?? '').trim()
+  return name ? `Nueva empresa - ${name}` : 'Nueva empresa'
+})
 
 const waitForFormRef = async () => {
   for (let attempt = 0; attempt < 20; attempt += 1) {

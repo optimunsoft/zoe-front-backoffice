@@ -175,6 +175,19 @@ const isJuridicaPerson = computed(() => {
   return normalizeCatalogLabel(name).includes('persona juridica')
 })
 
+const displayName = computed(() => {
+  const businessName = form.businessName.trim()
+  if (businessName) return businessName
+
+  const tradeName = form.tradeName.trim()
+  if (tradeName) return tradeName
+
+  return [form.firstName, form.middleName, form.lastName, form.secondLastName]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(' ')
+})
+
 const onCompanyStatusChange = async (active: boolean) => {
   if (form.isActive === active || isSyncingForm.value) return
 
@@ -295,6 +308,7 @@ defineExpose({
   initialize,
   setValues,
   isFormReady,
+  displayName,
   uploadCompanyLogoIfNeeded: async (
     companyId: string,
     options?: { skipNotification?: boolean },

@@ -1,5 +1,4 @@
 export const PASSWORD_MIN_LENGTH = 8
-export const PASSWORD_CHARACTER_TYPES_MIN = 3
 
 export type PasswordRequirementsState = {
   minLength: boolean
@@ -7,8 +6,6 @@ export type PasswordRequirementsState = {
   uppercase: boolean
   numbers: boolean
   special: boolean
-  characterTypesMet: number
-  characterTypesRequirementMet: boolean
   isValid: boolean
 }
 
@@ -19,26 +16,18 @@ export const getPasswordRequirements = (password: string): PasswordRequirementsS
   const numbers = /\d/.test(password)
   const special = /[^a-zA-Z0-9]/.test(password)
 
-  const characterTypesMet = [lowercase, uppercase, numbers, special].filter(Boolean).length
-  const characterTypesRequirementMet = characterTypesMet >= PASSWORD_CHARACTER_TYPES_MIN
-
   return {
     minLength,
     lowercase,
     uppercase,
     numbers,
     special,
-    characterTypesMet,
-    characterTypesRequirementMet,
-    isValid: minLength && characterTypesRequirementMet,
+    isValid: minLength && lowercase && uppercase && numbers && special,
   }
 }
 
-export const arePasswordRequirementsComplete = (password: string): boolean => {
-  const requirements = getPasswordRequirements(password)
-
-  return requirements.minLength && requirements.characterTypesRequirementMet
-}
+export const arePasswordRequirementsComplete = (password: string): boolean =>
+  getPasswordRequirements(password).isValid
 
 export const isPasswordValid = (password: string) =>
   arePasswordRequirementsComplete(password)
