@@ -109,7 +109,7 @@
       @action="handleRowAction"
     >
       <template #cell-documentNumber="{ row }">
-        <div class="inline-flex min-w-[16ch] items-center justify-between gap-2">
+        <div class="inline-flex min-w-[16ch] items-center justify-start gap-2">
           <TableBadge
             v-if="row.documentType && row.documentType !== '-'"
             color="violet"
@@ -123,7 +123,7 @@
           >
             -
           </span>
-          <span class="min-w-0 flex-1 text-right font-medium tabular-nums text-gray-800 dark:text-gray-100">
+          <span class="min-w-0 font-medium tabular-nums text-left text-gray-800 dark:text-gray-100">
             {{ row.documentNumber }}
           </span>
         </div>

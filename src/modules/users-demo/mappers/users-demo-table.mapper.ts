@@ -49,7 +49,7 @@ export const usersDemoColumns: UTableColumn[] = [
     },
   },
   { key: 'registeredAt', label: 'Fecha de registro' },
-  { key: 'lastLoginAt', label: 'Última vez que ingresó' },
+  { key: 'lastLoginAt', label: 'Último ingreso' },
   { key: 'sessionsCount', label: 'Número de sesiones', align: 'center' },
 ]
 

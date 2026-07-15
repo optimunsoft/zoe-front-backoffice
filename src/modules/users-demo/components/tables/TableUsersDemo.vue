@@ -52,19 +52,22 @@
           v-if="hasPhoneNumber(row.phone)"
           tag="button"
           type="button"
-          color="primary"
+          :color="isPhoneCopied(row.id) ? 'success' : 'primary'"
           appearance="soft"
           size="md"
-          badge-class="cursor-pointer"
-          :aria-label="`Copiar teléfono ${row.phone}`"
-          @click.stop="copyPhoneNumber(String(row.phone))"
+          :badge-class="[
+            'cursor-pointer transition-colors',
+            isPhoneAnimating(row.id) ? 'phone-copy-pop' : '',
+          ].join(' ')"
+          :aria-label="isPhoneCopied(row.id) ? 'Teléfono copiado' : `Copiar teléfono ${row.phone}`"
+          @click.stop="copyPhoneNumber(String(row.phone), row.id)"
         >
           <UiIcon
-            name="copy"
+            :name="isPhoneCopied(row.id) ? 'check' : 'copy'"
             size="sm"
             class="shrink-0"
           />
-          {{ row.phone }}
+          {{ isPhoneCopied(row.id) ? 'Copiado' : row.phone }}
         </UBadge>
         <UBadge
           v-else
@@ -116,8 +119,8 @@ import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
 import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableRow } from '~/core/ui/Tables/utable.types'
-import { useToast } from '~/core/ui/toast'
 import { formatTableText } from '~/shared/utils/format'
+import { useCopyPhoneNumber } from '~/shared/composables/use-copy-phone-number'
 import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import { useUsersStore } from '~/modules/administration/users/store/users.store'
 import type { User } from '~/modules/administration/users/types/users.types'
@@ -130,7 +133,7 @@ import ModalDelete from '../modals/ModalDelete.vue'
 import ModalEdit from '../modals/ModalEdit.vue'
 
 const usersStore = useUsersStore()
-const toast = useToast()
+const { isPhoneAnimating, isPhoneCopied, copyPhoneNumber } = useCopyPhoneNumber()
 const searchQuery = ref('')
 const debouncedSearch = refDebounced(searchQuery, 400)
 const currentPage = ref(1)
@@ -169,18 +172,6 @@ const hasPhoneNumber = (value: unknown) => {
   if (typeof value !== 'string') return false
   const phone = value.trim()
   return phone.length > 0 && phone !== '-'
-}
-
-const copyPhoneNumber = async (phone: string) => {
-  const normalized = phone.trim()
-  if (!normalized) return
-
-  try {
-    await navigator.clipboard.writeText(normalized)
-    toast.success('Teléfono copiado')
-  } catch {
-    toast.error('No se pudo copiar el teléfono')
-  }
 }
 
 const resolveUserFromRow = (row: UTableRow): User | null => {

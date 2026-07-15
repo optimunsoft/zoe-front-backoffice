@@ -183,3 +183,21 @@ input[type="search"]::-webkit-search-results-decoration {
 .dark .scrollbar-thin::-webkit-scrollbar-thumb {
   background-color: rgb(71 85 105);
 }
+
+@keyframes phone-copy-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.phone-copy-pop {
+  animation: phone-copy-pop 0.4s ease-out;
+  transform-origin: center;
+  will-change: transform;
+}

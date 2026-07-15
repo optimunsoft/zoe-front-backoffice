@@ -83,19 +83,22 @@
                 v-if="hasPhoneNumber(row.phone)"
                 tag="button"
                 type="button"
-                color="primary"
+                :color="isPhoneCopied(row.id) ? 'success' : 'primary'"
                 appearance="soft"
                 size="md"
-                badge-class="cursor-pointer"
-                :aria-label="`Copiar teléfono ${row.phone}`"
-                @click.stop="copyPhoneNumber(String(row.phone))"
+                :badge-class="[
+                    'cursor-pointer transition-colors',
+                    isPhoneAnimating(row.id) ? 'phone-copy-pop' : '',
+                ].join(' ')"
+                :aria-label="isPhoneCopied(row.id) ? 'Teléfono copiado' : `Copiar teléfono ${row.phone}`"
+                @click.stop="copyPhoneNumber(String(row.phone), row.id)"
             >
                 <UiIcon
-                    name="copy"
+                    :name="isPhoneCopied(row.id) ? 'check' : 'copy'"
                     size="sm"
                     class="shrink-0"
                 />
-                {{ row.phone }}
+                {{ isPhoneCopied(row.id) ? 'Copiado' : row.phone }}
             </UBadge>
             <UBadge
                 v-else
@@ -175,8 +178,8 @@ import { FilterPills } from '~/core/ui/filters'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableRow } from '~/core/ui/Tables/utable.types'
-import { useToast } from '~/core/ui/toast'
 import { formatTableText } from '~/shared/utils/format'
+import { useCopyPhoneNumber } from '~/shared/composables/use-copy-phone-number'
 import { Tooltip } from '~/core/ui/utooltip'
 import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import type { DatePeriodId } from '~/shared/constants/date-periods'
@@ -199,7 +202,7 @@ const emit = defineEmits<{
 }>()
 
 const demonstrationsStore = useDemonstrationsStore()
-const toast = useToast()
+const { isPhoneAnimating, isPhoneCopied, copyPhoneNumber } = useCopyPhoneNumber()
 const searchQuery = ref('')
 const debouncedSearch = refDebounced(searchQuery, 400)
 const datePeriod = ref<DatePeriodId>(4)
@@ -229,18 +232,6 @@ const resolveProductInterest = (row: UTableRow): string[] => {
     return row.productInterest
         .map((product) => String(product ?? '').trim())
         .filter(Boolean)
-}
-
-const copyPhoneNumber = async (phone: string) => {
-    const normalized = phone.trim()
-    if (!normalized) return
-
-    try {
-        await navigator.clipboard.writeText(normalized)
-        toast.success('Teléfono copiado')
-    } catch {
-        toast.error('No se pudo copiar el teléfono')
-    }
 }
 
 const {

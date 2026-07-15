@@ -121,6 +121,12 @@ export const uiIcons = {
       'M4 2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a2 2 0 0 0 2 2h6a1 1 0 1 0 0-2H3a1 1 0 0 1-1-1V6a1 1 0 0 0-1-1Z',
     ],
   },
+  check: {
+    viewBox: '0 0 16 16',
+    paths: [
+      'M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z',
+    ],
+  },
 } as const satisfies Record<string, UiIconDefinition>
 
 export type UiIconName = keyof typeof uiIcons
