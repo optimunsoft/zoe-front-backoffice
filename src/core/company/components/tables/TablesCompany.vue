@@ -129,16 +129,6 @@
         </div>
       </template>
 
-      <template #cell-businessNature="{ row }">
-        <TableBadge
-          v-if="row.businessNature && row.businessNature !== '-'"
-          :color="getBusinessNatureBadgeColor(row.businessNature)"
-        >
-          {{ formatTableText(row.businessNature) }}
-        </TableBadge>
-        <span v-else class="text-gray-400 dark:text-gray-500">-</span>
-      </template>
-
       <template #cell-municipality="{ row }">
         <Tooltip
           v-if="row.municipalityCity && row.municipalityCity !== '-'"
@@ -246,7 +236,6 @@ import { TableBadge } from '~/core/ui/badge'
 import { Tooltip } from '~/core/ui/Utooltip'
 import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableRow } from '~/core/ui/Tables/utable.types'
-import type { BadgeColor } from '~/core/ui/badge/badge.types'
 import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import { formatTableText } from '~/shared/utils/format'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
@@ -437,7 +426,6 @@ const filteredCompanies = computed(() =>
 
 const rows = computed<UTableRow[]>(() =>
   mapCompaniesToTableRows(filteredCompanies.value, {
-    businessNatures: businessNatureStore.businessNatures,
     documentTypes: documentTypeStore.documentTypes,
     vatRegimes: vatRegimeStore.vatRegimes,
   }),
@@ -589,17 +577,6 @@ const handleCompanyStatusUpdated = (active: boolean) => {
 
 const handleCompanyUpdated = async () => {
   await fetchCompanies(currentPage.value, true)
-}
-
-const getBusinessNatureBadgeColor = (value: unknown): BadgeColor => {
-  if (typeof value !== 'string') return 'neutral'
-
-  const normalized = normalizeCatalogLabel(value)
-
-  if (normalized.includes('persona natural')) return 'success'
-  if (normalized.includes('persona juridica')) return 'warning'
-
-  return 'neutral'
 }
 
 const handleChangePage = async (page: number) => {

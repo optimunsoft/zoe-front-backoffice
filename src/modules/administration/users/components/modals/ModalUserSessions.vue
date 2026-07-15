@@ -23,7 +23,7 @@
     >
       <template #cell-loginAt="{ row }">
         <span class="font-medium text-gray-800 dark:text-gray-100">
-          {{ row.loginAt }}
+          {{ formatTableText(row.loginAt) }}
         </span>
       </template>
 
@@ -38,13 +38,13 @@
           v-if="row.logoutAtBadge"
           :color="row.logoutAtBadge"
         >
-          {{ row.logoutAt }}
+          {{ formatTableText(row.logoutAt) }}
         </TableBadge>
         <span
           v-else
-          class="text-gray-600 dark:text-gray-300"
+          class="text-gray-800 dark:text-gray-100"
         >
-          {{ row.logoutAt }}
+          {{ formatTableText(row.logoutAt) }}
         </span>
       </template>
 
@@ -57,13 +57,13 @@
           v-if="row[columnKey] === '-'"
           color="neutral"
         >
-          No Aplica
+          {{ formatTableText('No Aplica') }}
         </TableBadge>
         <span
           v-else
-          class="text-gray-600 dark:text-gray-300"
+          class="text-gray-800 dark:text-gray-100"
         >
-          {{ row[columnKey] }}
+          {{ formatTableText(row[columnKey]) }}
         </span>
       </template>
     </UTable>
@@ -84,6 +84,7 @@ import { TableBadge } from '~/core/ui/badge'
 import { UiIcon } from '~/core/ui/icons'
 import { ModalBasic } from '~/core/ui/modal'
 import UTable from '~/core/ui/Tables/Utable.vue'
+import { formatTableText } from '~/shared/utils/format'
 import {
   mapUserSessionsToTableRows,
   userSessionTableColumns,

@@ -1,5 +1,6 @@
 import type { User } from '~/modules/administration/users/types/users.types'
 import type { UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
+import { formatTableDate } from '~/shared/utils/format'
 
 const EMPTY_CELL = '-'
 
@@ -16,19 +17,6 @@ const formatPhone = (user: User) => {
   const digits = withoutCountryCode.replace(/\D/g, '')
 
   return digits || EMPTY_CELL
-}
-
-const formatDate = (value?: string | null) => {
-  if (!value?.trim()) return EMPTY_CELL
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return EMPTY_CELL
-
-  return new Intl.DateTimeFormat('es-CO', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(date)
 }
 
 const formatSessionsCount = (value?: number | null) => {
@@ -73,7 +61,7 @@ export const mapUsersDemoToTableRows = (users: User[]): UTableRow[] =>
     phone: formatPhone(user),
     status: user.isActive ? 'Activo' : 'Inactivo',
     verified: user.isVerified ? 'Sí' : 'No',
-    registeredAt: formatDate(user.createdAt),
-    lastLoginAt: formatDate(user.last_login_at),
+    registeredAt: formatTableDate(user.createdAt),
+    lastLoginAt: formatTableDate(user.last_login_at),
     sessionsCount: formatSessionsCount(user.total_sessions),
   }))

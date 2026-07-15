@@ -13,7 +13,7 @@
       class="overflow-auto"
       :style="bodyMaxHeightStyle"
     >
-        <table class="table-auto w-full text-gray-600 dark:text-gray-300">
+        <table class="table-auto w-full text-gray-800 dark:text-gray-100">
           <thead class="sticky top-0 z-10 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border-t border-b border-gray-100 dark:border-gray-700/60 shadow-[inset_0_-1px_0_0_rgba(229,231,235,1)] dark:shadow-[inset_0_-1px_0_0_rgba(55,65,81,0.6)]">
             <tr>
               <th v-if="selectable" class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap w-px text-center bg-gray-50 dark:bg-gray-900">
@@ -119,14 +119,14 @@
                         :d="path"
                       />
                     </svg>
-                    <div>{{ formatCellValue(row[column.key]) }}</div>
+                    <div class="text-gray-800 dark:text-gray-100">{{ formatCellValue(row[column.key]) }}</div>
                   </div>
 
                   <!-- text (default) -->
                   <div
                     v-else
                     :class="[
-                      'text-left',
+                      'text-left text-gray-800 dark:text-gray-100',
                       cellTextClass(row, column),
                     ]"
                   >

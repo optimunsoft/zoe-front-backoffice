@@ -73,7 +73,7 @@
                 v-if="hasScheduledTime(row.scheduledTime)"
                 color="info"
             >
-                {{ row.scheduledTime }}
+                {{ formatTableText(row.scheduledTime) }}
             </TableBadge>
             <span v-else class="text-gray-400 dark:text-gray-500">-</span>
         </template>
@@ -102,7 +102,7 @@
                 color="neutral"
                 size="md"
             >
-                No Aplica
+                {{ formatTableText('No Aplica') }}
             </UBadge>
         </template>
 

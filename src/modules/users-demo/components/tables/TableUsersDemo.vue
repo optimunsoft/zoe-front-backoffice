@@ -3,7 +3,7 @@
     <div class="mb-8 flex flex-col gap-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
         <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">
-          Usuarios de Demo
+          Usuarios Demo
         </h1>
       </div>
 

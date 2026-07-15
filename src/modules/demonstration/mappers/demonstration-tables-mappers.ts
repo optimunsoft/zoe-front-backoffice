@@ -1,6 +1,7 @@
 import { normalizeProductInterest } from "../schema/demonstrations.schema";
 import type { DemonstrationResponse, DemonstrationStatus } from "../types/demonstration.types";
 import type { UTableColumn, UTableRow } from "~/core/ui/Tables/utable.types";
+import { formatTableDate } from "~/shared/utils/format";
 
 const STATUS_LABELS: Record<DemonstrationStatus, string> = {
     PENDIENTE: 'Pendiente',
@@ -13,17 +14,6 @@ const STATUS_BADGE_COLORS = {
     Ejecutada: 'success',
     Cancelada: 'danger',
 } as const
-
-const formatDemonstrationDate = (value: Date | string): string => {
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return '-'
-
-    return new Intl.DateTimeFormat('es-CO', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-    }).format(date)
-}
 
 const formatDemonstrationTime = (value: Date | string): string => {
     const date = new Date(value)
@@ -46,7 +36,7 @@ const formatDemonstrationPhone = (value?: string | null): string => {
 }
 
 export const demonstrationColumns: UTableColumn[] = [
-    { key: 'name', label: 'Nombre', toggleable: false },
+    { key: 'name', label: 'Nombre', toggleable: false, variant: 'emphasis' },
     { key: 'email', label: 'Email' },
     { key: 'scheduledDate', label: 'Fecha' },
     { key: 'scheduledTime', label: 'Hora' },
@@ -72,7 +62,7 @@ export const mapDemonstrationsToTableRows = (demonstrations: DemonstrationRespon
         id: demonstration.id,
         name: demonstration.name,
         email: demonstration.email,
-        scheduledDate: formatDemonstrationDate(demonstration.scheduledAt),
+        scheduledDate: formatTableDate(demonstration.scheduledAt),
         scheduledTime: formatDemonstrationTime(demonstration.scheduledAt),
         phone: formatDemonstrationPhone(demonstration.phone),
         productInterest: normalizeProductInterest(demonstration.productInterest),

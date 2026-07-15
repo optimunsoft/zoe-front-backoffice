@@ -17,7 +17,7 @@
     </p>
 
     <div v-else class="overflow-x-auto">
-      <table class="w-full text-sm text-left">
+      <table class="w-full text-sm text-left text-gray-800 dark:text-gray-100">
         <thead class="text-xs uppercase text-gray-500 dark:text-gray-400">
           <tr>
             <th
@@ -45,14 +45,14 @@
                   color="warning"
                   badge-class="shrink-0"
                 >
-                  Dueño
+                  {{ formatTableText('Dueño') }}
                 </TableBadge>
               </div>
             </td>
             <td class="py-2 pr-4">
               <span
                 v-if="user.email?.trim()"
-                class="text-gray-600 dark:text-gray-300"
+                class="text-gray-800 dark:text-gray-100"
               >
                 {{ formatTableText(user.email) }}
               </span>

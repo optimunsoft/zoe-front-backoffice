@@ -34,7 +34,6 @@ export const companyColumns: UTableColumn[] = [
     align: 'center',
     badgeColorMap: COMPANY_STATUS_BADGE_COLORS,
   },
-  { key: 'businessNature', label: 'Naturaleza' },
   { key: 'municipality', label: 'Ciudad' },
   {
     key: 'hasApiKey',
@@ -128,7 +127,6 @@ export const mapCompaniesToTableRows = (
       businessName: getDisplayName(company),
       tradeName: company.tradeName || '-',
       email: company.email || '-',
-      businessNature: findCatalogName(catalogs.businessNatures, company.businessNatureId),
       municipality: municipality.city,
       municipalityCity: municipality.city,
       municipalityState: municipality.state,

@@ -153,7 +153,7 @@
 
       <template #cell-email="{ row }">
         <span v-if="hasUserEmail(row.email)" class="text-gray-800 dark:text-gray-100">
-          {{ row.email }}
+          {{ formatTableText(row.email) }}
         </span>
         <TableBadge v-else color="neutral">
           {{ formatTableText('No Aplica') }}
