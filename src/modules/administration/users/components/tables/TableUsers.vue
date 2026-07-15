@@ -20,7 +20,7 @@
       </div>
 
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
-        <FilterPills
+        <FilterCards
           v-model="userFilter"
           :options="userFilterOptions"
           aria-label="Filtrar usuarios"
@@ -159,15 +159,6 @@
           {{ formatTableText('No Aplica') }}
         </TableBadge>
       </template>
-
-      <template #cell-isAdmin="{ row }">
-        <TableBadge v-if="row.isAdminUser" color="primary">
-          {{ formatTableText('Superusuario') }}
-        </TableBadge>
-        <TableBadge v-else color="neutral">
-          {{ formatTableText('No Aplica') }}
-        </TableBadge>
-      </template>
     </UTable>
 
     <div class="mt-4" :class="{ 'pointer-events-none opacity-60': isLoading }">
@@ -182,6 +173,7 @@
 
     <ModalCreate
       :modal-open="createModalOpen"
+      :show-backoffice-section="false"
       @close-modal="closeCreateModal"
       @created="handleUsersMutated"
     />
@@ -189,6 +181,7 @@
     <ModalEdit
       :modal-open="editModalOpen"
       :user="editingUser"
+      :show-backoffice-section="false"
       @close-modal="closeEditModal"
       @updated="handleUsersMutated"
     />
@@ -221,7 +214,7 @@ import { UiIcon } from '~/core/ui/icons'
 import { TableBadge } from '~/core/ui/badge'
 import { Tooltip } from '~/core/ui/utooltip'
 import TableColumnToggle from '~/core/ui/dropdown/TableColumnToggle.vue'
-import { FilterPills } from '~/core/ui/filters'
+import { FilterCards } from '~/core/ui/filters'
 import { useModal } from '~/core/ui/modal'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
@@ -235,7 +228,8 @@ import ModalCreate from '~/modules/administration/users/components/modals/ModalC
 import ModalEdit from '~/modules/administration/users/components/modals/ModalEdit.vue'
 import ModalUserSessions from '~/modules/administration/users/components/modals/ModalUserSessions.vue'
 import TableUserCompanies from '~/modules/administration/users/components/tables/TableUserCompanies.vue'
-import type { FilterPillOption } from '~/core/ui/filters/filter-pills.types'
+import type { FilterCardOption } from '~/core/ui/filters/filter-cards.types'
+import { useUsersService } from '~/modules/administration/users/services/users.services'
 import { useUsersStore } from '~/modules/administration/users/store/users.store'
 import { USER_TYPE, type GetUsersParams, type User } from '~/modules/administration/users/types/users.types'
 import { useToast } from '~/core/ui/toast'
@@ -254,6 +248,7 @@ type CompanySearchOption = {
 }
 
 const usersStore = useUsersStore()
+const usersService = useUsersService()
 const companyStore = useCompanyStore()
 const toast = useToast()
 const { modalOpen: permissionsModalOpen, open: openPermissionsModal, close: closePermissionsModal } = useModal()
@@ -273,6 +268,7 @@ const hasCompanySearchAttempt = ref(false)
 const appliedCompanyLabel = ref('')
 const selectedCompanyId = ref<string | undefined>()
 const userFilter = ref('all')
+const filterTotals = ref<Record<string, number>>({})
 const currentPage = ref(1)
 const amount = ref(10)
 const {
@@ -293,7 +289,6 @@ const userFilterDefinitions = [
   { key: 'all', label: 'Todos' },
   { key: 'active', label: 'Activos' },
   { key: 'inactive', label: 'Inactivos' },
-  { key: 'isAdmin', label: 'Superusuarios' },
   { key: USER_TYPE.USUARIO, label: 'Usuario' },
   { key: USER_TYPE.SUBUSUARIO, label: 'Subusuario' },
 ] as const
@@ -304,36 +299,94 @@ const {
   resetVisibleColumns,
 } = useVisibleTableColumns(userColumns, { storageKey: 'table-columns:users' })
 
-const userFilterOptions = computed<FilterPillOption[]>(() =>
+const userFilterOptions = computed<FilterCardOption[]>(() =>
   userFilterDefinitions.map((option) => ({
     key: option.key,
     label: option.label,
-    count: userFilter.value === option.key ? usersStore.total : undefined,
+    count: filterTotals.value[option.key]
+      ?? (userFilter.value === option.key ? usersStore.total : undefined),
   })),
 )
 
-const resolveListQueryParams = (): Pick<GetUsersParams, 'isAdmin' | 'isActive' | 'type'> => {
-  if (userFilter.value === 'active') {
-    return { isActive: true, isAdmin: undefined, type: undefined }
+const resolveFilterQueryParams = (
+  filterKey: string,
+): Pick<GetUsersParams, 'isActive' | 'type'> => {
+  if (filterKey === 'active') {
+    return { isActive: true, type: undefined }
   }
 
-  if (userFilter.value === 'inactive') {
-    return { isActive: false, isAdmin: undefined, type: undefined }
+  if (filterKey === 'inactive') {
+    return { isActive: false, type: undefined }
   }
 
-  if (userFilter.value === 'isAdmin') {
-    return { isAdmin: true, isActive: undefined, type: undefined }
+  if (filterKey === USER_TYPE.USUARIO) {
+    return { type: USER_TYPE.USUARIO, isActive: undefined }
   }
 
-  if (userFilter.value === USER_TYPE.USUARIO) {
-    return { type: USER_TYPE.USUARIO, isAdmin: undefined, isActive: undefined }
+  if (filterKey === USER_TYPE.SUBUSUARIO) {
+    return { type: USER_TYPE.SUBUSUARIO, isActive: undefined }
   }
 
-  if (userFilter.value === USER_TYPE.SUBUSUARIO) {
-    return { type: USER_TYPE.SUBUSUARIO, isAdmin: undefined, isActive: undefined }
+  return { isActive: undefined, type: undefined }
+}
+
+const resolveListQueryParams = (): Pick<GetUsersParams, 'isActive' | 'type'> =>
+  resolveFilterQueryParams(userFilter.value)
+
+const extractUsersTotal = (response: Awaited<ReturnType<typeof usersService.getUsers>>['response']) => {
+  if (Array.isArray(response)) return response.length
+  return response.total ?? response.data?.length ?? response.items?.length ?? response.users?.length ?? 0
+}
+
+const refreshFilterTotals = async () => {
+  const results = await Promise.all(
+    userFilterDefinitions.map(async (option) => {
+      try {
+        const { response } = await usersService.getUsers({
+          amount: 1,
+          page: 1,
+          search: debouncedSearch.value || undefined,
+          companyId: selectedCompanyId.value,
+          isAdmin: false,
+          isDemo: false,
+          ...resolveFilterQueryParams(option.key),
+        })
+
+        return [option.key, extractUsersTotal(response)] as const
+      } catch {
+        return [option.key, filterTotals.value[option.key] ?? 0] as const
+      }
+    }),
+  )
+
+  filterTotals.value = Object.fromEntries(results)
+}
+
+const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {}) => {
+  currentPage.value = page
+
+  await withTableLoading(async () => {
+    await usersStore.getUsers({
+      amount: amount.value,
+      page,
+      search: debouncedSearch.value || undefined,
+      companyId: selectedCompanyId.value,
+      isAdmin: false,
+      isDemo: false,
+      ...resolveListQueryParams(),
+    })
+    selectedItems.value = []
+    expandedCompaniesRowKey.value = null
+  })
+
+  filterTotals.value = {
+    ...filterTotals.value,
+    [userFilter.value]: usersStore.total,
   }
 
-  return { isAdmin: undefined, isActive: undefined, type: undefined }
+  if (options.refreshTotals) {
+    void refreshFilterTotals()
+  }
 }
 
 const formatCompanyLabel = (company: CompanyList) => {
@@ -399,7 +452,7 @@ const selectCompanyOption = async (company: CompanySearchOption) => {
   companySearchResults.value = []
   hasCompanySearchAttempt.value = false
   currentPage.value = 1
-  await fetchUsers(1)
+  await fetchUsers(1, { refreshTotals: true })
 }
 
 const handleCompanySearch = async () => {
@@ -408,7 +461,7 @@ const handleCompanySearch = async () => {
 
   if (!companySearchQuery.value.trim()) {
     currentPage.value = 1
-    await fetchUsers(1)
+    await fetchUsers(1, { refreshTotals: true })
   }
 }
 
@@ -420,7 +473,7 @@ watch(debouncedCompanySearch, async (term) => {
       selectedCompanyId.value = undefined
       appliedCompanyLabel.value = ''
       currentPage.value = 1
-      await fetchUsers(1)
+      await fetchUsers(1, { refreshTotals: true })
     }
     return
   }
@@ -434,7 +487,7 @@ watch(debouncedCompanySearch, async (term) => {
 watch(debouncedSearch, () => {
   if (!isInitialLoadDone.value) return
   currentPage.value = 1
-  fetchUsers(1)
+  fetchUsers(1, { refreshTotals: true })
 })
 
 watch(userFilter, () => {
@@ -545,24 +598,8 @@ const hasUserEmail = (value: unknown) => {
   return email.length > 0 && email !== '-'
 }
 
-const fetchUsers = async (page: number) => {
-  currentPage.value = page
-
-  await withTableLoading(async () => {
-    await usersStore.getUsers({
-      amount: amount.value,
-      page,
-      search: debouncedSearch.value || undefined,
-      companyId: selectedCompanyId.value,
-      ...resolveListQueryParams(),
-    })
-    selectedItems.value = []
-    expandedCompaniesRowKey.value = null
-  })
-}
-
 const handleUsersMutated = async () => {
-  await fetchUsers(currentPage.value)
+  await fetchUsers(currentPage.value, { refreshTotals: true })
 }
 
 const handleCreateUser = () => {
@@ -582,10 +619,36 @@ const handleChangeAmount = async (nextAmount: number) => {
 
 const handleReload = async () => {
   if (isLoading.value) return
-  await fetchUsers(currentPage.value)
+
+  searchQuery.value = ''
+  userFilter.value = 'all'
+  companySearchQuery.value = ''
+  companySearchResults.value = []
+  isSearchingCompanies.value = false
+  hasCompanySearchAttempt.value = false
+  appliedCompanyLabel.value = ''
+  selectedCompanyId.value = undefined
+  currentPage.value = 1
+
+  await withTableLoading(async () => {
+    await usersStore.getUsers({
+      amount: amount.value,
+      page: 1,
+      isAdmin: false,
+      isDemo: false,
+    })
+    selectedItems.value = []
+    expandedCompaniesRowKey.value = null
+  })
+
+  filterTotals.value = {
+    ...filterTotals.value,
+    all: usersStore.total,
+  }
+  void refreshFilterTotals()
 }
 
 onMounted(() => {
-  fetchUsers(currentPage.value)
+  void fetchUsers(currentPage.value, { refreshTotals: true })
 })
 </script>

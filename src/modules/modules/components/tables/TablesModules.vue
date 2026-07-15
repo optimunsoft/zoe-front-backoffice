@@ -201,6 +201,8 @@ const handleRowAction = async ({ action, row }: { action: string, row: UTableRow
 
 const handleReload = async () => {
   if (isLoading.value) return
+
+  search.value = ''
   await modulesStore.fetchModules(true)
 }
 

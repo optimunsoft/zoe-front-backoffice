@@ -20,7 +20,7 @@
       </div>
 
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
-        <FilterPills
+        <FilterCards
           v-model="companyFilter"
           :options="companyFilterOptions"
           aria-label="Filtrar empresas"
@@ -227,7 +227,7 @@ import { useDocumentTypeStore } from '~/core/documentType/store/documentType.sto
 import { useVatRegimeStore } from '~/core/vatRegime/store/vatRegime.store'
 import { Button, ReloadButton } from '~/core/ui/buttons'
 import { UiIcon } from '~/core/ui/icons'
-import { FilterPills } from '~/core/ui/filters'
+import { FilterCards } from '~/core/ui/filters'
 import { useModal } from '~/core/ui/modal'
 import TableColumnToggle from '~/core/ui/dropdown/TableColumnToggle.vue'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
@@ -592,7 +592,27 @@ const handleChangeAmount = async (nextAmount: number) => {
 
 const handleReload = async () => {
   if (isLoading.value) return
-  await fetchCompanies(currentPage.value, true)
+
+  searchQuery.value = ''
+  locationSearchQuery.value = ''
+  locationSearchResults.value = []
+  isSearchingLocations.value = false
+  hasLocationSearchAttempt.value = false
+  appliedLocationLabel.value = ''
+  appliedStateId.value = ''
+  appliedMunicipalityId.value = ''
+  companyFilter.value = 'all'
+  currentPage.value = 1
+
+  await withTableLoading(async () => {
+    await catalogStore.preload(true)
+    await companyStore.getCompanies({
+      amount: amount.value,
+      page: 1,
+    }, true)
+    selectedItems.value = []
+    expandedUsersRowKey.value = null
+  })
 }
 
 const handleSearch = async () => {

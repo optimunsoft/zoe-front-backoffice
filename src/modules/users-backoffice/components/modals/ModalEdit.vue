@@ -1,26 +1,23 @@
 <template>
   <ModalBasic
-    id="edit-user-modal"
+    id="edit-users-backoffice-modal"
     :modal-open="modalOpen"
     :title="modalTitle"
-    description="Actualiza los datos del usuario. El tipo no se puede modificar."
+    description="Actualiza los datos del usuario backoffice."
     size="4xl"
     @close-modal="handleClose"
   >
     <template #icon>
       <div class="flex size-9 items-center justify-center rounded-lg bg-violet-500/15 dark:bg-violet-500/20">
-        <svg class="size-5 fill-current text-violet-500" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M11.7.3c-.4-.4-1-.4-1.4 0l-10 10c-.2.2-.3.4-.3.7v4c0 .6.4 1 1 1h4c.3 0 .5-.1.7-.3l10-10c.4-.4.4-1 0-1.4l-4-4zM4.6 14H2v-2.6l6-6L10.6 8l-6 6zM12 6.6L9.4 4 11 2.4 13.6 5 12 6.6z" />
-        </svg>
+        <UiIcon name="edit" size="md" class="text-violet-500" />
       </div>
     </template>
 
     <template v-if="modalOpen && user">
-      <FormUser
+      <FormUsersBackoffice
         :key="user.id"
         ref="formRef"
         mode="edit"
-        :show-backoffice-section="showBackofficeSection"
         :initial-user="user"
         @submit="handleEdit"
         @refresh="emit('updated')"
@@ -47,23 +44,21 @@
 import { computed, ref } from 'vue'
 
 import { Button } from '~/core/ui/buttons'
+import { UiIcon } from '~/core/ui/icons'
 import { ModalBasic } from '~/core/ui/modal'
-import { useUsersStore } from '../../store/users.store'
-import type { User, UserCreate, UserUpdate } from '../../types/users.types'
-import FormUser from '../forms/Form.vue'
+import { useUsersStore } from '~/modules/administration/users/store/users.store'
+import type { User, UserCreate, UserUpdate } from '~/modules/administration/users/types/users.types'
+import FormUsersBackoffice from '../forms/Form.vue'
 
 type UserFormExpose = {
   submit: () => void
   reset: () => void
 }
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   modalOpen: boolean
   user: User | null
-  showBackofficeSection?: boolean
-}>(), {
-  showBackofficeSection: true,
-})
+}>()
 
 const emit = defineEmits<{
   'close-modal': []
@@ -75,12 +70,12 @@ const formRef = ref<UserFormExpose | null>(null)
 const isSubmitting = ref(false)
 
 const modalTitle = computed(() => {
-  if (!props.user) return 'Editar usuario'
+  if (!props.user) return 'Editar usuario backoffice'
 
   const name = [props.user.firstName, props.user.lastName].filter(Boolean).join(' ').trim()
-  if (!name) return 'Editar usuario'
+  if (!name) return 'Editar usuario backoffice'
 
-  return `Editar usuario - ${name}`
+  return `Editar usuario backoffice - ${name}`
 })
 
 const handleClose = () => {

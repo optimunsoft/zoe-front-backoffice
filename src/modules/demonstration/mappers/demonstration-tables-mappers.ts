@@ -1,5 +1,6 @@
 import { normalizeProductInterest } from "../schema/demonstrations.schema";
 import type { DemonstrationResponse, DemonstrationStatus } from "../types/demonstration.types";
+import type { CalendarEvent, CalendarEventColor } from "~/core/ui/calendar";
 import type { UTableColumn, UTableRow } from "~/core/ui/Tables/utable.types";
 import { formatTableDate } from "~/shared/utils/format";
 
@@ -14,6 +15,12 @@ const STATUS_BADGE_COLORS = {
     Ejecutada: 'success',
     Cancelada: 'danger',
 } as const
+
+const STATUS_CALENDAR_COLORS: Record<DemonstrationStatus, CalendarEventColor> = {
+    PENDIENTE: 'yellow',
+    EJECUTADA: 'green',
+    CANCELADA: 'red',
+}
 
 const formatDemonstrationTime = (value: Date | string): string => {
     const date = new Date(value)
@@ -69,3 +76,26 @@ export const mapDemonstrationsToTableRows = (demonstrations: DemonstrationRespon
         status: STATUS_LABELS[demonstration.status] ?? demonstration.status,
     }));
 }
+
+export const mapDemonstrationsToCalendarEvents = (
+  demonstrations: DemonstrationResponse[],
+): CalendarEvent[] =>
+  demonstrations
+    .map((demonstration) => {
+      const start = new Date(demonstration.scheduledAt)
+      if (Number.isNaN(start.getTime())) return null
+
+      const end = new Date(start)
+      end.setHours(end.getHours() + 1)
+
+      const statusLabel = STATUS_LABELS[demonstration.status] ?? demonstration.status
+
+      return {
+        id: demonstration.id,
+        eventName: `${demonstration.name} · ${statusLabel}`,
+        eventStart: start,
+        eventEnd: end,
+        eventColor: STATUS_CALENDAR_COLORS[demonstration.status] ?? 'sky',
+      } satisfies CalendarEvent
+    })
+    .filter((event): event is CalendarEvent => event != null)

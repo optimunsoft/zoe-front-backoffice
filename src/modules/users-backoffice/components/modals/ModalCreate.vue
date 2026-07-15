@@ -1,25 +1,22 @@
 <template>
   <ModalBasic
-    id="create-user-modal"
+    id="create-users-backoffice-modal"
     :modal-open="modalOpen"
-    title="Crear usuario"
-    description="Completa los datos para registrar un nuevo usuario."
+    title="Crear usuario backoffice"
+    description="Completa los datos para registrar un usuario del Back Office."
     size="4xl"
     @close-modal="handleClose"
   >
     <template #icon>
       <div class="flex size-9 items-center justify-center rounded-lg bg-violet-500/15 dark:bg-violet-500/20">
-        <svg class="size-5 fill-current text-violet-500" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
-        </svg>
+        <UiIcon name="userAdd" size="md" class="text-violet-500" />
       </div>
     </template>
 
-    <FormUser
+    <FormUsersBackoffice
       v-if="modalOpen"
       ref="formRef"
       mode="create"
-      :show-backoffice-section="showBackofficeSection"
       @submit="handleCreate"
     />
 
@@ -38,22 +35,20 @@
 import { ref } from 'vue'
 
 import { Button } from '~/core/ui/buttons'
+import { UiIcon } from '~/core/ui/icons'
 import { ModalBasic } from '~/core/ui/modal'
-import { useUsersStore } from '../../store/users.store'
-import type { UserCreate, UserUpdate } from '../../types/users.types'
-import FormUser from '../forms/Form.vue'
+import { useUsersStore } from '~/modules/administration/users/store/users.store'
+import type { UserCreate, UserUpdate } from '~/modules/administration/users/types/users.types'
+import FormUsersBackoffice from '../forms/Form.vue'
 
 type UserFormExpose = {
   submit: () => void
   reset: () => void
 }
 
-withDefaults(defineProps<{
+defineProps<{
   modalOpen: boolean
-  showBackofficeSection?: boolean
-}>(), {
-  showBackofficeSection: true,
-})
+}>()
 
 const emit = defineEmits<{
   'close-modal': []

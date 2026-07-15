@@ -19,6 +19,8 @@
       :count="sessionRows.length"
       :columns="userSessionTableColumns"
       :rows="sessionRows"
+      :visible-rows="0"
+      body-max-height="20rem"
       empty-text="Este usuario no tiene sesiones registradas."
     >
       <template #cell-loginAt="{ row }">

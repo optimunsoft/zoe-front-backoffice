@@ -12,24 +12,10 @@
         <UiIcon name="users" size="md" class="text-violet-500" />
       </div>
     </template>
-    <p class="text-[14px] font-medium text-gray-500 dark:text-gray-400 py-2">
-          Tipo de Usuario a asignar
-        </p>
     <div class="space-y-4">
-      <div class="space-y-2">
-
-        <FilterPills
-          v-model="adminAssignMode"
-          :options="adminAssignModeOptions"
-          :show-count="false"
-          aria-label="Tipo de asignación de usuario"
-          wrapper-class="mb-0"
-        />
-      </div>
-
       <p class="text-[14px] font-medium text-gray-500 dark:text-gray-400">
-          Buscar usuario
-        </p>
+        Buscar usuario
+      </p>
 
       <div ref="adminAnchorRef" class="relative w-full">
 
@@ -105,7 +91,7 @@
 
       <div
         v-if="selectedAdminUsers.length > 0"
-        class="flex flex-col gap-2"
+        class="flex max-h-64 flex-col gap-2 overflow-y-auto pe-1"
       >
         <div
           v-for="user in selectedAdminUsers"
@@ -171,6 +157,44 @@
   </ModalBasic>
 
   <ModalAction
+    id="confirm-assign-admin-user-modal"
+    :modal-open="assignAdminModalOpen"
+    @close-modal="cancelAssignAdminUser"
+  >
+    <div class="text-center">
+      <div class="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-500/20">
+        <UiIcon name="users" size="md" class="text-violet-500" />
+      </div>
+
+      <h3 class="mb-2 text-lg font-semibold text-gray-800 dark:text-gray-100">
+        ¿Asignar usuario?
+      </h3>
+
+      <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">
+        <template v-if="pendingAssignAdminUser">
+          Se asignará a
+          <span class="font-medium text-gray-700 dark:text-gray-200">
+            {{ formatUserDisplayName(pendingAssignAdminUser) }}
+          </span>
+          como dueño de esta empresa.
+        </template>
+        <template v-else>
+          Se asignará el usuario como dueño de esta empresa.
+        </template>
+      </p>
+
+      <div class="flex justify-center gap-2">
+        <Button variant="secondary" :disabled="isBusy" @click="cancelAssignAdminUser">
+          Cancelar
+        </Button>
+        <Button variant="primary" :loading="isBusy" @click="confirmAssignAdminUser">
+          Asignar
+        </Button>
+      </div>
+    </div>
+  </ModalAction>
+
+  <ModalAction
     id="confirm-remove-assigned-admin-user-modal"
     :modal-open="removeAdminModalOpen"
     @close-modal="cancelRemoveAdminUser"
@@ -222,8 +246,6 @@ import type { PaginatedUsersResponse, User } from '~/modules/administration/user
 import { USER_TYPE } from '~/modules/administration/users/types/users.types'
 import { TableBadge } from '~/core/ui/badge'
 import { Button } from '~/core/ui/buttons'
-import { FilterPills } from '~/core/ui/filters'
-import type { FilterPillOption } from '~/core/ui/filters/filter-pills.types'
 import { ModalAction, ModalBasic } from '~/core/ui/modal'
 import { Spinner } from '~/core/ui/loader'
 import { UiIcon } from '~/core/ui/icons'
@@ -254,11 +276,13 @@ const selectedAdminUserIds = ref<string[]>([])
 const assignedUsersById = ref<Record<string, DisplayUser>>({})
 const adminUserCandidates = ref<User[]>([])
 const adminUserSearch = ref('')
-const adminAssignMode = ref<'admin' | 'root'>('admin')
 const showAdminSuggestions = ref(false)
 const isSearchingAdminUsers = ref(false)
 const pendingAdminUserId = ref<string | null>(null)
 const hasChanges = ref(false)
+
+/** Toda asignación en este modal se envía siempre como dueño. */
+const ASSIGN_AS_OWNER = true as const
 
 const isBusy = computed(() => pendingAdminUserId.value !== null)
 
@@ -266,23 +290,15 @@ const removeAdminModalOpen = ref(false)
 const pendingRemoveAdminUserId = ref<string | null>(null)
 const pendingRemoveAdminUserName = ref('')
 
-const adminAssignModeOptions: FilterPillOption[] = [
-  { key: 'admin', label: 'Administrador' },
-  { key: 'root', label: 'Root (dueño)' },
-]
+const assignAdminModalOpen = ref(false)
+const pendingAssignAdminUser = ref<User | null>(null)
 
 const modalTitle = computed(() => {
   const name = props.companyName.trim()
   return name ? `Asignar usuarios - ${name}` : 'Asignar usuarios administrador'
 })
 
-const assignAdminAsOwner = computed(() => adminAssignMode.value === 'root')
-
-const assignAdminActionLabel = computed(() =>
-  assignAdminAsOwner.value
-    ? 'Agregar usuario como root'
-    : 'Agregar usuario administrador',
-)
+const assignAdminActionLabel = 'Agregar usuario'
 
 type AdminUserCandidate = Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>
 
@@ -373,10 +389,10 @@ const onAdminUserSearchBlur = () => {
   }, 150)
 }
 
-const assignAdminUser = async (user: User, isOwner = false) => {
+const assignAdminUser = async (user: User) => {
   if (selectedAdminUserIds.value.includes(user.id) || isBusy.value) return
 
-  const displayUser = userToDisplay(user, isOwner)
+  const displayUser = userToDisplay(user, ASSIGN_AS_OWNER)
   const previousIds = [...selectedAdminUserIds.value]
   const previousUsers = { ...assignedUsersById.value }
   selectedAdminUserIds.value = [...selectedAdminUserIds.value, user.id]
@@ -387,7 +403,7 @@ const assignAdminUser = async (user: User, isOwner = false) => {
   pendingAdminUserId.value = user.id
 
   try {
-    await companyStore.assignUsersToCompany(props.companyId, [user.id], isOwner)
+    await companyStore.assignUsersToCompany(props.companyId, [user.id], ASSIGN_AS_OWNER)
     hasChanges.value = true
   } catch {
     selectedAdminUserIds.value = previousIds
@@ -397,13 +413,37 @@ const assignAdminUser = async (user: User, isOwner = false) => {
   }
 }
 
-const selectAdminUserCandidate = async (user: User) => {
+const requestAssignAdminUser = (user: User) => {
+  if (selectedAdminUserIds.value.includes(user.id) || isBusy.value) return
+
   adminUserSearch.value = ''
   showAdminSuggestions.value = false
-  await assignAdminUser(user, assignAdminAsOwner.value)
+  pendingAssignAdminUser.value = user
+  assignAdminModalOpen.value = true
 }
 
-const confirmAddAdminUser = async () => {
+const cancelAssignAdminUser = () => {
+  if (isBusy.value) return
+
+  assignAdminModalOpen.value = false
+  pendingAssignAdminUser.value = null
+}
+
+const confirmAssignAdminUser = async () => {
+  if (isBusy.value || !pendingAssignAdminUser.value) return
+
+  const user = pendingAssignAdminUser.value
+  assignAdminModalOpen.value = false
+  pendingAssignAdminUser.value = null
+
+  await assignAdminUser(user)
+}
+
+const selectAdminUserCandidate = (user: User) => {
+  requestAssignAdminUser(user)
+}
+
+const confirmAddAdminUser = () => {
   const term = adminUserSearch.value.trim().toLowerCase()
   const exactMatch = filteredAdminUsers.value.find((user) => {
     const name = formatUserDisplayName(user).toLowerCase()
@@ -411,7 +451,7 @@ const confirmAddAdminUser = async () => {
   })
 
   if (exactMatch) {
-    await selectAdminUserCandidate(exactMatch)
+    requestAssignAdminUser(exactMatch)
     return
   }
 
@@ -486,7 +526,6 @@ watch(
     if (!isOpen || !companyId) return
 
     hasChanges.value = false
-    adminAssignMode.value = 'admin'
     loadCompanyAdminUsers()
   },
   { immediate: true },

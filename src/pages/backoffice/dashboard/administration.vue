@@ -32,6 +32,7 @@ const isReloading = ref(false)
 const handleReload = async () => {
   if (isReloading.value) return
   isReloading.value = true
+  searchQuery.value = ''
 
   try {
     await reloadNuxtApp()

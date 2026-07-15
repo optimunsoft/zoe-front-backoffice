@@ -16,26 +16,25 @@
       Este usuario no tiene empresas asociadas.
     </p>
 
-    <div v-else class="overflow-x-auto">
-      <table class="w-full text-sm text-left text-gray-800 dark:text-gray-100">
+    <div v-else class="overflow-x-auto rounded-md border border-gray-200/80 dark:border-gray-700/60">
+      <table class="w-full border-collapse text-sm text-left text-gray-800 dark:text-gray-100">
         <thead class="text-xs uppercase text-gray-500 dark:text-gray-400">
           <tr>
             <th
               v-for="column in userCompanyDetailColumns"
               :key="column.key"
-              class="pb-2 font-semibold"
-              :class="column.key === 'permissions' ? '' : 'pr-4'"
+              class="border border-gray-200 bg-gray-100/70 px-3 py-2 font-semibold dark:border-gray-700/70 dark:bg-gray-900/50"
             >
               {{ column.label }}
             </th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-200/70 dark:divide-gray-700/60">
+        <tbody>
           <tr
             v-for="company in companies"
             :key="company.id"
           >
-            <td class="py-2 pr-4">
+            <td class="border border-gray-200 px-3 py-2 dark:border-gray-700/70">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="font-medium text-gray-800 dark:text-gray-100">
                   {{ formatTableText(formatUserCompanyName(company)) }}
@@ -49,7 +48,7 @@
                 </TableBadge>
               </div>
             </td>
-            <td class="py-2 pr-4">
+            <td class="border border-gray-200 px-3 py-2 dark:border-gray-700/70">
               <span
                 v-if="company.documentNumber?.trim()"
                 class="font-medium tabular-nums text-gray-800 dark:text-gray-100"
@@ -63,7 +62,7 @@
                 {{ formatTableText('No Aplica') }}
               </TableBadge>
             </td>
-            <td class="py-2 pr-4">
+            <td class="border border-gray-200 px-3 py-2 dark:border-gray-700/70">
               <span
                 v-if="company.email?.trim()"
                 class="text-gray-800 dark:text-gray-100"
@@ -77,7 +76,7 @@
                 {{ formatTableText('No Aplica') }}
               </TableBadge>
             </td>
-            <td class="py-2 pr-4">
+            <td class="border border-gray-200 px-3 py-2 dark:border-gray-700/70">
               <div
                 v-if="company.roles.length > 0"
                 class="flex flex-wrap gap-1.5"
@@ -98,7 +97,7 @@
                 {{ formatTableText('No Aplica') }}
               </TableBadge>
             </td>
-            <td class="py-2">
+            <td class="border border-gray-200 px-3 py-2 dark:border-gray-700/70">
               <Tooltip
                 v-if="company.roles.length > 0"
                 bg="light"

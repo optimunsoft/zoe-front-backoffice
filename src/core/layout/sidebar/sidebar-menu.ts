@@ -47,9 +47,7 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
           const path = route.path
           return (
             path.includes('/empresas')
-            || path.includes('/usuarios/')
-            || path.endsWith('/usuarios')
-            || path.includes('/modulos')
+            || (path.includes('/usuarios') && !path.includes('/usuarios-demo') && !path.includes('/superusuarios'))
           )
         },
         children: [
@@ -62,11 +60,6 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
             key: 'usuarios-list',
             label: 'Usuarios',
             to: `${BACKOFFICE_DASHBOARD_PATH}/usuarios`,
-          },
-          {
-            key: 'modulos-list',
-            label: 'Módulos',
-            to: `${BACKOFFICE_DASHBOARD_PATH}/modulos`,
           },
         ],
       },
@@ -86,6 +79,27 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
             key: 'users-demo-list',
             label: 'Usuarios de Demo',
             to: `${BACKOFFICE_DASHBOARD_PATH}/usuarios-demo`,
+          },
+        ],
+      },
+      {
+        key: 'configurations',
+        label: 'Configuraciones',
+        icon: 'settings',
+        active: ({ route }: SidebarMenuContext) => {
+          const path = route.path
+          return path.includes('/modulos') || path.includes('/superusuarios')
+        },
+        children: [
+          {
+            key: 'modulos-list',
+            label: 'Módulos',
+            to: `${BACKOFFICE_DASHBOARD_PATH}/modulos`,
+          },
+          {
+            key: 'superusuarios-list',
+            label: 'Usuarios',
+            to: `${BACKOFFICE_DASHBOARD_PATH}/superusuarios`,
           },
         ],
       },

@@ -10,11 +10,15 @@
     </header>
 
     <div
+      ref="scrollBodyRef"
       class="overflow-auto"
-      :style="bodyMaxHeightStyle"
+      :style="bodyScrollStyle"
     >
         <table class="table-auto w-full text-gray-800 dark:text-gray-100">
-          <thead class="sticky top-0 z-10 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border-t border-b border-gray-100 dark:border-gray-700/60 shadow-[inset_0_-1px_0_0_rgba(229,231,235,1)] dark:shadow-[inset_0_-1px_0_0_rgba(55,65,81,0.6)]">
+          <thead
+            class="sticky top-0 z-10 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border-t border-b border-gray-100 dark:border-gray-700/60 shadow-[inset_0_-1px_0_0_rgba(229,231,235,1)] dark:shadow-[inset_0_-1px_0_0_rgba(55,65,81,0.6)]"
+            :class="{ 'utable-thead-dimmed': isAccordionFocused }"
+          >
             <tr>
               <th v-if="selectable" class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap w-px text-center bg-gray-50 dark:bg-gray-900">
                 <div class="flex items-center justify-center">
@@ -27,10 +31,14 @@
               <th
                 v-for="column in columns"
                 :key="column.key"
-                class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap text-left bg-gray-50 dark:bg-gray-900"
+                class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap bg-gray-50 dark:bg-gray-900"
+                :class="alignTextClass(resolveColumnAlign(column))"
               >
                 <slot :name="`header-${column.key}`" :column="column">
-                  <div class="font-semibold text-left">
+                  <div
+                    class="font-semibold"
+                    :class="alignTextClass(resolveColumnAlign(column))"
+                  >
                     {{ column.label }}
                   </div>
                 </slot>
@@ -44,9 +52,15 @@
             </tr>
           </thead>
 
-          <tbody class="text-sm divide-y divide-gray-100 dark:divide-gray-700/60">
+          <tbody
+            class="text-sm divide-y divide-gray-100 dark:divide-gray-700/60"
+            :class="{ 'utable-accordion-active': isAccordionFocused }"
+          >
             <template v-for="row in rows" :key="getRowKey(row)">
-              <tr>
+              <tr
+                :data-row-key="getRowKey(row)"
+                :class="getMainRowClass(row)"
+              >
               <td v-if="selectable" class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap w-px text-center">
                 <div class="flex items-center justify-center">
                   <label class="inline-flex">
@@ -65,7 +79,8 @@
               <td
                 v-for="column in columns"
                 :key="column.key"
-                class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap text-left"
+                class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap"
+                :class="alignTextClass(resolveColumnAlign(column))"
               >
                 <slot
                   :name="`cell-${column.key}`"
@@ -77,7 +92,8 @@
                   <!-- image-label -->
                   <div
                     v-if="column.type === 'image-label'"
-                    class="flex items-center justify-start"
+                    class="flex items-center"
+                    :class="alignFlexClass(resolveColumnAlign(column))"
                   >
                     <div class="w-10 h-10 shrink-0 mr-2 sm:mr-3">
                       <img
@@ -95,17 +111,21 @@
                   </div>
 
                   <!-- badge -->
-                  <TableBadge
+                  <div
                     v-else-if="column.type === 'badge'"
-                    :color="resolveBadgeColor(row, column)"
+                    class="flex"
+                    :class="alignFlexClass(resolveColumnAlign(column))"
                   >
-                    {{ formatCellValue(row[column.key]) }}
-                  </TableBadge>
+                    <TableBadge :color="resolveBadgeColor(row, column)">
+                      {{ formatCellValue(row[column.key]) }}
+                    </TableBadge>
+                  </div>
 
                   <!-- icon-label -->
                   <div
                     v-else-if="column.type === 'icon-label'"
-                    class="flex items-center justify-start"
+                    class="flex items-center"
+                    :class="alignFlexClass(resolveColumnAlign(column))"
                   >
                     <svg
                       class="fill-current text-gray-400 dark:text-gray-500 shrink-0 mr-2"
@@ -126,7 +146,8 @@
                   <div
                     v-else
                     :class="[
-                      'text-left text-gray-800 dark:text-gray-100',
+                      alignTextClass(resolveColumnAlign(column)),
+                      'text-gray-800 dark:text-gray-100',
                       cellTextClass(row, column),
                     ]"
                   >
@@ -205,6 +226,7 @@
                 v-if="isRowExpanded(row) && $slots['row-detail']"
                 :id="`row-detail-${getRowKey(row)}`"
                 role="region"
+                class="utable-row-detail-focused"
               >
                 <td :colspan="columnCount" class="px-2 first:pl-5 last:pr-5 py-1.5">
                   <slot name="row-detail" :row="row" />
@@ -224,7 +246,7 @@
 </template>
 
 <script lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } from 'vue'
 
 import { formatTableText } from '~/shared/utils/format'
 import { TableBadge } from '~/core/ui/badge'
@@ -233,12 +255,18 @@ import { UiIcon, resolveUiIconName } from '~/core/ui/icons'
 import { Tooltip } from '~/core/ui/utooltip'
 import {
   UTABLE_BADGE_FALLBACK_CLASS,
+  UTABLE_DEFAULT_VISIBLE_ROWS,
   UTABLE_TEXT_MAP_FALLBACK_CLASS,
 } from './utable.types'
+import {
+  buildUtableMaxBodyHeightFallback,
+  measureUtableMaxBodyHeight,
+} from './utable-measure.utils'
 import TableRefreshRibbon from './TableRefreshRibbon.vue'
 import type {
   UTableActionButton,
   UTableColumn,
+  UTableColumnAlign,
   UTableRow,
 } from './utable.types'
 
@@ -313,25 +341,71 @@ export default {
       type: Boolean,
       default: false,
     },
+    /** Efecto de foco/desenfoque al expandir filas con acordeón (`row-detail`). */
+    accordionFocusEffect: {
+      type: Boolean,
+      default: true,
+    },
     /**
-     * Altura máxima del cuerpo de la tabla (CSS).
-     * Por defecto usa el espacio restante de la vista; si el contenido cabe, no aparece scroll.
-     * Vacío = sin límite de altura.
+     * Altura máxima del cuerpo de la tabla (CSS). Tiene prioridad sobre `visibleRows`.
+     * Vacío = usa altura fija según `visibleRows`.
      */
     bodyMaxHeight: {
       type: String,
-      default: 'calc(100dvh - 20rem)',
+      default: '',
+    },
+    /**
+     * Filas de datos visibles antes de activar scroll vertical.
+     * Es el tope máximo: con menos filas la tabla se encoge; con más, aparece scroll.
+     * `0` desactiva el límite.
+     */
+    visibleRows: {
+      type: Number,
+      default: UTABLE_DEFAULT_VISIBLE_ROWS,
     },
   },
   emits: ['change-selection', 'action'],
   setup(props, { emit }) {
+    const slots = useSlots()
     const selectAll = ref(false)
     const selected = ref<Array<string | number>>([])
+    const scrollBodyRef = ref<HTMLElement | null>(null)
+    const measuredMaxBodyHeight = ref<number | null>(null)
+    let resizeObserver: ResizeObserver | null = null
 
-    const bodyMaxHeightStyle = computed(() => {
+    const syncMeasuredBodyHeight = () => {
+      if (props.bodyMaxHeight?.trim() || props.visibleRows <= 0) {
+        measuredMaxBodyHeight.value = null
+        return
+      }
+
+      const container = scrollBodyRef.value
+      if (!container) return
+
+      measuredMaxBodyHeight.value = measureUtableMaxBodyHeight(container, props.visibleRows)
+    }
+
+    const scheduleBodyHeightMeasure = () => {
+      nextTick(() => {
+        syncMeasuredBodyHeight()
+      })
+    }
+
+    const bodyScrollStyle = computed(() => {
       const maxHeight = props.bodyMaxHeight?.trim()
-      if (!maxHeight) return undefined
-      return { maxHeight }
+      if (maxHeight) {
+        return { maxHeight }
+      }
+
+      if (props.visibleRows > 0) {
+        const maxHeight = measuredMaxBodyHeight.value != null
+          ? `${measuredMaxBodyHeight.value}px`
+          : buildUtableMaxBodyHeightFallback(props.visibleRows)
+
+        return { maxHeight }
+      }
+
+      return undefined
     })
 
     const columnCount = computed(() => {
@@ -339,6 +413,39 @@ export default {
       if (props.selectable) count += 1
       if (props.showActions) count += 1
       return count
+    })
+
+    const isAccordionFocused = computed(() =>
+      props.accordionFocusEffect
+      && props.expandedRowKey != null
+      && Boolean(slots['row-detail']),
+    )
+
+    const getMainRowClass = (row: UTableRow) => {
+      if (!isAccordionFocused.value) return ''
+
+      const isExpanded = props.expandedRowKey != null && getRowKey(row) === props.expandedRowKey
+      return isExpanded ? 'utable-row-focused' : 'utable-row-dimmed'
+    }
+
+    const scrollExpandedRowIntoView = () => {
+      if (props.expandedRowKey == null) return
+
+      nextTick(() => {
+        const container = scrollBodyRef.value
+        if (!container) return
+
+        const expandedRow = container.querySelector<HTMLElement>(
+          `[data-row-key="${props.expandedRowKey}"]`,
+        )
+
+        expandedRow?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      })
+    }
+
+    watch(() => props.expandedRowKey, (nextKey) => {
+      if (nextKey == null) return
+      scrollExpandedRowIntoView()
     })
 
     const getRowKey = (row: UTableRow) => {
@@ -370,6 +477,43 @@ export default {
     watch(() => props.rows, () => {
       selected.value = []
       selectAll.value = false
+      scheduleBodyHeightMeasure()
+    })
+
+    watch(
+      () => [
+        props.visibleRows,
+        props.columns.length,
+        props.showActions,
+        props.selectable,
+        props.expandedRowKey,
+        props.refreshing,
+      ],
+      scheduleBodyHeightMeasure,
+    )
+
+    onMounted(() => {
+      scheduleBodyHeightMeasure()
+
+      if (typeof ResizeObserver === 'undefined') return
+
+      resizeObserver = new ResizeObserver(() => {
+        syncMeasuredBodyHeight()
+      })
+
+      watch(scrollBodyRef, (element) => {
+        resizeObserver?.disconnect()
+
+        if (!element) return
+
+        const table = element.querySelector('table')
+        if (table) resizeObserver?.observe(table)
+      }, { immediate: true })
+    })
+
+    onBeforeUnmount(() => {
+      resizeObserver?.disconnect()
+      resizeObserver = null
     })
 
     const formatCellValue = (value: unknown) => formatTableText(value)
@@ -446,6 +590,21 @@ export default {
     const resolveActionIconName = (action: UTableActionButton) =>
       resolveUiIconName(action.icon, action.key)
 
+    const resolveColumnAlign = (column: UTableColumn): UTableColumnAlign =>
+      column.headerAlign ?? column.align ?? 'left'
+
+    const alignTextClass = (align: UTableColumnAlign) => {
+      if (align === 'center') return 'text-center'
+      if (align === 'right') return 'text-right'
+      return 'text-left'
+    }
+
+    const alignFlexClass = (align: UTableColumnAlign) => {
+      if (align === 'center') return 'justify-center'
+      if (align === 'right') return 'justify-end'
+      return 'justify-start'
+    }
+
     const isRowExpanded = (row: UTableRow) =>
       props.expandedRowKey != null && getRowKey(row) === props.expandedRowKey
 
@@ -461,8 +620,11 @@ export default {
     return {
       selectAll,
       selected,
+      scrollBodyRef,
       columnCount,
-      bodyMaxHeightStyle,
+      bodyScrollStyle,
+      isAccordionFocused,
+      getMainRowClass,
       getRowKey,
       isRowSelected,
       toggleRow,
@@ -474,6 +636,9 @@ export default {
       getCellImage,
       getIconPaths,
       resolveActionIconName,
+      resolveColumnAlign,
+      alignTextClass,
+      alignFlexClass,
       isRowExpanded,
       isActionExpanded,
       emitAction,
@@ -481,3 +646,52 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.utable-thead-dimmed {
+  opacity: 0.35;
+  filter: blur(1px);
+  transition: opacity 200ms ease, filter 200ms ease;
+}
+
+.utable-row-dimmed {
+  opacity: 0.35;
+  filter: blur(1.5px);
+  transition: opacity 200ms ease, filter 200ms ease;
+  pointer-events: none;
+}
+
+.utable-row-focused {
+  position: relative;
+  z-index: 20;
+}
+
+.utable-row-focused :deep(td) {
+  background-color: rgb(255 255 255);
+  box-shadow:
+    0 -1px 0 0 rgb(229 231 235),
+    0 8px 16px -6px rgb(0 0 0 / 0.12);
+}
+
+:global(.dark) .utable-row-focused :deep(td) {
+  background-color: rgb(31 41 55);
+  box-shadow:
+    0 -1px 0 0 rgb(55 65 81 / 0.6),
+    0 8px 16px -6px rgb(0 0 0 / 0.35);
+}
+
+.utable-row-detail-focused {
+  position: relative;
+  z-index: 20;
+}
+
+.utable-row-detail-focused :deep(td) {
+  background-color: rgb(255 255 255);
+  box-shadow: 0 14px 24px -8px rgb(0 0 0 / 0.14);
+}
+
+:global(.dark) .utable-row-detail-focused :deep(td) {
+  background-color: rgb(31 41 55);
+  box-shadow: 0 14px 24px -8px rgb(0 0 0 / 0.4);
+}
+</style>

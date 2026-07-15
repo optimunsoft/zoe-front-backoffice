@@ -11,7 +11,7 @@ export const userColumns: UTableColumn[] = [
   { key: 'email', label: 'Email' },
   {
     key: 'role',
-    label: 'Rol',
+    label: 'Tipo',
     type: 'badge',
     align: 'center',
     badgeColorMap: {
@@ -39,20 +39,23 @@ export const userColumns: UTableColumn[] = [
       No: 'danger',
     },
   },
-  { key: 'isAdmin', label: 'SuperUsuario' },
+  { key: 'companiesCount', label: 'Cantidad de empresas', align: 'center' },
 ]
 
 export const mapUsersToTableRows = (userList: User[]): UTableRow[] => {
-  return userList.map((user) => ({
-    id: user.id,
-    fullName: formatFullName(user),
-    email: user.email?.trim() ?? '',
-    isAdminUser: user.isAdmin,
-    role: user.userType === 'USUARIO' ? 'Usuario' : 'Subusuario',
-    isActive: user.isActive ? 'Activo' : 'Inactivo',
-    isVerified: user.isVerified ? 'Sí' : 'No',
-    isAdmin: user.isAdmin ? 'Soporte' : '-',
-    hasCompanies: (user.companies?.length ?? 0) > 0,
-    hasSessions: (user.sessions?.length ?? 0) > 0,
-  }))
+  return userList.map((user) => {
+    const companiesCount = user.companies?.length ?? 0
+
+    return {
+      id: user.id,
+      fullName: formatFullName(user),
+      email: user.email?.trim() ?? '',
+      role: user.userType === 'USUARIO' ? 'Usuario' : 'Subusuario',
+      isActive: user.isActive ? 'Activo' : 'Inactivo',
+      isVerified: user.isVerified ? 'Sí' : 'No',
+      companiesCount,
+      hasCompanies: companiesCount > 0,
+      hasSessions: (user.sessions?.length ?? 0) > 0,
+    }
+  })
 }

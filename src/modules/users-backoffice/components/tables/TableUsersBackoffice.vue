@@ -1,17 +1,29 @@
 <template>
-  <div class="w-full">
+  <div class="px-4 sm:px-6 lg:px-8 pt-12 pb-8 w-full max-w-[96rem] mx-auto">
     <div class="mb-8 flex flex-col gap-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
         <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">
-          Usuarios Demo
+          Usuarios
         </h1>
+
+        <Button
+          class="w-full sm:w-auto"
+          variant="primary"
+          aria-controls="create-users-backoffice-modal"
+          @click="handleCreateUser"
+        >
+          <template #icon>
+            <UiIcon name="plus" size="sm" />
+          </template>
+          Nuevo usuario
+        </Button>
       </div>
 
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
         <FilterCards
           v-model="statusFilter"
           :options="statusFilterOptions"
-          aria-label="Filtrar usuarios demo por estado"
+          aria-label="Filtrar usuarios backoffice por estado"
           wrapper-class="mb-0"
         />
 
@@ -30,52 +42,87 @@
 
     <TableInitialLoader
       v-if="showInitialLoader"
-      message="Cargando usuarios de demo..."
+      message="Cargando usuarios backoffice..."
     />
 
     <UTable
       v-else
-      title="Todos los usuarios demo"
+      title="Usuarios del Back Office"
       :count="tableRows.length"
-      :columns="usersDemoColumns"
+      :columns="usersBackofficeColumns"
       :rows="tableRows"
       :refreshing="isTableRefreshing"
       show-actions
       actions-mode="inline"
       actions-label="Acciones"
-      :action-buttons="usersDemoTableActions"
-      empty-text="No hay usuarios demo registrados"
+      :expanded-row-key="expandedCompaniesRowKey"
+      expanded-action-key="companies"
+      empty-text="No hay usuarios backoffice registrados"
       @action="handleRowAction"
     >
-      <template #cell-phone="{ row }">
-        <UBadge
-          v-if="hasPhoneNumber(row.phone)"
-          tag="button"
-          type="button"
-          :color="isPhoneCopied(row.id) ? 'success' : 'primary'"
-          appearance="soft"
-          size="md"
-          :badge-class="[
-            'cursor-pointer transition-colors',
-            isPhoneAnimating(row.id) ? 'phone-copy-pop' : '',
-          ].join(' ')"
-          :aria-label="isPhoneCopied(row.id) ? 'Teléfono copiado' : `Copiar teléfono ${row.phone}`"
-          @click.stop="copyPhoneNumber(String(row.phone), row.id)"
-        >
-          <UiIcon
-            :name="isPhoneCopied(row.id) ? 'check' : 'copy'"
-            size="sm"
-            class="shrink-0"
-          />
-          {{ isPhoneCopied(row.id) ? 'Copiado' : row.phone }}
-        </UBadge>
-        <UBadge
-          v-else
-          color="neutral"
-          size="md"
-        >
+      <template #actions="{ row }">
+        <div class="flex justify-start space-x-1">
+          <Tooltip
+            v-for="action in usersBackofficeTableActions"
+            :key="action.key"
+            bg="light"
+            position="top"
+          >
+            <template #trigger>
+              <button
+                type="button"
+                :class="[
+                  UI_TABLE_ICON_BUTTON_CLASSES,
+                  isCompaniesActionExpanded(row, action)
+                    ? 'text-brand-500 dark:text-brand-400'
+                    : 'text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400',
+                ]"
+                :aria-expanded="isCompaniesActionExpanded(row, action) || undefined"
+                :aria-label="action.label"
+                @click.stop="handleRowAction({ action: action.key, row })"
+              >
+                <span class="sr-only">{{ action.label }}</span>
+                <UiIcon
+                  v-if="action.icon"
+                  :name="action.icon"
+                  size="lg"
+                />
+              </button>
+            </template>
+            <div class="whitespace-nowrap text-xs font-medium">
+              {{ action.tooltip || action.label }}
+            </div>
+          </Tooltip>
+        </div>
+      </template>
+
+      <template #row-detail="{ row }">
+        <TableUserBackofficeCompanies
+          v-if="getUserForRow(row)"
+          :user="getUserForRow(row)!"
+          @unassigned="handleUsersMutated"
+        />
+      </template>
+
+      <template #header-companiesCount="{ column }">
+        <div class="font-semibold text-center">
+          {{ column.label }}
+        </div>
+      </template>
+
+      <template #cell-email="{ row }">
+        <span v-if="hasUserEmail(row.email)" class="text-gray-800 dark:text-gray-100">
+          {{ formatTableText(row.email) }}
+        </span>
+        <TableBadge v-else color="neutral">
           {{ formatTableText('No Aplica') }}
-        </UBadge>
+        </TableBadge>
+      </template>
+
+      <template #cell-companiesCount="{ value }">
+        <div class="text-center text-gray-800 dark:text-gray-100 tabular-nums">
+          {{ value }}
+        </div>
       </template>
     </UTable>
 
@@ -89,6 +136,12 @@
       />
     </div>
 
+    <ModalCreate
+      :modal-open="createModalOpen"
+      @close-modal="closeCreateModal"
+      @created="handleUsersMutated"
+    />
+
     <ModalEdit
       :modal-open="editModalOpen"
       :user="editingUser"
@@ -96,12 +149,11 @@
       @updated="handleUsersMutated"
     />
 
-    <ModalDelete
-      :modal-open="deleteModalOpen"
-      :user-id="selectedDeleteId"
-      :user-name="selectedDeleteName"
-      @close-modal="closeDeleteModal"
-      @deleted="handleDeleted"
+    <ModalAssignCompanies
+      :modal-open="assignCompaniesModalOpen"
+      :user="assignCompaniesUser"
+      @close-modal="closeAssignCompaniesModal"
+      @updated="handleUsersMutated"
     />
   </div>
 </template>
@@ -110,38 +162,41 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { refDebounced } from '@vueuse/core'
 
-import { UBadge } from '~/core/ui/badge'
-import { ReloadButton } from '~/core/ui/buttons'
+import { TableBadge } from '~/core/ui/badge'
+import { Button, ReloadButton } from '~/core/ui/buttons'
 import { FilterCards } from '~/core/ui/filters'
 import type { FilterCardOption } from '~/core/ui/filters/filter-cards.types'
 import { useUsersService } from '~/modules/administration/users/services/users.services'
 import { UiIcon } from '~/core/ui/icons'
+import { UI_TABLE_ICON_BUTTON_CLASSES } from '~/core/ui/interactive.classes'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
 import { UTable, TableInitialLoader } from '~/core/ui/Tables'
-import type { UTableRow } from '~/core/ui/Tables/utable.types'
-import { formatTableText } from '~/shared/utils/format'
-import { useCopyPhoneNumber } from '~/shared/composables/use-copy-phone-number'
-import { useTableRefresh } from '~/shared/composables/use-table-refresh'
+import type { UTableActionButton, UTableRow } from '~/core/ui/Tables/utable.types'
+import { Tooltip } from '~/core/ui/utooltip'
 import { useUsersStore } from '~/modules/administration/users/store/users.store'
 import type { User } from '~/modules/administration/users/types/users.types'
-import { usersDemoTableActions } from '../../mappers/users-demo-table.actions'
+import { formatTableText } from '~/shared/utils/format'
+import { useTableRefresh } from '~/shared/composables/use-table-refresh'
+import { usersBackofficeTableActions } from '../../mappers/users-backoffice-table.actions'
 import {
-  mapUsersDemoToTableRows,
-  usersDemoColumns,
-} from '../../mappers/users-demo-table.mapper'
-import ModalDelete from '../modals/ModalDelete.vue'
+  mapUsersBackofficeToTableRows,
+  usersBackofficeColumns,
+} from '../../mappers/users-backoffice-table.mapper'
+import ModalAssignCompanies from '../modals/ModalAssignCompanies.vue'
+import ModalCreate from '../modals/ModalCreate.vue'
 import ModalEdit from '../modals/ModalEdit.vue'
+import TableUserBackofficeCompanies from './TableUserBackofficeCompanies.vue'
 
 const usersStore = useUsersStore()
 const usersService = useUsersService()
-const { isPhoneAnimating, isPhoneCopied, copyPhoneNumber } = useCopyPhoneNumber()
 const searchQuery = ref('')
 const debouncedSearch = refDebounced(searchQuery, 400)
 const currentPage = ref(1)
 const amount = ref(10)
 const statusFilter = ref('all')
 const filterTotals = ref<Record<string, number>>({})
+const isInitialLoadDone = ref(false)
 
 const statusFilterDefinitions = [
   { key: 'all', label: 'Todos' },
@@ -149,12 +204,12 @@ const statusFilterDefinitions = [
   { key: 'inactive', label: 'Inactivos' },
 ] as const
 
+const createModalOpen = ref(false)
 const editModalOpen = ref(false)
-const deleteModalOpen = ref(false)
 const editingUser = ref<User | null>(null)
-const selectedDeleteId = ref<string | null>(null)
-const selectedDeleteName = ref('')
-const isInitialLoadDone = ref(false)
+const assignCompaniesModalOpen = ref(false)
+const assignCompaniesUser = ref<User | null>(null)
+const expandedCompaniesRowKey = ref<string | number | null>(null)
 
 const {
   isLoading,
@@ -172,7 +227,7 @@ const statusFilterOptions = computed<FilterCardOption[]>(() =>
   })),
 )
 
-const tableRows = computed(() => mapUsersDemoToTableRows(usersStore.users))
+const tableRows = computed(() => mapUsersBackofficeToTableRows(usersStore.users))
 
 const resolveIsActiveForKey = (filterKey: string): boolean | undefined => {
   if (filterKey === 'active') return true
@@ -196,7 +251,7 @@ const refreshFilterTotals = async () => {
           amount: 1,
           page: 1,
           search: debouncedSearch.value || undefined,
-          isDemo: true,
+          isAdmin: true,
           isActive: resolveIsActiveForKey(option.key),
         })
 
@@ -210,16 +265,18 @@ const refreshFilterTotals = async () => {
   filterTotals.value = Object.fromEntries(results)
 }
 
-const hasPhoneNumber = (value: unknown) => {
+const hasUserEmail = (value: unknown) => {
   if (typeof value !== 'string') return false
-  const phone = value.trim()
-  return phone.length > 0 && phone !== '-'
+  const email = value.trim()
+  return email.length > 0 && email !== '-'
 }
 
 const resolveUserFromRow = (row: UTableRow): User | null => {
   if (row.id == null) return null
   return usersStore.users.find((item) => item.id === String(row.id)) ?? null
 }
+
+const getUserForRow = (row: UTableRow) => resolveUserFromRow(row)
 
 const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {}) => {
   currentPage.value = page
@@ -229,9 +286,10 @@ const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {
       amount: amount.value,
       page,
       search: debouncedSearch.value || undefined,
-      isDemo: true,
+      isAdmin: true,
       isActive: resolveIsActiveFilter(),
     })
+    expandedCompaniesRowKey.value = null
   })
 
   filterTotals.value = {
@@ -255,8 +313,9 @@ const handleReload = async () => {
     await usersStore.getUsers({
       amount: amount.value,
       page: 1,
-      isDemo: true,
+      isAdmin: true,
     })
+    expandedCompaniesRowKey.value = null
   })
 
   filterTotals.value = {
@@ -281,6 +340,14 @@ const handleUsersMutated = async () => {
   await fetchUsers(currentPage.value, { refreshTotals: true })
 }
 
+const handleCreateUser = () => {
+  createModalOpen.value = true
+}
+
+const closeCreateModal = () => {
+  createModalOpen.value = false
+}
+
 const openEditModal = async (row: UTableRow) => {
   const user = resolveUserFromRow(row)
   if (!user) return
@@ -295,39 +362,46 @@ const closeEditModal = () => {
   editingUser.value = null
 }
 
-const openDeleteModal = async (row: UTableRow) => {
-  if (row.id == null) return
+const openAssignCompaniesModal = async (row: UTableRow) => {
+  const user = resolveUserFromRow(row)
+  if (!user) return
 
-  selectedDeleteId.value = String(row.id)
-  selectedDeleteName.value = String(row.fullName ?? '')
+  assignCompaniesUser.value = user
   await nextTick()
-  deleteModalOpen.value = true
+  assignCompaniesModalOpen.value = true
 }
 
-const closeDeleteModal = () => {
-  deleteModalOpen.value = false
-  selectedDeleteId.value = null
-  selectedDeleteName.value = ''
+const closeAssignCompaniesModal = () => {
+  assignCompaniesModalOpen.value = false
+  assignCompaniesUser.value = null
 }
 
-const handleDeleted = async () => {
-  const isLastItemOnPage = usersStore.users.length === 1
-  const shouldGoToPreviousPage = isLastItemOnPage && currentPage.value > 1
-  const nextPage = shouldGoToPreviousPage
-    ? currentPage.value - 1
-    : currentPage.value
-
-  await fetchUsers(nextPage, { refreshTotals: true })
-}
+const isCompaniesActionExpanded = (row: UTableRow, action: UTableActionButton) =>
+  expandedCompaniesRowKey.value != null
+  && row.id === expandedCompaniesRowKey.value
+  && action.key === 'companies'
 
 const handleRowAction = async ({ action, row }: { action: string, row: UTableRow }) => {
+  if (action === 'companies') {
+    const rowKey = row.id
+    if (rowKey == null) return
+    expandedCompaniesRowKey.value = expandedCompaniesRowKey.value === rowKey ? null : rowKey
+    return
+  }
+
+  if (expandedCompaniesRowKey.value != null) {
+    expandedCompaniesRowKey.value = null
+  }
+
+  if (row.id == null) return
+
   if (action === 'edit') {
     await openEditModal(row)
     return
   }
 
-  if (action === 'delete') {
-    await openDeleteModal(row)
+  if (action === 'assignCompanies') {
+    await openAssignCompaniesModal(row)
   }
 }
 

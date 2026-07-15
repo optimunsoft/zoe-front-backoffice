@@ -147,7 +147,6 @@ export const useCompanyStore = defineStore('company', () => {
     return response
   }
 
-
   const assignModulesToCompany = async (companyId: string, moduleId: string, action: ActiveModule) => {
     const response = await useCompanyService().assignModulesToCompany(moduleId, companyId, action).then((result) => result.message)
     return response

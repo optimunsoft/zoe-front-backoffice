@@ -20,9 +20,9 @@ export type UTableClassMap = Record<string, string>
 export type UTableColumn = {
   key: string
   label: string
-  /** @deprecated UTable alinea siempre títulos y celdas a la izquierda. */
+  /** Alineación de título y celdas. Por defecto `left`. */
   align?: UTableColumnAlign
-  /** @deprecated UTable alinea siempre títulos y celdas a la izquierda. */
+  /** Override de alineación solo para el header. */
   headerAlign?: UTableColumnAlign
   type?: UTableColumnType
   variant?: UTableColumnVariant
@@ -71,3 +71,12 @@ export const UTABLE_BADGE_FALLBACK_CLASS =
 
 /** Fallback genérico para texto coloreado vía `classMap` + `classMapKey`. */
 export const UTABLE_TEXT_MAP_FALLBACK_CLASS = 'text-gray-500'
+
+/** Altura de la fila de encabezado (thead). Fallback mientras se mide el DOM. */
+export const UTABLE_HEADER_ROW_HEIGHT = '2.375rem'
+
+/** Altura de cada fila de datos (tbody). Fallback mientras se mide el DOM. */
+export const UTABLE_BODY_ROW_HEIGHT = '2.75rem'
+
+/** Cantidad de filas visibles antes de activar scroll vertical. */
+export const UTABLE_DEFAULT_VISIBLE_ROWS = 10

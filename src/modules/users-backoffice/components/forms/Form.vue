@@ -4,13 +4,13 @@
       v-model="activeFormTab"
       variant="underline"
       :items="formTabs"
-      aria-label="Secciones del formulario de usuario"
+      aria-label="Secciones del formulario de usuario backoffice"
       :wrapper-class="isCreateMode ? 'mb-2 user-form-tabs--single' : 'mb-2'"
     >
       <template #user-data>
         <div class="grid gap-4 sm:grid-cols-2">
           <InputText
-            id="user-first-name"
+            id="users-backoffice-first-name"
             :model-value="form.firstName"
             name="firstName"
             type="text"
@@ -23,7 +23,7 @@
           />
 
           <InputText
-            id="user-last-name"
+            id="users-backoffice-last-name"
             :model-value="form.lastName"
             name="lastName"
             type="text"
@@ -36,7 +36,7 @@
           />
 
           <InputText
-            id="user-email"
+            id="users-backoffice-email"
             v-model="form.email"
             name="email"
             type="email"
@@ -50,7 +50,7 @@
 
           <div>
             <Datepicker
-              id="user-birth-date"
+              id="users-backoffice-birth-date"
               v-model="form.birthDate"
               label="Fecha de nacimiento"
               mode="single"
@@ -64,7 +64,7 @@
           </div>
 
           <InputMunicipalitySearch
-            id="user-municipality-search"
+            id="users-backoffice-municipality-search"
             ref="municipalityFieldRef"
             v-model="form.municipalityId"
             required
@@ -75,14 +75,14 @@
           <div>
             <InputField
               label="Celular"
-              html-for="user-phone-number"
+              html-for="users-backoffice-phone-number"
               required
               :error="phoneFieldError"
             >
               <div class="flex items-start gap-2">
                 <div class="w-[6.25rem] shrink-0">
                   <InputSelect
-                    id="user-phone-prefix"
+                    id="users-backoffice-phone-prefix"
                     v-model="form.phonePrefix"
                     name="phonePrefix"
                     placeholder="Prefijo"
@@ -97,7 +97,7 @@
 
                 <div class="min-w-0 flex-1">
                   <InputText
-                    id="user-phone-number"
+                    id="users-backoffice-phone-number"
                     :model-value="form.phoneNumber"
                     name="phoneNumber"
                     type="tel"
@@ -114,7 +114,7 @@
           </div>
 
           <InputSelect
-            id="user-type"
+            id="users-backoffice-type"
             v-model="form.userType"
             name="userType"
             label="Tipo de usuario"
@@ -126,7 +126,7 @@
 
           <div v-if="isCreateMode">
             <InputText
-              id="user-password"
+              id="users-backoffice-password"
               v-model="form.password"
               name="password"
               type="password"
@@ -144,6 +144,19 @@
               class="mt-3"
             />
           </div>
+
+          <InputSelect
+            v-if="isCreateMode"
+            id="users-backoffice-role"
+            v-model="form.backofficeRole"
+            name="backofficeRole"
+            label="Rol de backoffice"
+            placeholder="Seleccionar"
+            required
+            :options="backofficeRoleOptions"
+            :error="errors.backofficeRole"
+            @update:model-value="clearFieldError('backofficeRole')"
+          />
         </div>
       </template>
 
@@ -161,7 +174,7 @@
               <div class="flex min-h-[3.75rem] items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2.5 dark:border-gray-700/60">
                 <label
                   class="text-sm font-medium text-gray-800 dark:text-gray-100"
-                  for="user-is-active"
+                  for="users-backoffice-is-active"
                 >
                   Usuario activo
                 </label>
@@ -172,7 +185,7 @@
                     class="text-violet-500 dark:text-violet-300"
                   />
                   <InputSwitch
-                    id="user-is-active"
+                    id="users-backoffice-is-active"
                     :model-value="userIsActive"
                     label="Usuario activo"
                     :show-state-label="false"
@@ -187,46 +200,23 @@
             </div>
           </div>
 
-          <div
-            v-if="showBackofficeSection"
-            class="space-y-3"
-          >
+          <div class="space-y-3">
             <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400">
               Backoffice
             </h3>
 
             <div
               class="flex flex-col gap-2"
-              :class="{ 'opacity-60': !canEditModulesAndBackoffice }"
+              :class="{ 'opacity-60': !canEditBackoffice }"
             >
-              <div class="flex min-h-[3.75rem] items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2.5 dark:border-gray-700/60">
-                <label
-                  class="text-sm font-medium text-gray-800 dark:text-gray-100"
-                  for="user-is-admin"
-                >
-                  Usuario BackOffice
-                </label>
-                <InputSwitch
-                  id="user-is-admin"
-                  v-model="form.isAdmin"
-                  label="Usuario BackOffice"
-                  :show-state-label="false"
-                  on-label="Sí"
-                  off-label="No"
-                  wrapper-class="shrink-0"
-                  :disabled="!canEditModulesAndBackoffice"
-                />
-              </div>
-
               <InputSelect
-                v-if="form.isAdmin"
-                id="user-backoffice-role"
+                id="users-backoffice-role"
                 v-model="form.backofficeRole"
                 name="backofficeRole"
                 label="Rol de backoffice"
                 placeholder="Seleccionar"
                 required
-                :disabled="!canEditModulesAndBackoffice"
+                :disabled="!canEditBackoffice"
                 :options="backofficeRoleOptions"
                 :error="errors.backofficeRole"
                 @update:model-value="clearFieldError('backofficeRole')"
@@ -270,32 +260,36 @@ import { UTabs } from '~/core/ui/tabs'
 import type { UiTabItem } from '~/core/ui/tabs'
 import type { InputSelectOption } from '~/core/ui/inputs/input.types'
 import { Spinner } from '~/core/ui/loader'
-import { BACKOFFICE_ROLE, USER_TYPE, type User, type UserCreate, type UserUpdate } from '../../types/users.types'
-import { useUsersStore } from '../../store/users.store'
 import {
-  emptyUserFormErrors,
-  emptyUserFormValues,
-  mapUserListToFormValues,
-  parseUserCreateForm,
-  parseUserUpdateForm,
-  sanitizePhoneNumber,
-  sanitizeUserName,
-  validateUserForm,
-  type UserFormErrors,
-} from '../../schema/user.schema'
+  BACKOFFICE_ROLE,
+  USER_TYPE,
+  type User,
+  type UserCreate,
+  type UserUpdate,
+} from '~/modules/administration/users/types/users.types'
+import { useUsersStore } from '~/modules/administration/users/store/users.store'
+import {
+  emptyUsersBackofficeFormErrors,
+  emptyUsersBackofficeFormValues,
+  mapUserListToUsersBackofficeFormValues,
+  parseUsersBackofficeCreateForm,
+  parseUsersBackofficeUpdateForm,
+  sanitizeUserBackofficeName,
+  sanitizeUserBackofficePhoneNumber,
+  validateUsersBackofficeForm,
+  type UsersBackofficeFormErrors,
+} from '../../schema/users-backoffice.schema'
 
 defineOptions({
-  name: 'FormUser',
+  name: 'FormUsersBackoffice',
 })
 
 const props = withDefaults(defineProps<{
   mode?: 'create' | 'edit'
   initialUser?: User | null
-  showBackofficeSection?: boolean
 }>(), {
   mode: 'create',
   initialUser: null,
-  showBackofficeSection: true,
 })
 
 const isEditMode = computed(() => props.mode === 'edit')
@@ -309,8 +303,8 @@ const emit = defineEmits<{
 const ubicationStore = useUbicationStore()
 const usersStore = useUsersStore()
 
-const form = reactive(emptyUserFormValues())
-const errors = reactive<UserFormErrors>(emptyUserFormErrors())
+const form = reactive(emptyUsersBackofficeFormValues())
+const errors = reactive<UsersBackofficeFormErrors>(emptyUsersBackofficeFormErrors())
 const municipalityFieldRef = ref<InstanceType<typeof InputMunicipalitySearch> | null>(null)
 const activeFormTab = ref('user-data')
 const editingUserId = ref<string | null>(null)
@@ -329,7 +323,7 @@ const formTabs = computed<UiTabItem[]>(() => {
   return tabs
 })
 
-const configurationTabFields: Array<keyof UserFormErrors> = ['backofficeRole']
+const configurationTabFields: Array<keyof UsersBackofficeFormErrors> = ['backofficeRole']
 
 const userTypeOptions: InputSelectOption[] = [
   { label: 'Usuario (Root)', value: USER_TYPE.USUARIO },
@@ -377,21 +371,21 @@ const showPasswordRequirements = computed(() => {
   return !arePasswordRequirementsComplete(form.password)
 })
 
-const canEditModulesAndBackoffice = computed(() => {
+const canEditBackoffice = computed(() => {
   if (isCreateMode.value) return true
 
   return userIsActive.value
 })
 
-const applyFieldErrors = (fieldErrors: UserFormErrors) => {
+const applyFieldErrors = (fieldErrors: UsersBackofficeFormErrors) => {
   Object.assign(errors, fieldErrors)
   focusTabWithErrors(fieldErrors)
 }
 
-const focusTabWithErrors = (fieldErrors: UserFormErrors) => {
+const focusTabWithErrors = (fieldErrors: UsersBackofficeFormErrors) => {
   const hasConfigurationError = isEditMode.value
     && configurationTabFields.some((field) => fieldErrors[field])
-  const hasUserDataError = (Object.keys(fieldErrors) as Array<keyof UserFormErrors>)
+  const hasUserDataError = (Object.keys(fieldErrors) as Array<keyof UsersBackofficeFormErrors>)
     .some((field) => fieldErrors[field] && !configurationTabFields.includes(field))
 
   if (hasConfigurationError) {
@@ -404,27 +398,27 @@ const focusTabWithErrors = (fieldErrors: UserFormErrors) => {
   }
 }
 
-const validateField = (field: keyof UserFormErrors) => {
-  const fieldErrors = validateUserForm({ ...form }, props.mode)
+const validateField = (field: keyof UsersBackofficeFormErrors) => {
+  const fieldErrors = validateUsersBackofficeForm({ ...form }, props.mode)
   errors[field] = fieldErrors[field]
 }
 
-const clearFieldError = (field: keyof UserFormErrors) => {
+const clearFieldError = (field: keyof UsersBackofficeFormErrors) => {
   errors[field] = ''
 }
 
 const onFirstNameChange = (value: string) => {
-  form.firstName = sanitizeUserName(value)
+  form.firstName = sanitizeUserBackofficeName(value)
   errors.firstName = ''
 }
 
 const onLastNameChange = (value: string) => {
-  form.lastName = sanitizeUserName(value)
+  form.lastName = sanitizeUserBackofficeName(value)
   errors.lastName = ''
 }
 
 const onPhoneNumberChange = (value: string) => {
-  form.phoneNumber = sanitizePhoneNumber(value)
+  form.phoneNumber = sanitizeUserBackofficePhoneNumber(value)
   errors.phoneNumber = ''
 }
 
@@ -449,20 +443,21 @@ const onUserStatusChange = async (active: boolean) => {
   }
 }
 
-const reset = () => {
-  Object.assign(form, emptyUserFormValues())
+const forceBackofficeDefaults = () => {
+  form.isAdmin = true
+  form.isDemo = false
   form.userType = USER_TYPE.USUARIO
+}
 
-  if (!props.showBackofficeSection) {
-    form.isAdmin = false
-    form.backofficeRole = ''
-  }
+const reset = () => {
+  Object.assign(form, emptyUsersBackofficeFormValues())
+  forceBackofficeDefaults()
 
   if (isCreateMode.value && ubicationStore.allCountries.length) {
     form.phonePrefix = resolveDefaultPhonePrefix(ubicationStore.allCountries)
   }
 
-  Object.assign(errors, emptyUserFormErrors())
+  Object.assign(errors, emptyUsersBackofficeFormErrors())
   activeFormTab.value = 'user-data'
   editingUserId.value = null
   userIsActive.value = true
@@ -478,12 +473,9 @@ const setValues = async (user: User) => {
     await ubicationStore.getAllCountries()
   }
 
-  Object.assign(form, mapUserListToFormValues(user, ubicationStore.allCountries))
-  if (!props.showBackofficeSection) {
-    form.isAdmin = false
-    form.backofficeRole = ''
-  }
-  Object.assign(errors, emptyUserFormErrors())
+  Object.assign(form, mapUserListToUsersBackofficeFormValues(user, ubicationStore.allCountries))
+  forceBackofficeDefaults()
+  Object.assign(errors, emptyUsersBackofficeFormErrors())
   activeFormTab.value = 'user-data'
 
   await nextTick()
@@ -515,32 +507,27 @@ watch(
 )
 
 const handleSubmit = () => {
-  if (!props.showBackofficeSection) {
-    form.isAdmin = false
-    form.backofficeRole = ''
-  }
-
   if (isEditMode.value) {
-    const result = parseUserUpdateForm({ ...form })
+    const result = parseUsersBackofficeUpdateForm({ ...form })
 
     if (!result.success) {
       applyFieldErrors(result.errors)
       return
     }
 
-    Object.assign(errors, emptyUserFormErrors())
+    Object.assign(errors, emptyUsersBackofficeFormErrors())
     emit('submit', result.data)
     return
   }
 
-  const result = parseUserCreateForm({ ...form })
+  const result = parseUsersBackofficeCreateForm({ ...form })
 
   if (!result.success) {
     applyFieldErrors(result.errors)
     return
   }
 
-  Object.assign(errors, emptyUserFormErrors())
+  Object.assign(errors, emptyUsersBackofficeFormErrors())
   emit('submit', result.data)
 }
 
@@ -548,16 +535,6 @@ watch(
   () => form.birthDate,
   () => {
     errors.birthDate = ''
-  },
-)
-
-watch(
-  () => form.isAdmin,
-  (isAdmin) => {
-    if (isAdmin) return
-
-    form.backofficeRole = ''
-    errors.backofficeRole = ''
   },
 )
 
@@ -574,6 +551,7 @@ onMounted(async () => {
   await ubicationStore.getAllCountries()
 
   if (isCreateMode.value) {
+    forceBackofficeDefaults()
     form.phonePrefix = resolveDefaultPhonePrefix(ubicationStore.allCountries)
   }
 })
@@ -584,4 +562,3 @@ defineExpose({
   setValues,
 })
 </script>
-
