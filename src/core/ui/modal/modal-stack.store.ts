@@ -26,7 +26,19 @@ export const useModalStackStore = defineStore('modalStack', () => {
 
   const syncBodyScrollLock = () => {
     if (!import.meta.client) return
-    document.body.style.overflow = openModalIds.value.length > 0 ? 'hidden' : ''
+
+    if (openModalIds.value.length > 0) {
+      document.body.style.overflow = 'hidden'
+      return
+    }
+
+    document.body.style.removeProperty('overflow')
+  }
+
+  /** Útil cuando un modal queda huérfano tras un error de render en producción. */
+  const forceUnlock = () => {
+    openModalIds.value = []
+    syncBodyScrollLock()
   }
 
   return {
@@ -36,5 +48,6 @@ export const useModalStackStore = defineStore('modalStack', () => {
     topModalId,
     hasBlockingModal,
     syncBodyScrollLock,
+    forceUnlock,
   }
 })

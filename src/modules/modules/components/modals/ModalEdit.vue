@@ -19,6 +19,7 @@
       :key="module.id || module.code"
       ref="formRef"
       mode="edit"
+      :initial-module="module"
       @submit="handleEdit"
     />
 
@@ -39,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { ref } from 'vue'
 
 import { Button } from '~/core/ui/buttons'
 import { ModalBasic } from '~/core/ui/modal'
@@ -61,36 +62,15 @@ const modulesStore = useModulesStore()
 const formRef = ref<InstanceType<typeof FormModule> | null>(null)
 const isSubmitting = ref(false)
 
-const waitForFormRef = async () => {
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    await nextTick()
-    if (formRef.value) return true
-  }
-
-  return false
-}
-
-const loadModule = async (module: ModuleList) => {
-  const isReady = await waitForFormRef()
-  if (!isReady) return
-
-  formRef.value?.setValues(module)
-}
-
-watch(
-  () => [props.modalOpen, props.module] as const,
-  async ([isOpen, module]) => {
-    if (!isOpen || !module) return
-
-    await nextTick()
-    await loadModule(module)
-  },
-)
-
 const handleClose = () => {
   if (isSubmitting.value) return
-  formRef.value?.reset()
-  emit('close-modal')
+
+  // Siempre emitir cierre: si reset falla, no dejar el backdrop/body lock activos.
+  try {
+    formRef.value?.reset()
+  } finally {
+    emit('close-modal')
+  }
 }
 
 const submitForm = () => {

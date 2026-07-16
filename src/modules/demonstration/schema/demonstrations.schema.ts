@@ -103,19 +103,51 @@ const normalizeProductLabel = (value: string) =>
     .replace(/\s+/g, ' ')
     .trim()
 
-/** Mapea un valor del API al label canónico de los checkboxes. */
+/** Mapea un valor del API al label canónico de los checkboxes (exacto o por similitud). */
 export const canonicalizeProductInterest = (value: string): DemonstrationProductOption | null => {
   const normalized = normalizeProductLabel(value)
   if (!normalized) return null
 
+  let bestOption: DemonstrationProductOption | null = null
+  let bestScore = 0
+
   for (const option of DEMONSTRATION_PRODUCT_OPTIONS) {
-    if (normalizeProductLabel(option) === normalized) return option
+    const optionNorm = normalizeProductLabel(option)
+    let score = 0
+
+    if (optionNorm === normalized) score = 1
+    else if (optionNorm.includes(normalized) || normalized.includes(optionNorm)) score = 0.92
+    else {
+      const optionTokens = optionNorm.split(' ').filter(Boolean)
+      const valueTokens = normalized.split(' ').filter(Boolean)
+      if (optionTokens.length && valueTokens.length) {
+        const shared = valueTokens.filter((token) =>
+          optionTokens.some((optionToken) =>
+            optionToken.includes(token) || token.includes(optionToken),
+          ),
+        ).length
+        score = shared / Math.max(optionTokens.length, valueTokens.length)
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score
+      bestOption = option
+    }
   }
 
+  if (bestScore >= 0.45) return bestOption
+
   // Aliases frecuentes del backend / datos legacy.
-  if (normalized.includes('contabilidad')) return 'Contabilidad'
-  if (normalized.includes('factura')) return 'Factura Electronica'
-  if (normalized.includes('administrativo')) return 'Administrativo de Escritorio'
+  if (normalized.includes('contabilidad') || normalized.includes('contable')) {
+    return 'Contabilidad'
+  }
+  if (normalized.includes('factura') || normalized.includes('electron')) {
+    return 'Factura Electronica'
+  }
+  if (normalized.includes('administrativ') || normalized.includes('escritorio')) {
+    return 'Administrativo de Escritorio'
+  }
 
   return null
 }
@@ -256,7 +288,12 @@ export const normalizeDemonstrationListItem = (
     scheduledAt: pickDateValue(item, 'scheduledAt', 'scheduled_at') as Date,
     phone: pickString(item, 'phone'),
     productInterest: normalizeProductInterest(
-      item.productInterest ?? item.product_interest,
+      item.productInterest
+      ?? item.product_interest
+      ?? item.products
+      ?? item.productsInterest
+      ?? item.productInterests
+      ?? item.interests,
     ),
     status: normalizeDemonstrationStatus(item.status) ?? DemonstrationStatus.PENDIENTE,
     createdAt: pickDateValue(item, 'createdAt', 'created_at') as Date,
@@ -412,12 +449,39 @@ const formatTimeValue = (date: Date) => {
   return `${hours}:${minutes}`
 }
 
+/** Separa fecha (día local) y hora HH:mm para el formulario. */
+export const splitScheduledAtForForm = (
+  value: Date | string | null | undefined,
+): { scheduledDate: Date | null, scheduledTime: string } => {
+  if (value == null || value === '') {
+    return { scheduledDate: null, scheduledTime: '' }
+  }
+
+  // Si ya viene una hora suelta "HH:mm" o "H:mm".
+  if (typeof value === 'string') {
+    const timeOnly = value.trim().match(/^(\d{1,2}):([0-5]\d)$/)
+    if (timeOnly) {
+      const hours = String(Number(timeOnly[1])).padStart(2, '0')
+      return { scheduledDate: null, scheduledTime: `${hours}:${timeOnly[2]}` }
+    }
+  }
+
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return { scheduledDate: null, scheduledTime: '' }
+  }
+
+  return {
+    scheduledDate: new Date(date.getFullYear(), date.getMonth(), date.getDate()),
+    scheduledTime: formatTimeValue(date),
+  }
+}
+
 export const mapDemonstrationResponseToFormValues = (
   demonstration: DemonstrationResponse,
   countries: Array<{ phonePrefix: string }> = [],
 ): DemonstrationUpdateFormValues => {
-  const scheduledAt = new Date(demonstration.scheduledAt)
-  const validScheduledAt = Number.isNaN(scheduledAt.getTime()) ? null : scheduledAt
+  const { scheduledDate, scheduledTime } = splitScheduledAtForForm(demonstration.scheduledAt)
   const { phonePrefix, phoneNumber } = splitDemonstrationPhone(demonstration.phone, countries)
 
   return {
@@ -426,8 +490,8 @@ export const mapDemonstrationResponseToFormValues = (
     phonePrefix,
     phoneNumber,
     productInterest: normalizeProductInterest(demonstration.productInterest),
-    scheduledDate: validScheduledAt,
-    scheduledTime: validScheduledAt ? formatTimeValue(validScheduledAt) : '',
+    scheduledDate,
+    scheduledTime,
     status: normalizeDemonstrationStatus(demonstration.status) ?? demonstration.status,
   }
 }

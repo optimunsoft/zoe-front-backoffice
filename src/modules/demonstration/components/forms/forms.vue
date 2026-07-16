@@ -288,9 +288,13 @@ const setValues = async (demonstration: DemonstrationResponse) => {
   form.phonePrefix = String(values.phonePrefix ?? DEFAULT_PHONE_PREFIX)
   form.phoneNumber = String(values.phoneNumber ?? '')
   form.scheduledDate = values.scheduledDate ?? null
-  form.scheduledTime = values.scheduledTime
+  form.scheduledTime = values.scheduledTime || ''
   form.status = (values.status ?? '') as DemonstrationStatus | ''
-  form.productInterest = [...values.productInterest.map((item) => String(item))]
+  form.productInterest.splice(
+    0,
+    form.productInterest.length,
+    ...values.productInterest.map((item) => String(item)),
+  )
   Object.assign(errors, emptyDemonstrationFormErrors())
 }
 
@@ -300,6 +304,7 @@ watch(
     if (props.mode !== 'edit' || !demonstration) return
     await setValues(demonstration)
   },
+  { immediate: true },
 )
 
 const handleSubmit = () => {

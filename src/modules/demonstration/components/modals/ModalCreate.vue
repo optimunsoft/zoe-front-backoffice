@@ -56,8 +56,12 @@ const isSubmitting = ref(false)
 
 const handleClose = () => {
   if (isSubmitting.value) return
-  formRef.value?.reset()
-  emit('close-modal')
+
+  try {
+    formRef.value?.reset()
+  } finally {
+    emit('close-modal')
+  }
 }
 
 const submitForm = () => {

@@ -15,7 +15,7 @@
 
     <ModalEdit
       :modal-open="editModalOpen"
-      :demonstration-id="selectedDemonstrationId"
+      :demonstration="selectedDemonstration"
       @close-modal="closeEditModal"
     />
 
@@ -31,17 +31,24 @@
 <script setup lang="ts">
 import { nextTick, ref } from 'vue'
 
+import { useNotificationAlertStore } from '~/core/ui/notifications/notification-alert.store'
 import ModalCreate from '~/modules/demonstration/components/modals/ModalCreate.vue'
 import ModalDelete from '~/modules/demonstration/components/modals/ModalDelete.vue'
 import ModalEdit from '~/modules/demonstration/components/modals/ModalEdit.vue'
 import TableDemonstration from '~/modules/demonstration/components/tables/TableDemonstration.vue'
+import { normalizeDemonstrationResponse } from '~/modules/demonstration/schema/demonstrations.schema'
+import { useDemonstrationsStore } from '~/modules/demonstration/store/demonstrations.store'
+import type { DemonstrationResponse } from '~/modules/demonstration/types/demonstration.types'
 
 const createModalOpen = ref(false)
 const editModalOpen = ref(false)
 const deleteModalOpen = ref(false)
-const selectedDemonstrationId = ref<string | null>(null)
+const selectedDemonstration = ref<DemonstrationResponse | null>(null)
 const selectedDeleteId = ref<string | null>(null)
 const selectedDeleteName = ref('')
+
+const demonstrationsStore = useDemonstrationsStore()
+const notificationStore = useNotificationAlertStore()
 
 const openCreateModal = () => {
   createModalOpen.value = true
@@ -52,14 +59,39 @@ const closeCreateModal = () => {
 }
 
 const openEditModal = async (id: string) => {
-  selectedDemonstrationId.value = id
-  await nextTick()
-  editModalOpen.value = true
+  if (!id) return
+
+  // Preferir la lista (sync, como en módulos/usuarios) para no bloquear el click.
+  const fromList = demonstrationsStore.demonstrations.find(
+    (item) => String(item.id) === String(id),
+  )
+
+  if (fromList) {
+    selectedDemonstration.value = fromList
+    await nextTick()
+    editModalOpen.value = true
+    return
+  }
+
+  try {
+    const response = await demonstrationsStore.getDemonstrationById(id)
+    const demonstration = normalizeDemonstrationResponse(response)
+    if (!demonstration) {
+      notificationStore.showError('No se pudo cargar el agendamiento para editar.')
+      return
+    }
+
+    selectedDemonstration.value = demonstration
+    await nextTick()
+    editModalOpen.value = true
+  } catch {
+    notificationStore.showError('No se pudo cargar el agendamiento para editar.')
+  }
 }
 
 const closeEditModal = () => {
   editModalOpen.value = false
-  selectedDemonstrationId.value = null
+  selectedDemonstration.value = null
 }
 
 const openDeleteModal = async ({ id, name }: { id: string, name: string }) => {

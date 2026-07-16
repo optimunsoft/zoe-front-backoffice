@@ -39,6 +39,19 @@ export default defineNuxtConfig({
     '@vite-pwa/nuxt',
   ],
 
+  // SPA sin index.html en precache: createHandlerBoundToURL('/') lanza
+  // non-precached-url en producción y deja el SW inestable.
+  pwa: {
+    registerType: 'autoUpdate',
+    workbox: {
+      navigateFallback: null,
+      globPatterns: ['**/*.{js,css,svg,png,ico,woff2}'],
+    },
+    client: {
+      installPrompt: false,
+    },
+  },
+
   css: [
     '~/css/style.css',
     'vue-virtual-scroller/dist/vue-virtual-scroller.css',

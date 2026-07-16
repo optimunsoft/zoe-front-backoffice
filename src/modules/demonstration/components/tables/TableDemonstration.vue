@@ -365,7 +365,7 @@ const total = computed(() => demonstrationsStore.total)
 const currentPage = computed(() => demonstrationsStore.page)
 const amount = computed(() => demonstrationsStore.amount)
 
-const handleRowAction = async ({ action, row }: { action: string, row: UTableRow }) => {
+const handleRowAction = ({ action, row }: { action: string, row: UTableRow }) => {
   if (row.id == null) return
 
   if (action === 'edit') {
@@ -402,8 +402,7 @@ const setViewMode = async (mode: DemonstrationsViewMode) => {
   viewMode.value = mode
 
   if (mode === 'calendar') {
-    const calendarAmount = Math.max(CALENDAR_PAGE_AMOUNT, total.value || 0)
-    await fetchDemonstrations(1, calendarAmount)
+    await fetchDemonstrations(1, CALENDAR_PAGE_AMOUNT)
     return
   }
 
@@ -418,7 +417,7 @@ const handleReload = async () => {
   datePeriod.value = 4
 
   const nextAmount = viewMode.value === 'calendar'
-    ? Math.max(CALENDAR_PAGE_AMOUNT, total.value || 0)
+    ? CALENDAR_PAGE_AMOUNT
     : tableAmount.value
 
   await fetchDemonstrations(1, nextAmount)
@@ -437,7 +436,7 @@ const handleChangeAmount = async (nextAmount: number) => {
 
 watch(debouncedSearch, async () => {
   const nextAmount = viewMode.value === 'calendar'
-    ? Math.max(CALENDAR_PAGE_AMOUNT, total.value || 0)
+    ? CALENDAR_PAGE_AMOUNT
     : tableAmount.value
 
   await fetchDemonstrations(1, nextAmount)

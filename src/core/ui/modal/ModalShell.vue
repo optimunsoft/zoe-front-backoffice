@@ -85,8 +85,11 @@ watch(
     if (!import.meta.client) return
 
     const modalStack = useModalStackStore()
-    if (open) modalStack.register(props.id)
-    else modalStack.unregister(props.id)
+    if (open) {
+      modalStack.register(props.id)
+    } else {
+      modalStack.unregister(props.id)
+    }
 
     modalStack.syncBodyScrollLock()
   },

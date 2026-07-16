@@ -88,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, watch } from 'vue'
 
 import InputField from '~/core/ui/inputs/InputField.vue'
 import InputText from '~/core/ui/inputs/InputText.vue'
@@ -110,10 +110,12 @@ defineOptions({
   name: 'FormModule',
 })
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   mode?: 'create' | 'edit'
+  initialModule?: ModuleList | Module | null
 }>(), {
   mode: 'create',
+  initialModule: null,
 })
 
 const emit = defineEmits<{
@@ -163,6 +165,15 @@ const setValues = (module: ModuleList | Module) => {
   Object.assign(form, mapModuleListToFormValues(module))
   Object.assign(errors, emptyModuleFormErrors())
 }
+
+watch(
+  () => props.initialModule,
+  (module) => {
+    if (!module) return
+    setValues(module)
+  },
+  { immediate: true },
+)
 
 const handleSubmit = () => {
   const fieldErrors = validateModuleForm({ ...form })
