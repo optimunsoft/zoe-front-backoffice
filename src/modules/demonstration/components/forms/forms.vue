@@ -96,7 +96,7 @@
         <InputCheckbox
           v-for="option in productOptions"
           :key="option.value"
-          :model-value="form.productInterest.includes(String(option.value))"
+          :model-value="isProductSelected(String(option.value))"
           :label="option.label"
           @update:model-value="(checked) => toggleProduct(String(option.value), checked)"
         />
@@ -137,6 +137,8 @@ import type { InputSelectOption } from '~/core/ui/inputs/input.types'
 import type { Demonstration, DemonstrationResponse, UpdateDemonstration } from '../../types/demonstration.types'
 import { DemonstrationStatus } from '../../types/demonstration.types'
 import {
+  DEMONSTRATION_PRODUCT_OPTIONS,
+  canonicalizeProductInterest,
   emptyDemonstrationFormErrors,
   mapDemonstrationResponseToFormValues,
   parseDemonstrationForm,
@@ -164,11 +166,10 @@ const emit = defineEmits<{
 
 const ubicationStore = useUbicationStore()
 
-const productOptions: InputSelectOption[] = [
-  { label: 'Contabilidad', value: 'Contabilidad' },
-  { label: 'Factura Electronica', value: 'Factura Electronica' },
-  { label: 'Administrativo de Escritorio', value: 'Administrativo de Escritorio' },
-]
+const productOptions: InputSelectOption[] = DEMONSTRATION_PRODUCT_OPTIONS.map((product) => ({
+  label: product,
+  value: product,
+}))
 
 const statusOptions: InputSelectOption[] = [
   { label: 'Pendiente', value: DemonstrationStatus.PENDIENTE },
@@ -244,15 +245,24 @@ const onPhoneNumberChange = (value: string) => {
 }
 
 const toggleProduct = (product: string, checked: boolean) => {
+  const canonical = canonicalizeProductInterest(product) ?? product
+
   if (checked) {
-    if (!form.productInterest.includes(product)) {
-      form.productInterest.push(product)
+    if (!form.productInterest.includes(canonical)) {
+      form.productInterest.push(canonical)
     }
   } else {
-    form.productInterest = form.productInterest.filter((item) => item !== product)
+    form.productInterest = form.productInterest.filter((item) => item !== canonical)
   }
 
   errors.productInterest = ''
+}
+
+const isProductSelected = (product: string) => {
+  const canonical = canonicalizeProductInterest(product) ?? product
+  return form.productInterest.some(
+    (item) => (canonicalizeProductInterest(item) ?? item) === canonical,
+  )
 }
 
 const reset = () => {
@@ -280,7 +290,7 @@ const setValues = async (demonstration: DemonstrationResponse) => {
   form.scheduledDate = values.scheduledDate ?? null
   form.scheduledTime = values.scheduledTime
   form.status = (values.status ?? '') as DemonstrationStatus | ''
-  form.productInterest = values.productInterest.map((item) => String(item))
+  form.productInterest = [...values.productInterest.map((item) => String(item))]
   Object.assign(errors, emptyDemonstrationFormErrors())
 }
 
@@ -290,7 +300,6 @@ watch(
     if (props.mode !== 'edit' || !demonstration) return
     await setValues(demonstration)
   },
-  { immediate: true },
 )
 
 const handleSubmit = () => {
@@ -328,15 +337,12 @@ const handleSubmit = () => {
 }
 
 onMounted(async () => {
-  await ubicationStore.getAllCountries()
+  if (!ubicationStore.allCountries.length) {
+    await ubicationStore.getAllCountries()
+  }
 
   if (props.mode === 'create') {
     form.phonePrefix = resolveDefaultPhonePrefix(ubicationStore.allCountries) || DEFAULT_PHONE_PREFIX
-    return
-  }
-
-  if (props.initialDemonstration) {
-    await setValues(props.initialDemonstration)
   }
 })
 

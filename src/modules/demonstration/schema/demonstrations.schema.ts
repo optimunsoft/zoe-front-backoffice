@@ -86,16 +86,91 @@ const LEGACY_STATUS_MAP: Record<string, DemonstrationStatus> = {
   CANCELLED: DemonstrationStatus.CANCELADA,
 }
 
-export const normalizeProductInterest = (value: unknown): string[] => {
+export const DEMONSTRATION_PRODUCT_OPTIONS = [
+  'Contabilidad',
+  'Factura Electronica',
+  'Administrativo de Escritorio',
+] as const
+
+export type DemonstrationProductOption = (typeof DEMONSTRATION_PRODUCT_OPTIONS)[number]
+
+const normalizeProductLabel = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+/** Mapea un valor del API al label canónico de los checkboxes. */
+export const canonicalizeProductInterest = (value: string): DemonstrationProductOption | null => {
+  const normalized = normalizeProductLabel(value)
+  if (!normalized) return null
+
+  for (const option of DEMONSTRATION_PRODUCT_OPTIONS) {
+    if (normalizeProductLabel(option) === normalized) return option
+  }
+
+  // Aliases frecuentes del backend / datos legacy.
+  if (normalized.includes('contabilidad')) return 'Contabilidad'
+  if (normalized.includes('factura')) return 'Factura Electronica'
+  if (normalized.includes('administrativo')) return 'Administrativo de Escritorio'
+
+  return null
+}
+
+const pushProductChunks = (target: string[], value: unknown) => {
+  if (value == null) return
+
   if (Array.isArray(value)) {
-    return value.map(String).filter(Boolean)
+    value.forEach((item) => pushProductChunks(target, item))
+    return
   }
 
-  if (typeof value === 'string' && value.trim()) {
-    return [value.trim()]
+  if (typeof value === 'object') {
+    Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
+      if (entry === true || entry === 1 || entry === '1') {
+        target.push(key)
+        return
+      }
+      if (typeof entry === 'string' && entry.trim()) {
+        target.push(entry)
+      }
+    })
+    return
   }
 
-  return []
+  const text = String(value).trim()
+  if (!text) return
+
+  if (text.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(text) as unknown
+      pushProductChunks(target, parsed)
+      return
+    } catch {
+      // sigue como texto plano
+    }
+  }
+
+  text.split(/[,;|]/).forEach((chunk) => {
+    const trimmed = chunk.trim()
+    if (trimmed) target.push(trimmed)
+  })
+}
+
+export const normalizeProductInterest = (value: unknown): string[] => {
+  const rawItems: string[] = []
+  pushProductChunks(rawItems, value)
+
+  const canonical = new Set<string>()
+  for (const item of rawItems) {
+    const matched = canonicalizeProductInterest(item)
+    if (matched) canonical.add(matched)
+  }
+
+  return [...canonical]
 }
 
 type RawDemonstrationRecord = Record<string, unknown>
@@ -330,6 +405,8 @@ export const emptyDemonstrationFormErrors = (): DemonstrationFormErrors => ({
 })
 
 const formatTimeValue = (date: Date) => {
+  if (Number.isNaN(date.getTime())) return ''
+
   const hours = String(date.getHours()).padStart(2, '0')
   const minutes = String(date.getMinutes()).padStart(2, '0')
   return `${hours}:${minutes}`
@@ -340,6 +417,7 @@ export const mapDemonstrationResponseToFormValues = (
   countries: Array<{ phonePrefix: string }> = [],
 ): DemonstrationUpdateFormValues => {
   const scheduledAt = new Date(demonstration.scheduledAt)
+  const validScheduledAt = Number.isNaN(scheduledAt.getTime()) ? null : scheduledAt
   const { phonePrefix, phoneNumber } = splitDemonstrationPhone(demonstration.phone, countries)
 
   return {
@@ -348,8 +426,8 @@ export const mapDemonstrationResponseToFormValues = (
     phonePrefix,
     phoneNumber,
     productInterest: normalizeProductInterest(demonstration.productInterest),
-    scheduledDate: scheduledAt,
-    scheduledTime: formatTimeValue(scheduledAt),
+    scheduledDate: validScheduledAt,
+    scheduledTime: validScheduledAt ? formatTimeValue(validScheduledAt) : '',
     status: normalizeDemonstrationStatus(demonstration.status) ?? demonstration.status,
   }
 }

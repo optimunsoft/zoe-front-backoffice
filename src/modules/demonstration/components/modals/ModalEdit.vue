@@ -14,32 +14,30 @@
       </div>
     </template>
 
-    <div
-      v-if="isInitializing"
-      class="flex items-center justify-center py-12"
+    <p
+      v-if="isLoading"
+      class="mb-4 text-sm text-gray-500 dark:text-gray-400"
     >
-      <p class="text-sm text-gray-500 dark:text-gray-400">
-        Cargando agendamiento...
-      </p>
-    </div>
+      Cargando agendamiento...
+    </p>
 
     <FormDemonstration
-      v-else-if="modalOpen && demonstration"
-      :key="`edit-${demonstration.id}`"
+      v-if="modalOpen && demonstrationId"
+      :key="demonstrationId"
       ref="formRef"
       mode="edit"
-      :initial-demonstration="demonstration"
+      :class="{ 'pointer-events-none opacity-60': isLoading }"
       @submit="handleEdit"
     />
 
     <template #footer>
-      <Button variant="secondary" :disabled="isSubmitting || isInitializing" @click="handleClose">
+      <Button variant="secondary" :disabled="isSubmitting || isLoading" @click="handleClose">
         Cancelar
       </Button>
       <Button
         variant="primary"
         :loading="isSubmitting"
-        :disabled="isInitializing || !demonstration"
+        :disabled="isLoading"
         @click="submitForm"
       >
         Guardar
@@ -49,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 
 import { Button } from '~/core/ui/buttons'
 import { ModalBasic } from '~/core/ui/modal'
@@ -71,36 +69,61 @@ const emit = defineEmits<{
 const demonstrationsStore = useDemonstrationsStore()
 const formRef = ref<InstanceType<typeof FormDemonstration> | null>(null)
 const isSubmitting = ref(false)
-const isInitializing = ref(false)
-const demonstration = ref<DemonstrationResponse | null>(null)
+const isLoading = ref(false)
+
+const waitForFormRef = async () => {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    await nextTick()
+    if (formRef.value) return true
+  }
+
+  return false
+}
 
 const resolveDemonstration = async (id: string): Promise<DemonstrationResponse | null> => {
-  const fromList = demonstrationsStore.demonstrations.find((item) => item.id === id)
+  const fromList = demonstrationsStore.demonstrations.find(
+    (item) => String(item.id) === String(id),
+  )
   if (fromList) return fromList
 
   const response = await demonstrationsStore.getDemonstrationById(id)
   return normalizeDemonstrationResponse(response)
 }
 
+const loadDemonstration = async (id: string) => {
+  isLoading.value = true
+
+  try {
+    const ready = await waitForFormRef()
+    if (!ready) return
+
+    const demonstration = await resolveDemonstration(id)
+    if (!demonstration) {
+      emit('close-modal')
+      return
+    }
+
+    if (!props.modalOpen || props.demonstrationId !== id) return
+
+    await formRef.value?.setValues(demonstration)
+  } catch {
+    emit('close-modal')
+  } finally {
+    isLoading.value = false
+  }
+}
+
 watch(
   () => [props.modalOpen, props.demonstrationId] as const,
   async ([isOpen, id]) => {
     if (!isOpen || !id) {
-      demonstration.value = null
-      isInitializing.value = false
+      isLoading.value = false
       return
     }
 
-    isInitializing.value = true
-    demonstration.value = null
-
-    try {
-      demonstration.value = await resolveDemonstration(id)
-    } finally {
-      isInitializing.value = false
-    }
+    await nextTick()
+    await loadDemonstration(id)
   },
-  { immediate: true },
 )
 
 const handleClose = () => {
@@ -121,7 +144,7 @@ const handleEdit = async (payload: Demonstration | UpdateDemonstration) => {
   isSubmitting.value = true
 
   try {
-    await demonstrationsStore.UpdateDemonstration(props.demonstrationId!, demonstrationPayload)
+    await demonstrationsStore.UpdateDemonstration(props.demonstrationId, demonstrationPayload)
     await demonstrationsStore.getDemonstrations({
       amount: demonstrationsStore.amount,
       page: demonstrationsStore.page,
