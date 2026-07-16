@@ -74,8 +74,9 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { useAuthStore } from '~/core/auth/store/auth.store'
 import { defaultSidebarIcon, UiIcon } from '~/core/ui/icons'
-import { sidebarMenuSections } from '~/core/layout/sidebar/sidebar-menu'
+import { getSidebarMenuSections } from '~/core/layout/sidebar/sidebar-menu'
 import {
   filterSidebarMenuSearch,
   flattenSidebarMenuForSearch,
@@ -97,11 +98,17 @@ const emit = defineEmits<{
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const searchInput = ref<HTMLInputElement | null>(null)
 const searchQuery = ref('')
 
 const menuItems = computed(() =>
-  flattenSidebarMenuForSearch(sidebarMenuSections, { route: route }),
+  flattenSidebarMenuForSearch(
+    getSidebarMenuSections({
+      canViewModules: authStore.isAdminBackOfficeUser,
+    }),
+    { route },
+  ),
 )
 
 const filteredItems = computed(() =>

@@ -106,3 +106,33 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
     ],
   },
 ]
+
+export type SidebarMenuAccess = {
+  canViewModules?: boolean
+}
+
+export const getSidebarMenuSections = (
+  access: SidebarMenuAccess = {},
+): SidebarMenuSection[] => {
+  const canViewModules = access.canViewModules ?? false
+
+  return sidebarMenuSections.map((section) => ({
+    ...section,
+    items: section.items.map((item) => {
+      if (item.key !== 'configurations' || !item.children?.length) return item
+
+      return {
+        ...item,
+        children: item.children.filter((child) => {
+          if (child.key === 'modulos-list') return canViewModules
+          return true
+        }),
+        active: ({ route }: SidebarMenuContext) => {
+          const path = route.path
+          if (canViewModules && path.includes('/modulos')) return true
+          return path.includes('/superusuarios')
+        },
+      }
+    }),
+  }))
+}

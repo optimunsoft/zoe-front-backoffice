@@ -37,8 +37,11 @@ import { ref } from 'vue'
 import { Button } from '~/core/ui/buttons'
 import { UiIcon } from '~/core/ui/icons'
 import { ModalBasic } from '~/core/ui/modal'
-import { useUsersStore } from '~/modules/administration/users/store/users.store'
-import type { UserCreate, UserUpdate } from '~/modules/administration/users/types/users.types'
+import { useUserBackofficeStore } from '../../store/userBackOffice.store'
+import type {
+  UserBackofficeCreate,
+  UserBackofficeUpdate,
+} from '../../types/userBackoffice.types'
 import FormUsersBackoffice from '../forms/Form.vue'
 
 type UserFormExpose = {
@@ -55,7 +58,7 @@ const emit = defineEmits<{
   created: []
 }>()
 
-const usersStore = useUsersStore()
+const userBackofficeStore = useUserBackofficeStore()
 const formRef = ref<UserFormExpose | null>(null)
 const isSubmitting = ref(false)
 
@@ -69,13 +72,13 @@ const submitForm = () => {
   formRef.value?.submit()
 }
 
-const handleCreate = async (payload: UserCreate | UserUpdate) => {
+const handleCreate = async (payload: UserBackofficeCreate | UserBackofficeUpdate) => {
   if (isSubmitting.value) return
 
   isSubmitting.value = true
 
   try {
-    await usersStore.createUser(payload as UserCreate)
+    await userBackofficeStore.createUser(payload as UserBackofficeCreate)
     formRef.value?.reset()
     emit('created')
     emit('close-modal')

@@ -7,6 +7,7 @@
         </h1>
 
         <Button
+          v-if="canCreateUsers"
           class="w-full sm:w-auto"
           variant="primary"
           aria-controls="create-users-backoffice-modal"
@@ -23,6 +24,7 @@
         <FilterCards
           v-model="statusFilter"
           :options="statusFilterOptions"
+          :loading="isFilterTotalsLoading"
           aria-label="Filtrar usuarios backoffice por estado"
           wrapper-class="mb-0"
         />
@@ -61,9 +63,12 @@
       @action="handleRowAction"
     >
       <template #actions="{ row }">
-        <div class="flex justify-start space-x-1">
+        <div
+          v-if="getRowActions(row).length"
+          class="flex justify-start space-x-1"
+        >
           <Tooltip
-            v-for="action in usersBackofficeTableActions"
+            v-for="action in getRowActions(row)"
             :key="action.key"
             bg="light"
             position="top"
@@ -100,6 +105,7 @@
         <TableUserBackofficeCompanies
           v-if="getUserForRow(row)"
           :user="getUserForRow(row)!"
+          :can-unassign="canManageCompaniesForRow(row)"
           @unassigned="handleUsersMutated"
         />
       </template>
@@ -174,8 +180,9 @@ import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
 import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableActionButton, UTableRow } from '~/core/ui/Tables/utable.types'
 import { Tooltip } from '~/core/ui/utooltip'
+import { useAuthStore } from '~/core/auth/store/auth.store'
 import { useUsersStore } from '~/modules/administration/users/store/users.store'
-import type { User } from '~/modules/administration/users/types/users.types'
+import type { UserList } from '../../types/userBackoffice.types'
 import { formatTableText } from '~/shared/utils/format'
 import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import { usersBackofficeTableActions } from '../../mappers/users-backoffice-table.actions'
@@ -188,6 +195,7 @@ import ModalCreate from '../modals/ModalCreate.vue'
 import ModalEdit from '../modals/ModalEdit.vue'
 import TableUserBackofficeCompanies from './TableUserBackofficeCompanies.vue'
 
+const authStore = useAuthStore()
 const usersStore = useUsersStore()
 const usersService = useUsersService()
 const searchQuery = ref('')
@@ -196,6 +204,7 @@ const currentPage = ref(1)
 const amount = ref(10)
 const statusFilter = ref('all')
 const filterTotals = ref<Record<string, number>>({})
+const isFilterTotalsLoading = ref(true)
 const isInitialLoadDone = ref(false)
 
 const statusFilterDefinitions = [
@@ -206,9 +215,9 @@ const statusFilterDefinitions = [
 
 const createModalOpen = ref(false)
 const editModalOpen = ref(false)
-const editingUser = ref<User | null>(null)
+const editingUser = ref<UserList | null>(null)
 const assignCompaniesModalOpen = ref(false)
-const assignCompaniesUser = ref<User | null>(null)
+const assignCompaniesUser = ref<UserList | null>(null)
 const expandedCompaniesRowKey = ref<string | number | null>(null)
 
 const {
@@ -218,16 +227,36 @@ const {
   withTableLoading,
 } = useTableRefresh()
 
+const canCreateUsers = computed(() => authStore.isAdminBackOfficeUser)
+const canEditUsers = computed(() => authStore.isAdminBackOfficeUser)
+const currentUserId = computed(() => authStore.user?.id?.trim() || '')
+
+const isCurrentUserRow = (row: UTableRow) =>
+  currentUserId.value.length > 0 && String(row.id) === currentUserId.value
+
+const canManageCompaniesForRow = (row: UTableRow) =>
+  authStore.isAdminBackOfficeUser || isCurrentUserRow(row)
+
+const getRowActions = (row: UTableRow): UTableActionButton[] => {
+  if (authStore.isAdminBackOfficeUser) return usersBackofficeTableActions
+
+  if (!isCurrentUserRow(row)) return []
+
+  return usersBackofficeTableActions.filter((action) =>
+    action.key === 'companies' || action.key === 'assignCompanies',
+  )
+}
 const statusFilterOptions = computed<FilterCardOption[]>(() =>
   statusFilterDefinitions.map((option) => ({
     key: option.key,
     label: option.label,
-    count: filterTotals.value[option.key]
-      ?? (statusFilter.value === option.key ? usersStore.total : undefined),
+    count: filterTotals.value[option.key],
   })),
 )
 
-const tableRows = computed(() => mapUsersBackofficeToTableRows(usersStore.users))
+const backofficeUsers = computed(() => usersStore.users as unknown as UserList[])
+
+const tableRows = computed(() => mapUsersBackofficeToTableRows(backofficeUsers.value))
 
 const resolveIsActiveForKey = (filterKey: string): boolean | undefined => {
   if (filterKey === 'active') return true
@@ -244,25 +273,31 @@ const extractUsersTotal = (response: Awaited<ReturnType<typeof usersService.getU
 }
 
 const refreshFilterTotals = async () => {
-  const results = await Promise.all(
-    statusFilterDefinitions.map(async (option) => {
-      try {
-        const { response } = await usersService.getUsers({
-          amount: 1,
-          page: 1,
-          search: debouncedSearch.value || undefined,
-          isAdmin: true,
-          isActive: resolveIsActiveForKey(option.key),
-        })
+  isFilterTotalsLoading.value = true
 
-        return [option.key, extractUsersTotal(response)] as const
-      } catch {
-        return [option.key, filterTotals.value[option.key] ?? 0] as const
-      }
-    }),
-  )
+  try {
+    const results = await Promise.all(
+      statusFilterDefinitions.map(async (option) => {
+        try {
+          const { response } = await usersService.getUsers({
+            amount: 1,
+            page: 1,
+            search: debouncedSearch.value || undefined,
+            isAdmin: true,
+            isActive: resolveIsActiveForKey(option.key),
+          })
 
-  filterTotals.value = Object.fromEntries(results)
+          return [option.key, extractUsersTotal(response)] as const
+        } catch {
+          return [option.key, filterTotals.value[option.key] ?? 0] as const
+        }
+      }),
+    )
+
+    filterTotals.value = Object.fromEntries(results)
+  } finally {
+    isFilterTotalsLoading.value = false
+  }
 }
 
 const hasUserEmail = (value: unknown) => {
@@ -271,15 +306,19 @@ const hasUserEmail = (value: unknown) => {
   return email.length > 0 && email !== '-'
 }
 
-const resolveUserFromRow = (row: UTableRow): User | null => {
+const resolveUserFromRow = (row: UTableRow): UserList | null => {
   if (row.id == null) return null
-  return usersStore.users.find((item) => item.id === String(row.id)) ?? null
+  return backofficeUsers.value.find((item) => item.id === String(row.id)) ?? null
 }
 
 const getUserForRow = (row: UTableRow) => resolveUserFromRow(row)
 
 const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {}) => {
   currentPage.value = page
+
+  if (options.refreshTotals) {
+    await refreshFilterTotals()
+  }
 
   await withTableLoading(async () => {
     await usersStore.getUsers({
@@ -296,33 +335,16 @@ const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {
     ...filterTotals.value,
     [statusFilter.value]: usersStore.total,
   }
-
-  if (options.refreshTotals) {
-    void refreshFilterTotals()
-  }
 }
 
 const handleReload = async () => {
-  if (isLoading.value) return
+  if (isLoading.value || isFilterTotalsLoading.value) return
 
   searchQuery.value = ''
   statusFilter.value = 'all'
   currentPage.value = 1
 
-  await withTableLoading(async () => {
-    await usersStore.getUsers({
-      amount: amount.value,
-      page: 1,
-      isAdmin: true,
-    })
-    expandedCompaniesRowKey.value = null
-  })
-
-  filterTotals.value = {
-    ...filterTotals.value,
-    all: usersStore.total,
-  }
-  void refreshFilterTotals()
+  await fetchUsers(1, { refreshTotals: true })
 }
 
 const handleChangePage = async (page: number) => {
@@ -341,6 +363,7 @@ const handleUsersMutated = async () => {
 }
 
 const handleCreateUser = () => {
+  if (!canCreateUsers.value) return
   createModalOpen.value = true
 }
 
@@ -349,6 +372,8 @@ const closeCreateModal = () => {
 }
 
 const openEditModal = async (row: UTableRow) => {
+  if (!canEditUsers.value) return
+
   const user = resolveUserFromRow(row)
   if (!user) return
 
@@ -363,6 +388,8 @@ const closeEditModal = () => {
 }
 
 const openAssignCompaniesModal = async (row: UTableRow) => {
+  if (!canManageCompaniesForRow(row)) return
+
   const user = resolveUserFromRow(row)
   if (!user) return
 
@@ -382,6 +409,9 @@ const isCompaniesActionExpanded = (row: UTableRow, action: UTableActionButton) =
   && action.key === 'companies'
 
 const handleRowAction = async ({ action, row }: { action: string, row: UTableRow }) => {
+  const allowedActions = getRowActions(row)
+  if (!allowedActions.some((item) => item.key === action)) return
+
   if (action === 'companies') {
     const rowKey = row.id
     if (rowKey == null) return

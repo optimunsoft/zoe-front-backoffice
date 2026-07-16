@@ -23,6 +23,7 @@
         <FilterCards
           v-model="userFilter"
           :options="userFilterOptions"
+          :loading="isFilterTotalsLoading"
           aria-label="Filtrar usuarios"
           wrapper-class="mb-0"
         />
@@ -269,6 +270,7 @@ const appliedCompanyLabel = ref('')
 const selectedCompanyId = ref<string | undefined>()
 const userFilter = ref('all')
 const filterTotals = ref<Record<string, number>>({})
+const isFilterTotalsLoading = ref(true)
 const currentPage = ref(1)
 const amount = ref(10)
 const {
@@ -289,7 +291,7 @@ const userFilterDefinitions = [
   { key: 'all', label: 'Todos' },
   { key: 'active', label: 'Activos' },
   { key: 'inactive', label: 'Inactivos' },
-  { key: USER_TYPE.USUARIO, label: 'Usuario' },
+  { key: USER_TYPE.USUARIO, label: 'Root' },
   { key: USER_TYPE.SUBUSUARIO, label: 'Subusuario' },
 ] as const
 
@@ -303,8 +305,7 @@ const userFilterOptions = computed<FilterCardOption[]>(() =>
   userFilterDefinitions.map((option) => ({
     key: option.key,
     label: option.label,
-    count: filterTotals.value[option.key]
-      ?? (userFilter.value === option.key ? usersStore.total : undefined),
+    count: filterTotals.value[option.key],
   })),
 )
 
@@ -339,31 +340,41 @@ const extractUsersTotal = (response: Awaited<ReturnType<typeof usersService.getU
 }
 
 const refreshFilterTotals = async () => {
-  const results = await Promise.all(
-    userFilterDefinitions.map(async (option) => {
-      try {
-        const { response } = await usersService.getUsers({
-          amount: 1,
-          page: 1,
-          search: debouncedSearch.value || undefined,
-          companyId: selectedCompanyId.value,
-          isAdmin: false,
-          isDemo: false,
-          ...resolveFilterQueryParams(option.key),
-        })
+  isFilterTotalsLoading.value = true
 
-        return [option.key, extractUsersTotal(response)] as const
-      } catch {
-        return [option.key, filterTotals.value[option.key] ?? 0] as const
-      }
-    }),
-  )
+  try {
+    const results = await Promise.all(
+      userFilterDefinitions.map(async (option) => {
+        try {
+          const { response } = await usersService.getUsers({
+            amount: 1,
+            page: 1,
+            search: debouncedSearch.value || undefined,
+            companyId: selectedCompanyId.value,
+            isAdmin: false,
+            isDemo: false,
+            ...resolveFilterQueryParams(option.key),
+          })
 
-  filterTotals.value = Object.fromEntries(results)
+          return [option.key, extractUsersTotal(response)] as const
+        } catch {
+          return [option.key, filterTotals.value[option.key] ?? 0] as const
+        }
+      }),
+    )
+
+    filterTotals.value = Object.fromEntries(results)
+  } finally {
+    isFilterTotalsLoading.value = false
+  }
 }
 
 const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {}) => {
   currentPage.value = page
+
+  if (options.refreshTotals) {
+    await refreshFilterTotals()
+  }
 
   await withTableLoading(async () => {
     await usersStore.getUsers({
@@ -382,10 +393,6 @@ const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {
   filterTotals.value = {
     ...filterTotals.value,
     [userFilter.value]: usersStore.total,
-  }
-
-  if (options.refreshTotals) {
-    void refreshFilterTotals()
   }
 }
 
@@ -618,7 +625,7 @@ const handleChangeAmount = async (nextAmount: number) => {
 }
 
 const handleReload = async () => {
-  if (isLoading.value) return
+  if (isLoading.value || isFilterTotalsLoading.value) return
 
   searchQuery.value = ''
   userFilter.value = 'all'
@@ -630,22 +637,7 @@ const handleReload = async () => {
   selectedCompanyId.value = undefined
   currentPage.value = 1
 
-  await withTableLoading(async () => {
-    await usersStore.getUsers({
-      amount: amount.value,
-      page: 1,
-      isAdmin: false,
-      isDemo: false,
-    })
-    selectedItems.value = []
-    expandedCompaniesRowKey.value = null
-  })
-
-  filterTotals.value = {
-    ...filterTotals.value,
-    all: usersStore.total,
-  }
-  void refreshFilterTotals()
+  await fetchUsers(1, { refreshTotals: true })
 }
 
 onMounted(() => {

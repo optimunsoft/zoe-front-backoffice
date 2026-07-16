@@ -198,7 +198,7 @@ import { UiIcon } from '~/core/ui/icons'
 import { Spinner } from '~/core/ui/loader'
 import { ModalAction, ModalBasic } from '~/core/ui/modal'
 import { formatUserCompanyName } from '~/modules/administration/users/mappers/user-companies.mapper'
-import type { User, UserCompany } from '~/modules/administration/users/types/users.types'
+import type { UserCompany, UserList } from '../../types/userBackoffice.types'
 
 defineOptions({
   name: 'ModalAssignCompanies',
@@ -214,7 +214,7 @@ type DisplayCompany = {
 
 const props = defineProps<{
   modalOpen: boolean
-  user: User | null
+  user: UserList | null
 }>()
 
 const emit = defineEmits<{

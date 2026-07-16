@@ -39,7 +39,7 @@ export const useAuthService = () => {
   const getMe = (options?: { forceAuth?: boolean }): Promise<GetMeResponse> => {
     const headers: Record<string, string> = {};
     if (options?.forceAuth) headers[HEADER_FORCE_AUTH] = '1';
-    return $apiCore<GetMeResponse>('users/me', {
+    return $apiCore<GetMeResponse>('users/me-bo', {
       method: 'GET',
       headers,
     });

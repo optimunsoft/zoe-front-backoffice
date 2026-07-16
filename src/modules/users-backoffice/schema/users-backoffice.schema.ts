@@ -8,10 +8,12 @@ import { isPasswordValid } from '~/shared/utils/password.utils'
 import {
   BACKOFFICE_ROLE,
   USER_TYPE,
-  type UserCreate,
-  type UserList,
-  type UserUpdate,
 } from '~/modules/administration/users/types/users.types'
+import type {
+  UserBackofficeCreate,
+  UserBackofficeUpdate,
+  UserList,
+} from '../types/userBackoffice.types'
 
 const NAME_REGEX = /^[\p{L}\s'.-]+$/u
 const PHONE_REGEX = /^\d{7,15}$/
@@ -256,7 +258,7 @@ const normalizeBackofficeRole = (value: unknown): string => {
   return ''
 }
 
-const buildUserBasePayload = (values: UsersBackofficeFormValues) => {
+const buildUserBackofficeBasePayload = (values: UsersBackofficeFormValues): UserBackofficeUpdate => {
   const birthDate = parseBirthDate(values.birthDate)
   if (!birthDate) {
     throw new Error('Invalid birth date')
@@ -271,22 +273,18 @@ const buildUserBasePayload = (values: UsersBackofficeFormValues) => {
     phonePrefix: values.phonePrefix.trim(),
     phoneNumber: values.phoneNumber.trim(),
     backofficeRole: values.backofficeRole.trim(),
-    isVerified: values.isVerified,
-    isAdmin: true,
   }
 }
 
-const buildUserCreatePayload = (values: UsersBackofficeFormValues): UserCreate => ({
-  ...buildUserBasePayload(values),
-  isDemo: false,
+const buildUserBackofficeCreatePayload = (values: UsersBackofficeFormValues): UserBackofficeCreate => ({
+  ...buildUserBackofficeBasePayload(values),
   password: values.password,
-  userType: USER_TYPE.USUARIO,
 })
 
 export const parseUsersBackofficeCreateForm = (
   values: UsersBackofficeFormValues,
 ):
-  | { success: true, data: UserCreate }
+  | { success: true, data: UserBackofficeCreate }
   | { success: false, errors: UsersBackofficeFormErrors } => {
   const normalized = { ...values, isAdmin: true, isDemo: false }
   const errors = validateUsersBackofficeForm(normalized, 'create')
@@ -298,7 +296,7 @@ export const parseUsersBackofficeCreateForm = (
   try {
     return {
       success: true,
-      data: buildUserCreatePayload(normalized),
+      data: buildUserBackofficeCreatePayload(normalized),
     }
   } catch {
     return {
@@ -314,7 +312,7 @@ export const parseUsersBackofficeCreateForm = (
 export const parseUsersBackofficeUpdateForm = (
   values: UsersBackofficeFormValues,
 ):
-  | { success: true, data: UserUpdate }
+  | { success: true, data: UserBackofficeUpdate }
   | { success: false, errors: UsersBackofficeFormErrors } => {
   const normalized = { ...values, isAdmin: true, isDemo: false }
   const errors = validateUsersBackofficeForm(normalized, 'edit')
@@ -326,7 +324,7 @@ export const parseUsersBackofficeUpdateForm = (
   try {
     return {
       success: true,
-      data: buildUserBasePayload(normalized),
+      data: buildUserBackofficeBasePayload(normalized),
     }
   } catch {
     return {
@@ -355,7 +353,7 @@ export const mapUserListToUsersBackofficeFormValues = (
     phonePrefix: resolvePhonePrefixOption(user.phonePrefix ?? '', countries),
     phoneNumber: String(user.phoneNumber ?? ''),
     backofficeRole: normalizeBackofficeRole(user.backofficeRole),
-    isVerified: user.isVerified ?? false,
+    isVerified: false,
     isAdmin: true,
     isDemo: false,
     password: '',

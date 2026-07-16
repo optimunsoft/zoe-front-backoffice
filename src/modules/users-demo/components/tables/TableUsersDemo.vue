@@ -11,6 +11,7 @@
         <FilterCards
           v-model="statusFilter"
           :options="statusFilterOptions"
+          :loading="isFilterTotalsLoading"
           aria-label="Filtrar usuarios demo por estado"
           wrapper-class="mb-0"
         />
@@ -142,6 +143,7 @@ const currentPage = ref(1)
 const amount = ref(10)
 const statusFilter = ref('all')
 const filterTotals = ref<Record<string, number>>({})
+const isFilterTotalsLoading = ref(true)
 
 const statusFilterDefinitions = [
   { key: 'all', label: 'Todos' },
@@ -167,8 +169,7 @@ const statusFilterOptions = computed<FilterCardOption[]>(() =>
   statusFilterDefinitions.map((option) => ({
     key: option.key,
     label: option.label,
-    count: filterTotals.value[option.key]
-      ?? (statusFilter.value === option.key ? usersStore.total : undefined),
+    count: filterTotals.value[option.key],
   })),
 )
 
@@ -189,25 +190,31 @@ const extractUsersTotal = (response: Awaited<ReturnType<typeof usersService.getU
 }
 
 const refreshFilterTotals = async () => {
-  const results = await Promise.all(
-    statusFilterDefinitions.map(async (option) => {
-      try {
-        const { response } = await usersService.getUsers({
-          amount: 1,
-          page: 1,
-          search: debouncedSearch.value || undefined,
-          isDemo: true,
-          isActive: resolveIsActiveForKey(option.key),
-        })
+  isFilterTotalsLoading.value = true
 
-        return [option.key, extractUsersTotal(response)] as const
-      } catch {
-        return [option.key, filterTotals.value[option.key] ?? 0] as const
-      }
-    }),
-  )
+  try {
+    const results = await Promise.all(
+      statusFilterDefinitions.map(async (option) => {
+        try {
+          const { response } = await usersService.getUsers({
+            amount: 1,
+            page: 1,
+            search: debouncedSearch.value || undefined,
+            isDemo: true,
+            isActive: resolveIsActiveForKey(option.key),
+          })
 
-  filterTotals.value = Object.fromEntries(results)
+          return [option.key, extractUsersTotal(response)] as const
+        } catch {
+          return [option.key, filterTotals.value[option.key] ?? 0] as const
+        }
+      }),
+    )
+
+    filterTotals.value = Object.fromEntries(results)
+  } finally {
+    isFilterTotalsLoading.value = false
+  }
 }
 
 const hasPhoneNumber = (value: unknown) => {
@@ -224,6 +231,10 @@ const resolveUserFromRow = (row: UTableRow): User | null => {
 const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {}) => {
   currentPage.value = page
 
+  if (options.refreshTotals) {
+    await refreshFilterTotals()
+  }
+
   await withTableLoading(async () => {
     await usersStore.getUsers({
       amount: amount.value,
@@ -238,32 +249,16 @@ const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {
     ...filterTotals.value,
     [statusFilter.value]: usersStore.total,
   }
-
-  if (options.refreshTotals) {
-    void refreshFilterTotals()
-  }
 }
 
 const handleReload = async () => {
-  if (isLoading.value) return
+  if (isLoading.value || isFilterTotalsLoading.value) return
 
   searchQuery.value = ''
   statusFilter.value = 'all'
   currentPage.value = 1
 
-  await withTableLoading(async () => {
-    await usersStore.getUsers({
-      amount: amount.value,
-      page: 1,
-      isDemo: true,
-    })
-  })
-
-  filterTotals.value = {
-    ...filterTotals.value,
-    all: usersStore.total,
-  }
-  void refreshFilterTotals()
+  await fetchUsers(1, { refreshTotals: true })
 }
 
 const handleChangePage = async (page: number) => {

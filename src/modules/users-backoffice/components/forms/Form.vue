@@ -263,11 +263,13 @@ import { Spinner } from '~/core/ui/loader'
 import {
   BACKOFFICE_ROLE,
   USER_TYPE,
-  type User,
-  type UserCreate,
-  type UserUpdate,
 } from '~/modules/administration/users/types/users.types'
 import { useUsersStore } from '~/modules/administration/users/store/users.store'
+import type {
+  UserBackofficeCreate,
+  UserBackofficeUpdate,
+  UserList,
+} from '../../types/userBackoffice.types'
 import {
   emptyUsersBackofficeFormErrors,
   emptyUsersBackofficeFormValues,
@@ -286,7 +288,7 @@ defineOptions({
 
 const props = withDefaults(defineProps<{
   mode?: 'create' | 'edit'
-  initialUser?: User | null
+  initialUser?: UserList | null
 }>(), {
   mode: 'create',
   initialUser: null,
@@ -296,7 +298,7 @@ const isEditMode = computed(() => props.mode === 'edit')
 const isCreateMode = computed(() => props.mode === 'create')
 
 const emit = defineEmits<{
-  submit: [payload: UserCreate | UserUpdate]
+  submit: [payload: UserBackofficeCreate | UserBackofficeUpdate]
   refresh: []
 }>()
 
@@ -465,7 +467,7 @@ const reset = () => {
   municipalityFieldRef.value?.reset()
 }
 
-const setValues = async (user: User) => {
+const setValues = async (user: UserList) => {
   editingUserId.value = user.id
   userIsActive.value = user.isActive
 

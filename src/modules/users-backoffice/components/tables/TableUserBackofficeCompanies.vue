@@ -11,6 +11,7 @@
       </div>
 
       <Button
+        v-if="canUnassign"
         variant="danger"
         size="sm"
         :disabled="!selectedCompanyIds.length || isUnassigning"
@@ -41,7 +42,10 @@
             <th class="border border-gray-200 dark:border-gray-700/70 bg-gray-100/70 px-3 py-2 font-semibold dark:bg-gray-900/50">
               Email
             </th>
-            <th class="border border-gray-200 dark:border-gray-700/70 bg-gray-100/70 px-3 py-2 font-semibold w-10 text-right dark:bg-gray-900/50">
+            <th
+              v-if="canUnassign"
+              class="border border-gray-200 dark:border-gray-700/70 bg-gray-100/70 px-3 py-2 font-semibold w-10 text-right dark:bg-gray-900/50"
+            >
               <input
                 type="checkbox"
                 class="form-checkbox"
@@ -100,7 +104,10 @@
                 {{ formatTableText('No Aplica') }}
               </TableBadge>
             </td>
-            <td class="border border-gray-200 px-3 py-2 text-right dark:border-gray-700/70">
+            <td
+              v-if="canUnassign"
+              class="border border-gray-200 px-3 py-2 text-right dark:border-gray-700/70"
+            >
               <input
                 type="checkbox"
                 class="form-checkbox"
@@ -167,12 +174,15 @@ import {
   formatUserCompanyName,
   getVisibleUserCompanies,
 } from '~/modules/administration/users/mappers/user-companies.mapper'
-import type { User } from '~/modules/administration/users/types/users.types'
+import type { UserList } from '../../types/userBackoffice.types'
 import { formatTableText } from '~/shared/utils/format'
 
-const props = defineProps<{
-  user: User
-}>()
+const props = withDefaults(defineProps<{
+  user: UserList
+  canUnassign?: boolean
+}>(), {
+  canUnassign: true,
+})
 
 const emit = defineEmits<{
   unassigned: []
@@ -207,6 +217,8 @@ watch(
 )
 
 const toggleCompany = (companyId: string) => {
+  if (!props.canUnassign) return
+
   if (selectedCompanyIds.value.includes(companyId)) {
     selectedCompanyIds.value = selectedCompanyIds.value.filter((id) => id !== companyId)
     return
@@ -216,6 +228,8 @@ const toggleCompany = (companyId: string) => {
 }
 
 const toggleSelectAll = () => {
+  if (!props.canUnassign) return
+
   if (allSelected.value) {
     selectedCompanyIds.value = []
     return
@@ -225,7 +239,7 @@ const toggleSelectAll = () => {
 }
 
 const requestUnassign = () => {
-  if (!selectedCompanyIds.value.length || isUnassigning.value) return
+  if (!props.canUnassign || !selectedCompanyIds.value.length || isUnassigning.value) return
 
   pendingUnassignIds.value = [...selectedCompanyIds.value]
   unassignModalOpen.value = true
@@ -239,7 +253,7 @@ const cancelUnassign = () => {
 }
 
 const confirmUnassign = async () => {
-  if (!pendingUnassignIds.value.length || isUnassigning.value) return
+  if (!props.canUnassign || !pendingUnassignIds.value.length || isUnassigning.value) return
 
   isUnassigning.value = true
 

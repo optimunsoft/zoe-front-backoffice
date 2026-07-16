@@ -15,7 +15,7 @@ export const userColumns: UTableColumn[] = [
     type: 'badge',
     align: 'center',
     badgeColorMap: {
-      Usuario: 'primary',
+      Root: 'primary',
       Subusuario: 'neutral',
     },
   },
@@ -50,7 +50,7 @@ export const mapUsersToTableRows = (userList: User[]): UTableRow[] => {
       id: user.id,
       fullName: formatFullName(user),
       email: user.email?.trim() ?? '',
-      role: user.userType === 'USUARIO' ? 'Usuario' : 'Subusuario',
+      role: user.userType === 'USUARIO' ? 'Root' : 'Subusuario',
       isActive: user.isActive ? 'Activo' : 'Inactivo',
       isVerified: user.isVerified ? 'Sí' : 'No',
       companiesCount,

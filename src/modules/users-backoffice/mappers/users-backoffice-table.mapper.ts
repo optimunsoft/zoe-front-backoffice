@@ -1,10 +1,10 @@
-import type { User } from '~/modules/administration/users/types/users.types'
 import { BACKOFFICE_ROLE } from '~/modules/administration/users/types/users.types'
+import type { UserList } from '../types/userBackoffice.types'
 import type { UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
 
 const EMPTY_CELL = '-'
 
-const formatFullName = (user: Pick<User, 'firstName' | 'lastName'>) => {
+const formatFullName = (user: Pick<UserList, 'firstName' | 'lastName'>) => {
   const name = [user.firstName, user.lastName].map((part) => part?.trim()).filter(Boolean).join(' ')
   return name || EMPTY_CELL
 }
@@ -42,7 +42,7 @@ export const usersBackofficeColumns: UTableColumn[] = [
   { key: 'companiesCount', label: 'Cantidad de empresas', align: 'center' },
 ]
 
-export const mapUsersBackofficeToTableRows = (users: User[]): UTableRow[] =>
+export const mapUsersBackofficeToTableRows = (users: UserList[]): UTableRow[] =>
   users.map((user) => {
     const companiesCount = user.companies?.length ?? 0
 

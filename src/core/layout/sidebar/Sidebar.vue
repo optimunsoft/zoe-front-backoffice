@@ -77,10 +77,11 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 
+import { useAuthStore } from '~/core/auth/store/auth.store'
 import SidebarMenuItem from './SidebarMenuItem.vue'
-import { sidebarMenuSections } from './sidebar-menu'
+import { getSidebarMenuSections } from './sidebar-menu'
 
 export default {
   name: 'Sidebar',
@@ -92,11 +93,18 @@ export default {
     SidebarMenuItem,
   },
   setup(props, { emit }) {
+    const authStore = useAuthStore()
     const trigger = ref(null)
     const sidebar = ref(null)
 
     const storedSidebarExpanded = localStorage.getItem('sidebar-expanded')
     const sidebarExpanded = ref(storedSidebarExpanded === null ? false : storedSidebarExpanded === 'true')
+
+    const sidebarMenuSections = computed(() =>
+      getSidebarMenuSections({
+        canViewModules: authStore.isAdminBackOfficeUser,
+      }),
+    )
 
     const clickHandler = ({ target }) => {
       if (!sidebar.value || !trigger.value) return

@@ -1,11 +1,12 @@
 <template>
   <div
-    class="relative"
+    ref="triggerRef"
+    class="relative inline-flex"
     :class="UI_POINTER_CHILDREN_CLASSES"
-    @mouseenter="tooltipOpen = true"
-    @mouseleave="tooltipOpen = false"
-    @focusin="tooltipOpen = true"
-    @focusout="tooltipOpen = false"
+    @mouseenter="openTooltip"
+    @mouseleave="closeTooltip"
+    @focusin="openTooltip"
+    @focusout="closeTooltip"
   >
     <slot name="trigger">
       <button
@@ -21,7 +22,8 @@
         </svg>
       </button>
     </slot>
-    <div class="z-50 absolute" :class="positionOuterClasses">
+
+    <Teleport to="body">
       <transition
         enter-active-class="transition ease-out duration-200 transform"
         enter-from-class="opacity-0 -translate-y-2"
@@ -32,24 +34,28 @@
       >
         <div
           v-show="tooltipOpen"
-          class="rounded-lg border overflow-hidden shadow-lg"
-          :class="[colorClasses, sizeClasses, positionInnerClasses]"
+          class="pointer-events-none fixed z-9999"
+          :style="tooltipStyle"
+          role="tooltip"
         >
-          <slot />
+          <div
+            class="rounded-lg border overflow-hidden shadow-lg"
+            :class="[colorClasses, sizeClasses]"
+          >
+            <slot />
+          </div>
         </div>
       </transition>
-    </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import { UI_ICON_BUTTON_CLASSES, UI_POINTER_CHILDREN_CLASSES } from '~/core/ui/interactive.classes'
 import {
   getTooltipColorClasses,
-  getTooltipPositionInnerClasses,
-  getTooltipPositionOuterClasses,
   getTooltipSizeClasses,
 } from './tooltip.utils'
 import type { TooltipBg, TooltipPosition, TooltipSize } from './tooltip.types'
@@ -65,9 +71,96 @@ const props = withDefaults(defineProps<{
 })
 
 const tooltipOpen = ref(false)
+const triggerRef = ref<HTMLElement | null>(null)
+const tooltipStyle = ref<Record<string, string>>({
+  top: '0px',
+  left: '0px',
+  transform: 'translate(-50%, -100%)',
+})
 
-const positionOuterClasses = computed(() => getTooltipPositionOuterClasses(props.position))
-const positionInnerClasses = computed(() => getTooltipPositionInnerClasses(props.position))
 const sizeClasses = computed(() => getTooltipSizeClasses(props.size))
 const colorClasses = computed(() => getTooltipColorClasses(props.bg))
+
+const GAP_PX = 8
+
+const resolveTransform = (position: TooltipPosition) => {
+  switch (position) {
+    case 'right':
+      return 'translate(0, -50%)'
+    case 'left':
+      return 'translate(-100%, -50%)'
+    case 'bottom':
+      return 'translate(-50%, 0)'
+    default:
+      return 'translate(-50%, -100%)'
+  }
+}
+
+const updateTooltipPosition = () => {
+  const trigger = triggerRef.value
+  if (!trigger) return
+
+  const rect = trigger.getBoundingClientRect()
+  const position = props.position
+  let top = 0
+  let left = 0
+
+  switch (position) {
+    case 'right':
+      top = rect.top + rect.height / 2
+      left = rect.right + GAP_PX
+      break
+    case 'left':
+      top = rect.top + rect.height / 2
+      left = rect.left - GAP_PX
+      break
+    case 'bottom':
+      top = rect.bottom + GAP_PX
+      left = rect.left + rect.width / 2
+      break
+    default:
+      top = rect.top - GAP_PX
+      left = rect.left + rect.width / 2
+      break
+  }
+
+  tooltipStyle.value = {
+    top: `${top}px`,
+    left: `${left}px`,
+    transform: resolveTransform(position),
+  }
+}
+
+const bindPositionListeners = () => {
+  window.addEventListener('scroll', updateTooltipPosition, true)
+  window.addEventListener('resize', updateTooltipPosition)
+}
+
+const unbindPositionListeners = () => {
+  window.removeEventListener('scroll', updateTooltipPosition, true)
+  window.removeEventListener('resize', updateTooltipPosition)
+}
+
+const openTooltip = async () => {
+  tooltipOpen.value = true
+  await nextTick()
+  updateTooltipPosition()
+  bindPositionListeners()
+}
+
+const closeTooltip = () => {
+  tooltipOpen.value = false
+  unbindPositionListeners()
+}
+
+watch(
+  () => props.position,
+  () => {
+    if (tooltipOpen.value) updateTooltipPosition()
+  },
+)
+
+onBeforeUnmount(() => {
+  unbindPositionListeners()
+})
 </script>

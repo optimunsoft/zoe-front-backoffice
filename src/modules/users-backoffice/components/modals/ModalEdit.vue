@@ -46,8 +46,12 @@ import { computed, ref } from 'vue'
 import { Button } from '~/core/ui/buttons'
 import { UiIcon } from '~/core/ui/icons'
 import { ModalBasic } from '~/core/ui/modal'
-import { useUsersStore } from '~/modules/administration/users/store/users.store'
-import type { User, UserCreate, UserUpdate } from '~/modules/administration/users/types/users.types'
+import { useUserBackofficeStore } from '../../store/userBackOffice.store'
+import type {
+  UserBackofficeCreate,
+  UserBackofficeUpdate,
+  UserList,
+} from '../../types/userBackoffice.types'
 import FormUsersBackoffice from '../forms/Form.vue'
 
 type UserFormExpose = {
@@ -57,7 +61,7 @@ type UserFormExpose = {
 
 const props = defineProps<{
   modalOpen: boolean
-  user: User | null
+  user: UserList | null
 }>()
 
 const emit = defineEmits<{
@@ -65,7 +69,7 @@ const emit = defineEmits<{
   updated: []
 }>()
 
-const usersStore = useUsersStore()
+const userBackofficeStore = useUserBackofficeStore()
 const formRef = ref<UserFormExpose | null>(null)
 const isSubmitting = ref(false)
 
@@ -88,14 +92,14 @@ const submitForm = () => {
   formRef.value?.submit()
 }
 
-const handleEdit = async (payload: UserCreate | UserUpdate) => {
+const handleEdit = async (payload: UserBackofficeCreate | UserBackofficeUpdate) => {
   const userId = props.user?.id
   if (isSubmitting.value || !userId) return
 
   isSubmitting.value = true
 
   try {
-    await usersStore.updateUser(userId, payload as UserUpdate)
+    await userBackofficeStore.updateUser(userId, payload as UserBackofficeUpdate)
     formRef.value?.reset()
     emit('updated')
     emit('close-modal')

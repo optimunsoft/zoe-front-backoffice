@@ -28,7 +28,7 @@
             {{ option.label }}
           </span>
 
-          <div class="flex items-baseline gap-1.5">
+          <div class="flex min-h-5 items-center gap-1.5">
             <span
               class="text-[11px] font-medium uppercase tracking-wide"
               :class="isSelected(option.key)
@@ -37,7 +37,14 @@
             >
               Totales
             </span>
+
+            <Spinner
+              v-if="loading"
+              size="sm"
+              class="text-violet-500 dark:text-violet-300"
+            />
             <span
+              v-else
               class="text-base font-bold tabular-nums leading-none"
               :class="isSelected(option.key)
                 ? 'text-gray-800 dark:text-gray-100'
@@ -53,15 +60,18 @@
 </template>
 
 <script setup lang="ts">
+import { Spinner } from '~/core/ui/loader'
 import type { FilterCardOption } from './filter-cards.types'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   options: FilterCardOption[]
+  loading?: boolean
   ariaLabel?: string
   wrapperClass?: string
   activeClass?: string
   inactiveClass?: string
 }>(), {
+  loading: false,
   ariaLabel: 'Filtros',
   wrapperClass: 'mb-4 sm:mb-0',
   activeClass: 'border-brand-500 bg-brand-500/10 dark:border-brand-400 dark:bg-brand-500/15 ring-1 ring-brand-500/25',

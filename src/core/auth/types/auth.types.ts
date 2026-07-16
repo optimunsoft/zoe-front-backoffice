@@ -13,6 +13,7 @@ export interface User {
   countryId: string;
   provider: ProviderEnum;
   userType: string;
+  backofficeRole: string;
   mustChangePassword: boolean;
 }
 

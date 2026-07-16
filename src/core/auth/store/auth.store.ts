@@ -46,6 +46,7 @@ export const useAuthStore = defineStore(
     const isVerifiedEmail = computed(() => user.value != null && user.value.isVerified);
     const isAdminUser = computed(() => user.value?.userType === 'USUARIO');
     const isDemoUser = computed(() => user.value?.isDemo === true);
+    const isAdminBackOfficeUser = computed(() => user.value?.backofficeRole === 'ADMINISTRADOR');
 
     const setUser = (payload: User | null) => {
       user.value = payload;
@@ -100,6 +101,7 @@ export const useAuthStore = defineStore(
       isLoggedIn.value = true;
       await getMe({ forceAuth: true });
     };
+
 
     const getMe = async (options?: { forceAuth?: boolean }) => {
       if (inFlightGetMePromise) {
@@ -188,6 +190,7 @@ export const useAuthStore = defineStore(
       isVerifiedEmail,
       isAdminUser,
       isDemoUser,
+      isAdminBackOfficeUser,
       setUser,
       setAuthFlowInFlight,
       markAuthRedirect,
