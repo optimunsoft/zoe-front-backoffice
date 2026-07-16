@@ -310,8 +310,6 @@ const buildUserBasePayload = (values: UserFormValues) => {
     phonePrefix: values.phonePrefix.trim(),
     phoneNumber: values.phoneNumber.trim(),
     ...(backofficeRole ? { backofficeRole } : {}),
-    isVerified: values.isVerified,
-    isAdmin,
   }
 }
 
@@ -320,7 +318,7 @@ const buildUserCreatePayload = (values: UserFormValues): UserCreate => ({
   isDemo: values.isDemo,
   password: values.password,
   userType: USER_TYPE.USUARIO,
-})
+} as UserCreate)
 
 export const parseUserCreateForm = (
   values: UserFormValues,
@@ -363,7 +361,7 @@ export const parseUserUpdateForm = (
   try {
     return {
       success: true,
-      data: buildUserBasePayload(values),
+      data: buildUserBasePayload(values) as UserUpdate,
     }
   } catch {
     return {

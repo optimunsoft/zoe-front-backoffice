@@ -100,7 +100,8 @@ const handleEdit = async (payload: UserCreate | UserUpdate) => {
   isSubmitting.value = true
 
   try {
-    await usersStore.updateUser(userId, payload as UserUpdate)
+    const { isAdmin: _isAdmin, isVerified: _isVerified, ...updatePayload } = payload
+    await usersStore.updateUser(userId, updatePayload as UserUpdate)
     formRef.value?.reset()
     emit('updated')
     emit('close-modal')

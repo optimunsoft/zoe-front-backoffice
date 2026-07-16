@@ -1,5 +1,7 @@
 import type { UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
-import type { UserSession } from '../types/users.types'
+import type { SessionUser, UserSession } from '../types/users.types'
+
+type SessionRowSource = SessionUser | UserSession
 
 export const userSessionTableColumns: UTableColumn[] = [
   { key: 'loginAt', label: 'Inicio', variant: 'emphasis' },
@@ -27,10 +29,10 @@ const formatSessionDateTime = (value: string | null | undefined) => {
   }).format(date)
 }
 
-export const formatSessionLoginAt = (session: UserSession) =>
+export const formatSessionLoginAt = (session: SessionRowSource) =>
   formatSessionDateTime(session.loginAt) || '-'
 
-export const formatSessionLogoutAt = (session: UserSession) => {
+export const formatSessionLogoutAt = (session: SessionRowSource) => {
   if (session.logoutAt?.trim()) {
     return formatSessionDateTime(session.logoutAt)
   }
@@ -39,27 +41,27 @@ export const formatSessionLogoutAt = (session: UserSession) => {
   return 'Activa'
 }
 
-export const formatSessionDevice = (session: UserSession) => {
+export const formatSessionDevice = (session: SessionRowSource) => {
   const device = session.device?.trim()
   return device || '-'
 }
 
-export const formatSessionBrowser = (session: UserSession) => {
+export const formatSessionBrowser = (session: SessionRowSource) => {
   const browser = session.browser?.trim()
   return browser || '-'
 }
 
-export const formatSessionOperatingSystem = (session: UserSession) => {
+export const formatSessionOperatingSystem = (session: SessionRowSource) => {
   const operatingSystem = session.operatingSystem?.trim()
   return operatingSystem || '-'
 }
 
-export const formatSessionIp = (session: UserSession) => {
+export const formatSessionIp = (session: SessionRowSource) => {
   const ip = session.ip?.trim()
   return ip || '-'
 }
 
-export const formatSessionLocation = (session: UserSession) => {
+export const formatSessionLocation = (session: SessionRowSource) => {
   const city = session.city?.trim()
   const country = session.country?.trim()
   const parts = [city, country].filter(Boolean)
@@ -67,13 +69,13 @@ export const formatSessionLocation = (session: UserSession) => {
   return parts.length > 0 ? parts.join(', ') : '-'
 }
 
-const resolveLogoutAtBadge = (session: UserSession) => {
+const resolveLogoutAtBadge = (session: SessionRowSource) => {
   if (session.logoutAt?.trim()) return null
   if (session.revoked) return 'danger' as const
   return 'success' as const
 }
 
-export const getVisibleUserSessions = (sessions: UserSession[] | undefined | null) => {
+export const getVisibleUserSessions = (sessions: SessionRowSource[] | undefined | null) => {
   if (!Array.isArray(sessions)) return []
 
   return [...sessions].sort((left, right) => {
@@ -88,7 +90,7 @@ export const getVisibleUserSessions = (sessions: UserSession[] | undefined | nul
   })
 }
 
-export const mapUserSessionsToTableRows = (sessions: UserSession[] | undefined | null): UTableRow[] =>
+export const mapUserSessionsToTableRows = (sessions: SessionRowSource[] | undefined | null): UTableRow[] =>
   getVisibleUserSessions(sessions).map((session) => ({
     id: session.id,
     loginAt: formatSessionLoginAt(session),

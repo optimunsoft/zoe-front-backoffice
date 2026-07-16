@@ -80,7 +80,8 @@ const handleCreate = async (payload: UserCreate | UserUpdate) => {
   isSubmitting.value = true
 
   try {
-    await usersStore.createUser(payload as UserCreate)
+    const { isAdmin: _isAdmin, isVerified: _isVerified, ...createPayload } = payload
+    await usersStore.createUser(createPayload as UserCreate)
     formRef.value?.reset()
     emit('created')
     emit('close-modal')

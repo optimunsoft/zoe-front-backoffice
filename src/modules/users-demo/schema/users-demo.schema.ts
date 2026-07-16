@@ -210,8 +210,6 @@ export const parseUsersDemoUpdateForm = (
       phonePrefix: values.phonePrefix.trim(),
       phoneNumber: values.phoneNumber.trim(),
       ...(backofficeRole ? { backofficeRole } : {}),
-      isVerified: values.isVerified,
-      isAdmin,
-    },
+    } as UserUpdate,
   }
 }

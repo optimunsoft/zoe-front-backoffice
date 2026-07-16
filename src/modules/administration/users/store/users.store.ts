@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 import { useUsersService } from '../services/users.services';
-import type { GetUsersParams, PaginatedUsersResponse, UserList, UserRequestBody, UserUpdate } from '../types/users.types';
+import type { GetUsersParams, PaginatedUsersResponse, SessionUser, UserList, UserRequestBody, UserUpdate } from '../types/users.types';
 
 export const useUsersStore = defineStore('users', () => {
     const users = ref<UserList[]>([]);
@@ -60,6 +60,17 @@ export const useUsersStore = defineStore('users', () => {
         return response;
     }
 
+    const sessionUser = async (userId: string, isActive?: boolean): Promise<SessionUser[]> => {
+        const { response } = await useUsersService().sessionUser(userId, isActive);
+
+        if (Array.isArray(response)) return response
+        if (response && typeof response === 'object' && Array.isArray(response.data)) {
+            return response.data
+        }
+
+        return []
+    }
+
     return {
         users,
         total,
@@ -69,5 +80,6 @@ export const useUsersStore = defineStore('users', () => {
         createUser,
         updateUser,
         changesStatusUser,
+        sessionUser,
     }
 })

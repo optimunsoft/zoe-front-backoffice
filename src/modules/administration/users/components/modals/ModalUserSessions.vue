@@ -5,6 +5,8 @@
     :title="modalTitle"
     :description="modalDescription"
     size="5xl"
+    :loading="isLoading"
+    loading-text="Cargando sesiones..."
     @close-modal="handleClose"
   >
     <template #icon>
@@ -13,65 +15,75 @@
       </div>
     </template>
 
-    <UTable
-      v-if="user"
-      title="Historial de sesiones"
-      :count="sessionRows.length"
-      :columns="userSessionTableColumns"
-      :rows="sessionRows"
-      :visible-rows="0"
-      body-max-height="20rem"
-      empty-text="Este usuario no tiene sesiones registradas."
-    >
-      <template #cell-loginAt="{ row }">
-        <span class="font-medium text-gray-800 dark:text-gray-100">
-          {{ formatTableText(row.loginAt) }}
-        </span>
-      </template>
+    <div v-if="user" class="space-y-4">
+      <FilterPills
+        v-model="statusFilter"
+        :options="statusFilterOptions"
+        :show-count="false"
+        aria-label="Filtrar sesiones por estado"
+        :wrapper-class="isLoading ? 'mb-0 pointer-events-none opacity-60' : 'mb-0'"
+      />
 
-      <template #cell-ip="{ row }">
-        <span class="font-medium tabular-nums text-gray-800 dark:text-gray-100">
-          {{ row.ip }}
-        </span>
-      </template>
-
-      <template #cell-logoutAt="{ row }">
-        <TableBadge
-          v-if="row.logoutAtBadge"
-          :color="row.logoutAtBadge"
-        >
-          {{ formatTableText(row.logoutAt) }}
-        </TableBadge>
-        <span
-          v-else
-          class="text-gray-800 dark:text-gray-100"
-        >
-          {{ formatTableText(row.logoutAt) }}
-        </span>
-      </template>
-
-      <template
-        v-for="columnKey in sessionEmptyValueColumns"
-        :key="columnKey"
-        #[`cell-${columnKey}`]="{ row }"
+      <UTable
+        v-if="!isLoading"
+        title="Historial de sesiones"
+        :count="sessionRows.length"
+        :columns="userSessionTableColumns"
+        :rows="sessionRows"
+        :visible-rows="0"
+        body-max-height="20rem"
+        empty-text="Este usuario no tiene sesiones registradas."
       >
-        <TableBadge
-          v-if="row[columnKey] === '-'"
-          color="neutral"
+        <template #cell-loginAt="{ row }">
+          <span class="font-medium text-gray-800 dark:text-gray-100">
+            {{ formatTableText(row.loginAt) }}
+          </span>
+        </template>
+
+        <template #cell-ip="{ row }">
+          <span class="font-medium tabular-nums text-gray-800 dark:text-gray-100">
+            {{ row.ip }}
+          </span>
+        </template>
+
+        <template #cell-logoutAt="{ row }">
+          <TableBadge
+            v-if="row.logoutAtBadge"
+            :color="row.logoutAtBadge"
+          >
+            {{ formatTableText(row.logoutAt) }}
+          </TableBadge>
+          <span
+            v-else
+            class="text-gray-800 dark:text-gray-100"
+          >
+            {{ formatTableText(row.logoutAt) }}
+          </span>
+        </template>
+
+        <template
+          v-for="columnKey in sessionEmptyValueColumns"
+          :key="columnKey"
+          #[`cell-${columnKey}`]="{ row }"
         >
-          {{ formatTableText('No Aplica') }}
-        </TableBadge>
-        <span
-          v-else
-          class="text-gray-800 dark:text-gray-100"
-        >
-          {{ formatTableText(row[columnKey]) }}
-        </span>
-      </template>
-    </UTable>
+          <TableBadge
+            v-if="row[columnKey] === '-'"
+            color="neutral"
+          >
+            {{ formatTableText('No Aplica') }}
+          </TableBadge>
+          <span
+            v-else
+            class="text-gray-800 dark:text-gray-100"
+          >
+            {{ formatTableText(row[columnKey]) }}
+          </span>
+        </template>
+      </UTable>
+    </div>
 
     <template #footer>
-      <Button variant="secondary" @click="handleClose">
+      <Button variant="secondary" :disabled="isLoading" @click="handleClose">
         Cerrar
       </Button>
     </template>
@@ -79,10 +91,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { Button } from '~/core/ui/buttons'
 import { TableBadge } from '~/core/ui/badge'
+import { FilterPills, type FilterPillOption } from '~/core/ui/filters'
 import { UiIcon } from '~/core/ui/icons'
 import { ModalBasic } from '~/core/ui/modal'
 import UTable from '~/core/ui/Tables/Utable.vue'
@@ -91,7 +104,8 @@ import {
   mapUserSessionsToTableRows,
   userSessionTableColumns,
 } from '~/modules/administration/users/mappers/user-sessions.mapper'
-import type { User } from '~/modules/administration/users/types/users.types'
+import { useUsersStore } from '~/modules/administration/users/store/users.store'
+import type { SessionUser, User } from '~/modules/administration/users/types/users.types'
 
 const sessionEmptyValueColumns = [
   'device',
@@ -99,6 +113,12 @@ const sessionEmptyValueColumns = [
   'operatingSystem',
   'location',
 ] as const
+
+const statusFilterOptions: FilterPillOption[] = [
+  { key: 'all', label: 'Todas' },
+  { key: 'active', label: 'Activas' },
+  { key: 'inactive', label: 'Inactivas' },
+]
 
 const props = defineProps<{
   modalOpen: boolean
@@ -109,7 +129,12 @@ const emit = defineEmits<{
   'close-modal': []
 }>()
 
-const sessionRows = computed(() => mapUserSessionsToTableRows(props.user?.sessions))
+const usersStore = useUsersStore()
+const sessions = ref<SessionUser[]>([])
+const isLoading = ref(false)
+const statusFilter = ref('all')
+
+const sessionRows = computed(() => mapUserSessionsToTableRows(sessions.value))
 
 const userDisplayName = computed(() => {
   if (!props.user) return ''
@@ -130,7 +155,45 @@ const modalDescription = computed(() => {
   return email
 })
 
+const resolveIsActiveFilter = (): boolean | undefined => {
+  if (statusFilter.value === 'active') return true
+  if (statusFilter.value === 'inactive') return false
+  return undefined
+}
+
+const loadSessions = async (userId: string) => {
+  isLoading.value = true
+  sessions.value = []
+
+  try {
+    sessions.value = await usersStore.sessionUser(userId, resolveIsActiveFilter())
+  } catch {
+    sessions.value = []
+  } finally {
+    isLoading.value = false
+  }
+}
+
+watch(
+  () => props.modalOpen,
+  (isOpen) => {
+    if (isOpen) return
+    sessions.value = []
+    isLoading.value = false
+    statusFilter.value = 'all'
+  },
+)
+
+watch(
+  () => [props.modalOpen, props.user?.id, statusFilter.value] as const,
+  ([isOpen, userId]) => {
+    if (!isOpen || !userId) return
+    void loadSessions(userId)
+  },
+)
+
 const handleClose = () => {
+  if (isLoading.value) return
   emit('close-modal')
 }
 </script>

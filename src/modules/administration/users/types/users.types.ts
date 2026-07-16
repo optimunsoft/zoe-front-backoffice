@@ -98,6 +98,24 @@ export interface UserList extends UserBase {
     phoneNumber: string;
 }
 
+export interface SessionUser {
+    id: string;
+    userId: string;
+    loginAt: string;
+    logoutAt: string | null;
+    device: string | null;
+    browser: string | null;
+    operatingSystem: string | null;
+    ip: string;
+    country: string | null;
+    city: string | null;
+    refreshCount: number;
+    accessExpiresAt: string;
+    refreshExpiresAt: string | null;
+    revoked: boolean;
+    revokedAt: string | null;
+}
+
 export type User = UserList;
 
 export type PaginatedUsersResponse = {
@@ -120,5 +138,14 @@ export type UserUpdate = Omit<UserBase, 'isDemo'>
 
 
 
+export type PaginatedSessionsResponse = {
+    data?: SessionUser[];
+    total?: number;
+    page?: number;
+    amount?: number;
+    totalPages?: number;
+};
+
 export type GetUsersResponse = ApiResponse<UserList[] | PaginatedUsersResponse>;
 export type UserRequestBody = UserCreate;
+export type SessionUserResponse = ApiResponse<SessionUser[] | PaginatedSessionsResponse>;

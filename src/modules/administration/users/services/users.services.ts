@@ -1,4 +1,4 @@
-import type { GetUsersParams, GetUsersResponse, UserRequestBody, UserUpdate } from '../types/users.types'
+import type { GetUsersParams, GetUsersResponse, SessionUserResponse, UserRequestBody, UserUpdate } from '../types/users.types'
 
 const buildGetUsersQuery = (params: GetUsersParams): Record<string, string | number | boolean> => {
   const query: Record<string, string | number | boolean> = {
@@ -67,6 +67,22 @@ export const useUsersService = () => {
     })
   }
 
+  const sessionUser = async (
+    userId: string,
+    isActive?: boolean,
+  ): Promise<SessionUserResponse> => {
+    const query: Record<string, string | boolean> = { userId }
+
+    if (isActive !== undefined) {
+      query.isActive = isActive
+    }
+
+    return $apiBackoffice<SessionUserResponse>('administration/sessions/list', {
+      method: 'GET',
+      query,
+    })
+  }
+
 
 
   return {
@@ -74,5 +90,6 @@ export const useUsersService = () => {
     createUser,
     updateUser,
     changesStatusUser,
+    sessionUser,
   }
 }
