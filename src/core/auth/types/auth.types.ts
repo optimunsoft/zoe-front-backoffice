@@ -24,11 +24,23 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface SessionUser {
+  id: string;
+  loginAt: string;
+  device: string | null;
+  browser: string | null;
+  so: string | null;
+  country: string | null;
+  city: string | null;
+  ip: string;
+}
+
 export interface LoginTokens {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
   tokenType: string;
+  sessions: SessionUser[]
 }
 
 export type LoginApiResponse = ApiResponse<LoginTokens>;

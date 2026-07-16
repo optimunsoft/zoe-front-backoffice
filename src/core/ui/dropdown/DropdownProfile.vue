@@ -29,7 +29,7 @@
       <div v-show="dropdownOpen" class="origin-top-right z-50 absolute top-full min-w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 py-1.5 rounded-lg shadow-lg overflow-hidden mt-1" :class="align === 'right' ? 'right-0' : 'left-0'">
         <div class="pt-0.5 pb-2 px-3 mb-1 border-b border-gray-200 dark:border-gray-700/60">
           <div class="font-medium text-gray-800 dark:text-gray-100">{{ authStore.user?.firstName + ' ' + authStore.user?.lastName }}</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400 italic">{{ authStore.user?.email }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 italic">{{ authStore.user?.backofficeRole }}</div>
         </div>
         <ul
           ref="dropdown"
@@ -37,7 +37,7 @@
           @focusout="dropdownOpen = false"
         >
           <!-- <li>
-            <router-link class="font-medium text-sm text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 flex items-center py-1 px-3" to="/settings/account" @click="dropdownOpen = false">Configuración</router-link>
+            <router-link class="font-medium text-sm text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 flex items-center py-1 px-3" to="/settings/account" @click="dropdownOpen = false">Configuraciï¿½n</router-link>
           </li> -->
           <li>
             <button

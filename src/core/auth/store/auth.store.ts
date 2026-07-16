@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 
 import { useAuthService } from '../services/auth.service';
 
-import type { User } from '../types/auth.types';
+import type { SessionUser, User } from '../types/auth.types';
 
 import { useCompanyStore } from '~/core/company/store/company.store';
 import { useCatalogStore } from '~/core/catalog/store/catalog.store';
@@ -40,6 +40,7 @@ export const useAuthStore = defineStore(
     const isLoggedIn = ref<boolean>(false);
     const authFlowInFlight = ref<boolean>(false);
     const lastAuthRedirectAt = ref<number>(0);
+    const activeSessions = ref<SessionUser[]>([]);
 
     let inFlightGetMePromise: Promise<User | null> | null = null;
 
@@ -50,6 +51,14 @@ export const useAuthStore = defineStore(
 
     const setUser = (payload: User | null) => {
       user.value = payload;
+    };
+
+    const setActiveSessions = (sessions: SessionUser[]) => {
+      activeSessions.value = Array.isArray(sessions) ? sessions : [];
+    };
+
+    const clearActiveSessions = () => {
+      activeSessions.value = [];
     };
 
     const setAuthFlowInFlight = (inFlight: boolean) => {
@@ -94,10 +103,12 @@ export const useAuthStore = defineStore(
 
     const passwordlessLoginVerify = async (email: string, code: string) => {
       const { response } = await getAuthSvc().passwordlessLoginVerify(email, code);
+    ;
       if (!response?.accessToken?.trim()) {
         throw new Error('La respuesta de passwordlessLoginVerify no incluye accessToken');
       }
       setAuthTokens(response.accessToken, response.refreshToken ?? '', response.expiresIn);
+      setActiveSessions(response.sessions ?? []);
       isLoggedIn.value = true;
       await getMe({ forceAuth: true });
     };
@@ -165,6 +176,7 @@ export const useAuthStore = defineStore(
         setUser(null);
         isLoggedIn.value = false;
         clearAuthTokens();
+        clearActiveSessions();
         setAuthFlowInFlight(false);
         lastAuthRedirectAt.value = 0;
         useCompanyStore().clearCompanyLists();
@@ -187,11 +199,14 @@ export const useAuthStore = defineStore(
       tokenExpiresAt,
       authFlowInFlight,
       lastAuthRedirectAt,
+      activeSessions,
       isVerifiedEmail,
       isAdminUser,
       isDemoUser,
       isAdminBackOfficeUser,
       setUser,
+      setActiveSessions,
+      clearActiveSessions,
       setAuthFlowInFlight,
       markAuthRedirect,
       loginSuccess,

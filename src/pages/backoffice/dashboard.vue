@@ -13,13 +13,29 @@
 
     </div>
 
+    <ModalActiveSessions
+      :modal-open="sessionsModalOpen"
+      :sessions="authStore.activeSessions"
+      @close-modal="closeSessionsModal"
+    />
+
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+
+import ModalActiveSessions from '~/core/auth/components/ModalActiveSessions.vue'
+import { useAuthStore } from '~/core/auth/store/auth.store'
 import AppSidebar from '~/core/layout/sidebar/Sidebar.vue'
 import AppHeader from '~/core/layout/Header.vue'
 
+const authStore = useAuthStore()
 const sidebarOpen = ref(false)
+
+const sessionsModalOpen = computed(() => authStore.activeSessions.length > 0)
+
+const closeSessionsModal = () => {
+  authStore.clearActiveSessions()
+}
 </script>
