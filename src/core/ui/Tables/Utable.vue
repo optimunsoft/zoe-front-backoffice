@@ -159,7 +159,7 @@
               <td v-if="showActions" class="px-2 first:pl-5 last:pr-5 py-1.5 whitespace-nowrap w-px text-left">
                 <slot name="actions" :row="row">
                   <!-- inline: botones por fila -->
-                  <div v-if="actionsMode === 'inline'" class="flex justify-start space-x-1">
+                  <div v-if="actionsMode === 'inline'" class="flex items-center justify-start space-x-1">
                     <Tooltip
                       v-for="action in actionButtons"
                       :key="action.key"
@@ -169,12 +169,14 @@
                       <template #trigger>
                         <button
                           type="button"
-                          class="ui-icon-btn rounded-full transition-colors"
-                          :class="isActionExpanded(action, row)
-                            ? 'text-brand-500 dark:text-brand-400'
-                            : action.tone === 'danger'
-                              ? 'text-red-400 hover:text-red-500 dark:text-red-500/80 dark:hover:text-red-400'
-                              : 'text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400'"
+                          :class="[
+                            UI_TABLE_ICON_BUTTON_CLASSES,
+                            isActionExpanded(action, row)
+                              ? 'text-brand-500 dark:text-brand-400'
+                              : action.tone === 'danger'
+                                ? 'text-red-400 hover:text-red-500 dark:text-red-500/80 dark:hover:text-red-400'
+                                : 'text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400',
+                          ]"
                           :aria-expanded="isActionExpanded(action, row) || undefined"
                           :aria-label="action.label"
                           @click.stop="emitAction(action.key, row)"
@@ -252,6 +254,7 @@ import { formatTableText } from '~/shared/utils/format'
 import { TableBadge } from '~/core/ui/badge'
 import type { BadgeColor } from '~/core/ui/badge/badge.types'
 import { UiIcon, resolveUiIconName } from '~/core/ui/icons'
+import { UI_TABLE_ICON_BUTTON_CLASSES } from '~/core/ui/interactive.classes'
 import { Tooltip } from '~/core/ui/utooltip'
 import {
   UTABLE_BADGE_FALLBACK_CLASS,
@@ -624,6 +627,7 @@ export default {
       columnCount,
       bodyScrollStyle,
       isAccordionFocused,
+      UI_TABLE_ICON_BUTTON_CLASSES,
       getMainRowClass,
       getRowKey,
       isRowSelected,

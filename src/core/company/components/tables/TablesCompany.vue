@@ -112,10 +112,10 @@
         <div class="inline-flex min-w-[16ch] items-center justify-start gap-2">
           <TableBadge
             v-if="row.documentType && row.documentType !== '-'"
-            color="violet"
+            :color="(row.documentTypeColor as 'success' | 'warning' | 'neutral') || 'neutral'"
             badge-class="shrink-0"
           >
-            {{ formatTableText(row.documentType) }}
+            {{ row.documentType }}
           </TableBadge>
           <span
             v-else
@@ -223,7 +223,6 @@ import {
 import { companyTableActions } from '~/core/company/mappers/company-table.actions'
 import type { Company, userCompany } from '~/core/company/types/company.types'
 import { useCompanyStore } from '~/core/company/store/company.store'
-import { useDocumentTypeStore } from '~/core/documentType/store/documentType.store'
 import { useVatRegimeStore } from '~/core/vatRegime/store/vatRegime.store'
 import { Button, ReloadButton } from '~/core/ui/buttons'
 import { UiIcon } from '~/core/ui/icons'
@@ -263,7 +262,6 @@ const catalogStore = useCatalogStore()
 const authStore = useAuthStore()
 const businessNatureStore = useBusinessNatureStore()
 const companyStore = useCompanyStore()
-const documentTypeStore = useDocumentTypeStore()
 const vatRegimeStore = useVatRegimeStore()
 const municipalityService = useMunicipalityService()
 
@@ -426,7 +424,7 @@ const filteredCompanies = computed(() =>
 
 const rows = computed<UTableRow[]>(() =>
   mapCompaniesToTableRows(filteredCompanies.value, {
-    documentTypes: documentTypeStore.documentTypes,
+    businessNatures: businessNatureStore.businessNatures,
     vatRegimes: vatRegimeStore.vatRegimes,
   }),
 )

@@ -95,6 +95,7 @@
       :user="editingUser"
       @close-modal="closeEditModal"
       @updated="handleUsersMutated"
+      @status-updated="handleStatusUpdated"
     />
 
     <ModalDelete
@@ -274,6 +275,15 @@ const handleChangeAmount = async (nextAmount: number) => {
 
 const handleUsersMutated = async () => {
   await fetchUsers(currentPage.value, { refreshTotals: true })
+}
+
+const handleStatusUpdated = (active: boolean) => {
+  if (!editingUser.value) return
+
+  editingUser.value = {
+    ...editingUser.value,
+    isActive: active,
+  }
 }
 
 const openEditModal = async (row: UTableRow) => {

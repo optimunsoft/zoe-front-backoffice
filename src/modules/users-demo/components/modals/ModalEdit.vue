@@ -22,6 +22,7 @@
         :initial-user="user"
         @submit="handleEdit"
         @refresh="emit('updated')"
+        @status-updated="emit('status-updated', $event)"
       />
     </template>
 
@@ -63,6 +64,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'close-modal': []
   updated: []
+  'status-updated': [active: boolean]
 }>()
 
 const usersStore = useUsersStore()

@@ -130,18 +130,79 @@
             off-label="Inactivo"
             wrapper-class="shrink-0"
             :disabled="isUpdatingUserStatus"
-            @update:model-value="onUserStatusChange"
+            @update:model-value="onUserStatusToggle"
           />
         </div>
       </div>
     </div>
   </form>
+
+  <ModalAction
+    id="confirm-users-demo-status-modal"
+    :modal-open="statusModalOpen"
+    @close-modal="cancelUserStatusChange"
+  >
+    <div class="text-center">
+      <div
+        class="mx-auto mb-4 flex size-12 items-center justify-center rounded-full"
+        :class="pendingUserStatus
+          ? 'bg-violet-100 dark:bg-violet-500/20'
+          : 'bg-amber-100 dark:bg-amber-500/20'"
+      >
+        <svg
+          class="size-6 fill-current"
+          :class="pendingUserStatus ? 'text-violet-500' : 'text-amber-500'"
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+        >
+          <path
+            v-if="pendingUserStatus"
+            d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm3.7 5.3l-4.2 4.2c-.2.2-.5.2-.7 0L4.3 7.8c-.2-.2-.2-.5 0-.7l.7-.7c.2-.2.5-.2.7 0l1.8 1.8 3.5-3.5c.2-.2.5-.2.7 0l.7.7c.2.2.2.5 0 .7z"
+          />
+          <path
+            v-else
+            d="M8 0C3.6 0 0 3.6 0 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm1 11H7V7h2v4zm0-6H7V3h2v2z"
+          />
+        </svg>
+      </div>
+
+      <h3 class="mb-2 text-lg font-semibold text-gray-800 dark:text-gray-100">
+        {{ pendingUserStatus ? '¿Activar usuario demo?' : '¿Desactivar usuario demo?' }}
+      </h3>
+
+      <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">
+        {{
+          pendingUserStatus
+            ? 'El usuario quedará activo y podrá usar el sistema.'
+            : 'El usuario quedará inactivo y no podrá acceder al sistema.'
+        }}
+      </p>
+
+      <div class="flex justify-center gap-2">
+        <Button
+          variant="secondary"
+          :disabled="isUpdatingUserStatus"
+          @click="cancelUserStatusChange"
+        >
+          Cancelar
+        </Button>
+        <Button
+          :variant="pendingUserStatus ? 'primary' : 'danger'"
+          :loading="isUpdatingUserStatus"
+          @click="confirmUserStatusChange"
+        >
+          {{ pendingUserStatus ? 'Activar' : 'Desactivar' }}
+        </Button>
+      </div>
+    </div>
+  </ModalAction>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 
 import Datepicker from '~/core/ui/form/Datepicker.vue'
+import { Button } from '~/core/ui/buttons'
 import InputField from '~/core/ui/inputs/InputField.vue'
 import InputMunicipalitySearch from '~/core/ui/inputs/InputMunicipalitySearch.vue'
 import InputSelect from '~/core/ui/inputs/InputSelect.vue'
@@ -149,6 +210,7 @@ import InputSwitch from '~/core/ui/inputs/InputSwitch.vue'
 import InputText from '~/core/ui/inputs/InputText.vue'
 import type { InputSelectOption } from '~/core/ui/inputs/input.types'
 import { Spinner } from '~/core/ui/loader'
+import { ModalAction } from '~/core/ui/modal'
 import { useUbicationStore } from '~/core/ubication/store/ubication.store'
 import {
   formatPhonePrefixLabel,
@@ -175,6 +237,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   submit: [payload: UserUpdate]
   refresh: []
+  'status-updated': [active: boolean]
 }>()
 
 const ubicationStore = useUbicationStore()
@@ -186,6 +249,8 @@ const municipalityFieldRef = ref<InstanceType<typeof InputMunicipalitySearch> | 
 const editingUserId = ref<string | null>(null)
 const userIsActive = ref(true)
 const isUpdatingUserStatus = ref(false)
+const statusModalOpen = ref(false)
+const pendingUserStatus = ref<boolean | null>(null)
 
 const phonePrefixOptions = computed<InputSelectOption[]>(() => {
   const seen = new Set<string>()
@@ -241,6 +306,11 @@ const onPhoneNumberChange = (value: string) => {
   errors.phoneNumber = ''
 }
 
+const resetStatusModal = () => {
+  statusModalOpen.value = false
+  pendingUserStatus.value = null
+}
+
 const reset = () => {
   Object.assign(form, emptyUsersDemoFormValues())
   if (ubicationStore.allCountries.length) {
@@ -250,12 +320,14 @@ const reset = () => {
   editingUserId.value = null
   userIsActive.value = true
   isUpdatingUserStatus.value = false
+  resetStatusModal()
   municipalityFieldRef.value?.reset()
 }
 
 const setValues = async (user: User) => {
   editingUserId.value = user.id
   userIsActive.value = user.isActive
+  resetStatusModal()
 
   if (!ubicationStore.allCountries.length) {
     await ubicationStore.getAllCountries()
@@ -283,16 +355,38 @@ const setValues = async (user: User) => {
   }
 }
 
-const onUserStatusChange = async (active: boolean) => {
+const onUserStatusToggle = (active: boolean) => {
   if (!editingUserId.value || userIsActive.value === active || isUpdatingUserStatus.value) return
 
+  pendingUserStatus.value = active
+  statusModalOpen.value = true
+}
+
+const cancelUserStatusChange = () => {
+  if (isUpdatingUserStatus.value) return
+  resetStatusModal()
+}
+
+const confirmUserStatusChange = async () => {
+  if (
+    !editingUserId.value
+    || pendingUserStatus.value === null
+    || isUpdatingUserStatus.value
+  ) {
+    return
+  }
+
+  const nextStatus = pendingUserStatus.value
   const previousValue = userIsActive.value
-  userIsActive.value = active
+
   isUpdatingUserStatus.value = true
 
   try {
-    await usersStore.changesStatusUser(editingUserId.value, active)
+    await usersStore.changesStatusUser(editingUserId.value, nextStatus)
+    userIsActive.value = nextStatus
+    emit('status-updated', nextStatus)
     emit('refresh')
+    resetStatusModal()
   } catch {
     userIsActive.value = previousValue
   } finally {

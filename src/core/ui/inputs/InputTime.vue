@@ -50,7 +50,7 @@
           <div
             v-if="panelOpen && panelStyle"
             ref="panelRef"
-            class="fixed rounded-xl border border-gray-200 bg-white p-2 text-sm shadow-xl dark:border-gray-700/60 dark:bg-gray-800"
+            class="fixed rounded-xl border border-gray-200 bg-white p-2 text-sm dark:border-gray-700/60 dark:bg-gray-800"
             :style="panelBoxStyle"
             role="dialog"
             aria-label="Seleccionar hora"
@@ -116,7 +116,7 @@
                 :disabled="!canConfirm"
                 @click="confirmAndClose"
               >
-                <UiIcon name="plus" size="sm" />
+                <UiIcon name="arrowRight" size="sm" />
               </button>
             </div>
           </div>

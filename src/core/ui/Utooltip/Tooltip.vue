@@ -1,7 +1,7 @@
 <template>
   <div
     ref="triggerRef"
-    class="relative inline-flex"
+    class="relative inline-flex items-center justify-center"
     :class="UI_POINTER_CHILDREN_CLASSES"
     @mouseenter="openTooltip"
     @mouseleave="closeTooltip"

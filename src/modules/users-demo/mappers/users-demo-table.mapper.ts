@@ -1,6 +1,6 @@
 import type { User } from '~/modules/administration/users/types/users.types'
 import type { UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
-import { formatTableDate } from '~/shared/utils/format'
+import { formatTableDate, formatTableEmail } from '~/shared/utils/format'
 
 const EMPTY_CELL = '-'
 
@@ -57,7 +57,7 @@ export const mapUsersDemoToTableRows = (users: User[]): UTableRow[] =>
   users.map((user) => ({
     id: user.id,
     fullName: formatFullName(user),
-    email: user.email?.trim() || EMPTY_CELL,
+    email: formatTableEmail(user.email, EMPTY_CELL),
     phone: formatPhone(user),
     status: user.isActive ? 'Activo' : 'Inactivo',
     verified: user.isVerified ? 'Sí' : 'No',

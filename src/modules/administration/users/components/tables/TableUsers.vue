@@ -109,9 +109,11 @@
       @action="handleRowAction"
     >
       <template #actions="{ row }">
-        <div class="flex justify-start space-x-1">
+        <div class="flex items-center justify-start space-x-1">
           <Tooltip
-            v-for="action in resolveUserTableActions()"
+            v-for="action in resolveUserTableActions({
+              isRoot: isRootUserRow(row),
+            })"
             :key="action.key"
             bg="light"
             position="top"
@@ -224,7 +226,7 @@ import type { UTableActionButton, UTableRow } from '~/core/ui/Tables/utable.type
 import { formatTableText } from '~/shared/utils/format'
 import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import { mapUsersToTableRows, userColumns } from '~/modules/administration/users/mappers/user-tables-mappers'
-import { resolveUserTableActions } from '~/modules/administration/users/mappers/user-table.actions'
+import { isRootUserType, resolveUserTableActions } from '~/modules/administration/users/mappers/user-table.actions'
 import ModalCreate from '~/modules/administration/users/components/modals/ModalCreate.vue'
 import ModalEdit from '~/modules/administration/users/components/modals/ModalEdit.vue'
 import ModalUserSessions from '~/modules/administration/users/components/modals/ModalUserSessions.vue'
@@ -514,9 +516,14 @@ const resolveUserFromRow = (row: UTableRow): User | null => {
 
 const getUserForRow = (row: UTableRow) => resolveUserFromRow(row)
 
+const isRootUserRow = (row: UTableRow) => {
+  if (row.role === 'Root') return true
+  return isRootUserType(resolveUserFromRow(row)?.userType)
+}
+
 const openEditModal = async (row: UTableRow) => {
   const user = resolveUserFromRow(row)
-  if (!user) return
+  if (!user || !isRootUserType(user.userType)) return
 
   editingUser.value = user
   await nextTick()
@@ -590,6 +597,7 @@ const handleRowAction = async ({ action, row }: { action: string, row: UTableRow
   if (row.id == null) return
 
   if (action === 'edit') {
+    if (!isRootUserRow(row)) return
     await openEditModal(row)
     return
   }

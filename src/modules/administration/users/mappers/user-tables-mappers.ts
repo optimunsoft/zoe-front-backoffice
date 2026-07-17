@@ -1,5 +1,6 @@
 import type { User } from '~/modules/administration/users/types/users.types'
 import type { UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
+import { formatTableEmail } from '~/shared/utils/format'
 
 const formatFullName = (user: Pick<User, 'firstName' | 'lastName'>) => {
   const name = [user.firstName, user.lastName].map((part) => part?.trim()).filter(Boolean).join(' ')
@@ -49,7 +50,7 @@ export const mapUsersToTableRows = (userList: User[]): UTableRow[] => {
     return {
       id: user.id,
       fullName: formatFullName(user),
-      email: user.email?.trim() ?? '',
+      email: formatTableEmail(user.email),
       role: user.userType === 'USUARIO' ? 'Root' : 'Subusuario',
       isActive: user.isActive ? 'Activo' : 'Inactivo',
       isVerified: user.isVerified ? 'Sí' : 'No',

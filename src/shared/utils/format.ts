@@ -43,13 +43,22 @@ export function formatTableDate(
 const shouldPreserveTableText = (value: string) => {
   const text = value.trim()
   if (!text || text === '-') return true
-  if (text.includes('@')) return true
   if (/^\+?\d[\d\s().-]{5,}$/.test(text)) return true
   if (/^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(text)) return true
   if (/^\d{1,2}\s+De\s+\p{L}+\s+\d{4}$/u.test(text)) return true
   if (/^\d{1,2}:\d{2}(\s?[ap]\.?\s?m\.?)?$/i.test(text)) return true
 
   return false
+}
+
+/** Formato estándar de emails en tablas: siempre minúsculas. */
+export function formatTableEmail(value: unknown, empty = '-'): string {
+  if (value == null) return empty
+
+  const text = String(value).trim()
+  if (!text || text === '-') return empty
+
+  return text.toLowerCase()
 }
 
 /** Formato estándar de celdas de tabla: Primera Mayúscula por palabra. */
@@ -59,6 +68,9 @@ export function formatTableText(value: unknown): string {
 
   const text = String(value).trim()
   if (!text) return ''
+
+  if (text.includes('@')) return formatTableEmail(text, text)
+
   if (shouldPreserveTableText(text)) return text
 
   return toTitleCase(text)

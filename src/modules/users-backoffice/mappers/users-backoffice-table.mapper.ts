@@ -1,6 +1,7 @@
 import { BACKOFFICE_ROLE } from '~/modules/administration/users/types/users.types'
 import type { UserList } from '../types/userBackoffice.types'
 import type { UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
+import { formatTableEmail } from '~/shared/utils/format'
 
 const EMPTY_CELL = '-'
 
@@ -49,7 +50,8 @@ export const mapUsersBackofficeToTableRows = (users: UserList[]): UTableRow[] =>
     return {
       id: user.id,
       fullName: formatFullName(user),
-      email: user.email?.trim() || EMPTY_CELL,
+      email: formatTableEmail(user.email, EMPTY_CELL),
+
       role: formatBackofficeRole(user.backofficeRole),
       status: user.isActive ? 'Activo' : 'Inactivo',
       companiesCount,

@@ -7,10 +7,11 @@
     <div class="relative">
       <flat-pickr
         :id="pickerId"
-        v-model="date"
+        :model-value="displayValue"
         class="form-input pl-9 dark:bg-gray-800 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 font-medium"
         :class="fullWidth ? 'w-full' : 'w-[15.5rem]'"
         :config="config"
+        @update:model-value="handleFlatpickrUpdate"
       />
       <div class="absolute inset-0 right-auto flex items-center pointer-events-none">
         <svg class="fill-current text-gray-400 dark:text-gray-500 ml-3" width="16" height="16" viewBox="0 0 16 16">
@@ -75,10 +76,102 @@ const emit = defineEmits<{
 const generatedId = useId()
 const pickerId = computed(() => props.id ?? generatedId)
 
-const date = computed({
-  get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value),
+const isRange = computed(() => props.mode === 'range')
+const resolvedFormat = computed(() => props.dateFormat || (isRange.value ? 'M j, Y' : 'd/m/Y'))
+
+const formatSingleDate = (date: Date) => {
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+
+  if (resolvedFormat.value === 'd/m/Y') {
+    return `${day}/${month}/${year}`
+  }
+
+  return date.toLocaleDateString('es-CO')
+}
+
+const parseSingleDate = (value: string): Date | null => {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  if (resolvedFormat.value === 'd/m/Y') {
+    const parts = trimmed.split('/').map(Number)
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return null
+    const [day, month, year] = parts
+    if (day == null || month == null || year == null) return null
+    const date = new Date(year, month - 1, day)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+
+  const date = new Date(trimmed)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+/**
+ * Flatpickr compara modelValue con el string del input.
+ * Si le pasamos un Date, hace setDate(..., true) en bucle y congela la UI.
+ * Por eso el valor hacia flatpickr siempre debe ser string (o null).
+ */
+const displayValue = computed<string | Date[] | null>(() => {
+  const value = props.modelValue
+
+  if (value == null || value === '') return null
+  if (Array.isArray(value)) return value
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null
+    return formatSingleDate(value)
+  }
+
+  return String(value)
 })
+
+const sameSingleValue = (left: string | Date | null | undefined, right: Date | null) => {
+  if (left == null || left === '') return right == null
+  if (right == null) return false
+
+  if (left instanceof Date) {
+    return left.getTime() === right.getTime()
+  }
+
+  const parsed = parseSingleDate(String(left))
+  return parsed != null && parsed.getTime() === right.getTime()
+}
+
+const handleFlatpickrUpdate = (value: string | Date | Date[] | null) => {
+  if (isRange.value) {
+    emit('update:modelValue', value)
+    return
+  }
+
+  if (value == null || value === '') {
+    if (props.modelValue != null && props.modelValue !== '') {
+      emit('update:modelValue', null)
+    }
+    return
+  }
+
+  if (value instanceof Date) {
+    if (!sameSingleValue(props.modelValue as string | Date | null, value)) {
+      emit('update:modelValue', value)
+    }
+    return
+  }
+
+  if (typeof value === 'string') {
+    const parsed = parseSingleDate(value)
+    if (parsed) {
+      if (!sameSingleValue(props.modelValue as string | Date | null, parsed)) {
+        emit('update:modelValue', parsed)
+      }
+      return
+    }
+
+    if (props.modelValue !== value) {
+      emit('update:modelValue', value)
+    }
+  }
+}
 
 const currentCalendarYear = () => new Date().getFullYear()
 
@@ -275,30 +368,38 @@ const syncQuickDateNavigation = (instance: flatpickr.Instance) => {
   quickNavState.get(instance)?.refreshHeader()
 }
 
+const stopCalendarEventPropagation = (event: Event) => {
+  event.stopPropagation()
+}
+
 const config = computed(() => {
-  const isRange = props.mode === 'range'
-  const format = props.dateFormat || (isRange ? 'M j, Y' : 'd/m/Y')
+  const rangeMode = isRange.value
 
   return {
     mode: props.mode,
     appendTo: import.meta.client ? document.body : undefined,
     monthSelectorType: 'static' as const,
-    dateFormat: format,
+    dateFormat: resolvedFormat.value,
     ...(props.yearMonthDropdowns
       ? { maxDate: props.maxDate ?? new Date() }
       : {}),
-    ...(isRange
+    ...(rangeMode
       ? { defaultDate: [new Date().setDate(new Date().getDate() - 6), new Date()] }
       : {}),
     prevArrow: '<svg class="fill-current" width="7" height="11" viewBox="0 0 7 11"><path d="M5.4 10.8l1.4-1.4-4-4 4-4L5.4 0 0 5.4z" /></svg>',
     nextArrow: '<svg class="fill-current" width="7" height="11" viewBox="0 0 7 11"><path d="M1.4 10.8L0 9.4l4-4-4-4L1.4 0l5.4 5.4z" /></svg>',
-    onReady: (selectedDates: Date[], dateStr: string, instance: flatpickr.Instance) => {
-      if (isRange) {
+    onReady: (_selectedDates: Date[], dateStr: string, instance: flatpickr.Instance) => {
+      if (rangeMode) {
         (instance.element as HTMLInputElement).value = dateStr.replace('to', '-')
       }
       const customClass = props.align ?? ''
       instance.calendarContainer.classList.add(`flatpickr-${customClass}`)
       instance.calendarContainer.classList.add('flatpickr-overlay')
+
+      // Evita que clics del calendario lleguen al backdrop del modal.
+      instance.calendarContainer.addEventListener('mousedown', stopCalendarEventPropagation)
+      instance.calendarContainer.addEventListener('click', stopCalendarEventPropagation)
+      instance.calendarContainer.addEventListener('pointerdown', stopCalendarEventPropagation)
 
       if (props.yearMonthDropdowns) {
         setupQuickDateNavigation(instance)
@@ -320,13 +421,11 @@ const config = computed(() => {
       }
     },
     onChange: (selectedDates: Date[], dateStr: string, instance: flatpickr.Instance) => {
-      if (isRange) {
-        const input = instance.element as HTMLInputElement
-        input.value = dateStr.replace('to', '-')
-        emit('update:modelValue', input.value)
-        return
-      }
-      emit('update:modelValue', selectedDates[0] ?? null)
+      if (!rangeMode) return
+
+      const input = instance.element as HTMLInputElement
+      input.value = dateStr.replace('to', '-')
+      emit('update:modelValue', input.value)
     },
   }
 })

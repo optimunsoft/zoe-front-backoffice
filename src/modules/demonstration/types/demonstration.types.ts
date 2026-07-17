@@ -3,7 +3,8 @@ import type { ApiResponse } from '~/shared/interfaces/api';
 export interface Demonstration {
     name: string;
     email: string;
-    scheduledAt: Date;
+    /** ISO con la hora literal del formulario (10:00 → ...T10:00:00.000Z). */
+    scheduledAt: string;
     phone: string;
     productInterest: string[];
 }
@@ -18,7 +19,7 @@ export interface DemonstrationResponse {
     id: string;
     name: string;
     email: string;
-    scheduledAt: Date;
+    scheduledAt: string | Date;
     phone: string;
     productInterest: string[];
     status: DemonstrationStatus;

@@ -441,39 +441,72 @@ export const emptyDemonstrationFormErrors = (): DemonstrationFormErrors => ({
   status: '',
 })
 
-const formatTimeValue = (date: Date) => {
-  if (Number.isNaN(date.getTime())) return ''
+const formatTimeValue = (hours: number, minutes: number) =>
+  `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  return `${hours}:${minutes}`
-}
-
-/** Separa fecha (día local) y hora HH:mm para el formulario. */
-export const splitScheduledAtForForm = (
+/** Lee año/mes/día/hora literal de `scheduledAt` (sin zona Colombia). */
+const parseScheduledAtClock = (
   value: Date | string | null | undefined,
-): { scheduledDate: Date | null, scheduledTime: string } => {
-  if (value == null || value === '') {
-    return { scheduledDate: null, scheduledTime: '' }
-  }
+): { year: number, month: number, day: number, hours: number, minutes: number } | null => {
+  if (value == null || value === '') return null
 
-  // Si ya viene una hora suelta "HH:mm" o "H:mm".
   if (typeof value === 'string') {
     const timeOnly = value.trim().match(/^(\d{1,2}):([0-5]\d)$/)
     if (timeOnly) {
-      const hours = String(Number(timeOnly[1])).padStart(2, '0')
-      return { scheduledDate: null, scheduledTime: `${hours}:${timeOnly[2]}` }
+      return {
+        year: 0,
+        month: 0,
+        day: 0,
+        hours: Number(timeOnly[1]),
+        minutes: Number(timeOnly[2]),
+      }
+    }
+
+    const isoMatch = value.trim().match(
+      /^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/,
+    )
+    if (isoMatch) {
+      return {
+        year: Number(isoMatch[1]),
+        month: Number(isoMatch[2]) - 1,
+        day: Number(isoMatch[3]),
+        hours: Number(isoMatch[4]),
+        minutes: Number(isoMatch[5]),
+      }
     }
   }
 
   const date = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  if (Number.isNaN(date.getTime())) return null
+
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth(),
+    day: date.getUTCDate(),
+    hours: date.getUTCHours(),
+    minutes: date.getUTCMinutes(),
+  }
+}
+
+/** Separa fecha y hora HH:mm de `scheduledAt` tal cual viene (sin restar/sumar zona). */
+export const splitScheduledAtForForm = (
+  value: Date | string | null | undefined,
+): { scheduledDate: Date | null, scheduledTime: string } => {
+  const clock = parseScheduledAtClock(value)
+  if (!clock) {
     return { scheduledDate: null, scheduledTime: '' }
   }
 
+  if (!clock.year) {
+    return {
+      scheduledDate: null,
+      scheduledTime: formatTimeValue(clock.hours, clock.minutes),
+    }
+  }
+
   return {
-    scheduledDate: new Date(date.getFullYear(), date.getMonth(), date.getDate()),
-    scheduledTime: formatTimeValue(date),
+    scheduledDate: new Date(clock.year, clock.month, clock.day),
+    scheduledTime: formatTimeValue(clock.hours, clock.minutes),
   }
 }
 
@@ -527,7 +560,7 @@ export const parseScheduledDate = (
 export const buildScheduledAt = (
   scheduledDate: string | Date | Date[] | null,
   scheduledTime: string,
-): Date | null => {
+): string | null => {
   const date = parseScheduledDate(scheduledDate)
   if (!date || !scheduledTime) return null
 
@@ -536,13 +569,15 @@ export const buildScheduledAt = (
     return null
   }
 
-  return new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    hours,
-    minutes,
-  )
+  // Hora literal del formulario → ISO fijo (10:00 → ...T10:00:00.000Z).
+  // No usar `new Date(...)` + toISOString(): eso suma/resta la zona local.
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hh = String(hours).padStart(2, '0')
+  const mm = String(minutes).padStart(2, '0')
+
+  return `${year}-${month}-${day}T${hh}:${mm}:00.000Z`
 }
 
 export const mapDemonstrationFormErrors = (error: z.ZodError): DemonstrationFormErrors => {

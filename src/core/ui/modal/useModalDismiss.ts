@@ -7,8 +7,7 @@ import { useModalStackStore } from './modal-stack.store'
  * Comportamiento compartido de los modales:
  * - Cerrar con tecla Esc (solo el modal superior del stack)
  *
- * El cierre por clic fuera se maneja en `ModalShell` sobre el backdrop,
- * para evitar que el mismo clic que abre el modal lo cierre de inmediato.
+ * El clic fuera (backdrop) no cierra el modal; solo X, Esc o acciones explícitas.
  */
 export function useModalDismiss(
   modalId: () => string,

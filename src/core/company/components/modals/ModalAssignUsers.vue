@@ -345,10 +345,13 @@ const fetchAdminUserCandidates = async (search = '') => {
       page: 1,
       amount: 100,
       type: USER_TYPE.USUARIO,
+      isDemo: false,
       search: search.trim() || undefined,
     })
 
-    adminUserCandidates.value = normalizeUsersResponse(response)
+    adminUserCandidates.value = normalizeUsersResponse(response).filter(
+      (user) => user.isDemo !== true,
+    )
   } catch {
     adminUserCandidates.value = []
   } finally {

@@ -65,7 +65,7 @@
       <template #actions="{ row }">
         <div
           v-if="getRowActions(row).length"
-          class="flex justify-start space-x-1"
+          class="flex items-center justify-start space-x-1"
         >
           <Tooltip
             v-for="action in getRowActions(row)"

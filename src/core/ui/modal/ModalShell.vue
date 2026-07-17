@@ -13,7 +13,6 @@
         class="fixed inset-0 bg-gray-900/45 backdrop-blur-[3px] dark:bg-gray-950/65"
         :class="layerClass"
         aria-hidden="true"
-        @click="close"
       />
     </transition>
 

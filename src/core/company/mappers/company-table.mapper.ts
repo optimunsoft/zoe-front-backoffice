@@ -1,5 +1,6 @@
 import type { Company, companyMunicipality } from '../types/company.types'
 import type { UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
+import { formatTableEmail } from '~/shared/utils/format'
 
 export type CompanyCatalogItem = {
   id: string
@@ -9,7 +10,6 @@ export type CompanyCatalogItem = {
 
 export type CompanyTableCatalogs = {
   businessNatures?: CompanyCatalogItem[]
-  documentTypes?: CompanyCatalogItem[]
   vatRegimes?: CompanyCatalogItem[]
 }
 
@@ -49,52 +49,32 @@ const findCatalogName = (
   id: string,
 ) => items?.find((item) => String(item.id) === String(id))?.name ?? '-'
 
-const normalizeDocumentTypeText = (value: string) =>
+const normalizeCatalogLabel = (value: string) =>
   value
     .trim()
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
 
-const isCitizenshipCard = (name: string, code: string) => {
-  const normalized = normalizeDocumentTypeText(name)
-  const normalizedCode = normalizeDocumentTypeText(code)
-
-  return (
-    (normalized.includes('cedula') && normalized.includes('ciudadania'))
-    || (normalized.includes('cedula') && !normalized.includes('extranjera'))
-    || normalizedCode === '13'
-    || normalizedCode === 'cc'
-    || normalized === 'cc'
-  )
-}
-
-const isNit = (name: string, code: string) => {
-  const normalized = normalizeDocumentTypeText(name)
-  const normalizedCode = normalizeDocumentTypeText(code)
-
-  return (
-    normalized.includes('nit')
-    || (normalized.includes('identificacion') && normalized.includes('tributaria'))
-    || normalizedCode === '31'
-    || normalizedCode === 'nit'
-  )
-}
-
-const findDocumentTypeLabel = (
+/** Abreviatura de tipo de persona: NAT (natural) / JUR (jurídica). */
+const findPersonTypeBadge = (
   items: CompanyCatalogItem[] | undefined,
-  id: string,
-) => {
-  const item = items?.find((entry) => String(entry.id) === String(id))
-  const name = item?.name ?? '-'
-  if (name === '-') return '-'
+  businessNatureId: string,
+): { label: string, color: 'success' | 'warning' | 'neutral' } => {
+  const name = items?.find((entry) => String(entry.id) === String(businessNatureId))?.name
+  if (!name) return { label: '-', color: 'neutral' }
 
-  const code = item?.code ?? ''
+  const normalized = normalizeCatalogLabel(name)
 
-  if (isCitizenshipCard(name, code)) return 'Cc'
-  if (isNit(name, code)) return 'Nit'
+  if (normalized.includes('persona natural')) {
+    return { label: 'NAT', color: 'success' }
+  }
 
-  return name
+  if (normalized.includes('persona juridica')) {
+    return { label: 'JUR', color: 'warning' }
+  }
+
+  return { label: '-', color: 'neutral' }
 }
 
 const resolveMunicipalityDisplay = (municipality?: companyMunicipality | null) => ({
@@ -119,14 +99,16 @@ export const mapCompaniesToTableRows = (
 ): UTableRow[] => {
   return companies.map((company) => {
     const municipality = resolveMunicipalityDisplay(company.municipality)
+    const personType = findPersonTypeBadge(catalogs.businessNatures, company.businessNatureId)
 
     return {
       id: company.id,
-      documentType: findDocumentTypeLabel(catalogs.documentTypes, company.documentTypeId),
+      documentType: personType.label,
+      documentTypeColor: personType.color,
       documentNumber: company.documentNumber || '-',
       businessName: getDisplayName(company),
       tradeName: company.tradeName || '-',
-      email: company.email || '-',
+      email: formatTableEmail(company.email),
       municipality: municipality.city,
       municipalityCity: municipality.city,
       municipalityState: municipality.state,
