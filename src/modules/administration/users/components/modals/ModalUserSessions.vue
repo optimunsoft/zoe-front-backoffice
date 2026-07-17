@@ -48,10 +48,10 @@
 
         <template #cell-logoutAt="{ row }">
           <TableBadge
-            v-if="row.logoutAtBadge"
-            :color="row.logoutAtBadge"
+            v-if="row.logoutAt === '-'"
+            color="neutral"
           >
-            {{ formatTableText(row.logoutAt) }}
+            {{ formatTableText('No Aplica') }}
           </TableBadge>
           <span
             v-else

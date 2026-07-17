@@ -37,8 +37,7 @@ export const formatSessionLogoutAt = (session: SessionRowSource) => {
     return formatSessionDateTime(session.logoutAt)
   }
 
-  if (session.revoked) return 'Revocada'
-  return 'Activa'
+  return '-'
 }
 
 export const formatSessionDevice = (session: SessionRowSource) => {
@@ -69,12 +68,6 @@ export const formatSessionLocation = (session: SessionRowSource) => {
   return parts.length > 0 ? parts.join(', ') : '-'
 }
 
-const resolveLogoutAtBadge = (session: SessionRowSource) => {
-  if (session.logoutAt?.trim()) return null
-  if (session.revoked) return 'danger' as const
-  return 'success' as const
-}
-
 export const getVisibleUserSessions = (sessions: SessionRowSource[] | undefined | null) => {
   if (!Array.isArray(sessions)) return []
 
@@ -95,7 +88,6 @@ export const mapUserSessionsToTableRows = (sessions: SessionRowSource[] | undefi
     id: session.id,
     loginAt: formatSessionLoginAt(session),
     logoutAt: formatSessionLogoutAt(session),
-    logoutAtBadge: resolveLogoutAtBadge(session),
     device: formatSessionDevice(session),
     browser: formatSessionBrowser(session),
     operatingSystem: formatSessionOperatingSystem(session),
