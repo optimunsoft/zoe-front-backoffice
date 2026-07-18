@@ -32,6 +32,17 @@ const pickNullableNumber = (source: RawModuleRecord, ...keys: string[]) => {
   return null
 }
 
+const pickBoolean = (source: RawModuleRecord, ...keys: string[]) => {
+  for (const key of keys) {
+    const value = source[key]
+    if (typeof value === 'boolean') return value
+    if (value === 1 || value === '1' || value === 'true') return true
+    if (value === 0 || value === '0' || value === 'false') return false
+  }
+
+  return true
+}
+
 export const formatModulePrice = (value: number | null | undefined) => {
   if (value == null) return '-'
 
@@ -50,6 +61,7 @@ export const normalizeModuleListItem = (raw: ModuleList | RawModuleRecord): Modu
     code: pickString(item, 'code'),
     name: pickString(item, 'name'),
     description: pickNullableString(item, 'description'),
+    active: pickBoolean(item, 'active', 'isActive', 'is_active'),
     price: pickNullableNumber(item, 'price'),
     createdAt: pickString(item, 'createdAt', 'created_at') as unknown as Date,
     updatedAt: pickString(item, 'updatedAt', 'updated_at') as unknown as Date,
@@ -87,6 +99,16 @@ export const moduleColumns: UTableColumn[] = [
   { key: 'name', label: 'Nombre', variant: 'emphasis' },
   { key: 'description', label: 'Descripción' },
   { key: 'price', label: 'Precio' },
+  {
+    key: 'status',
+    label: 'Estado',
+    type: 'badge',
+    align: 'center',
+    badgeColorMap: {
+      Activo: 'success',
+      Inactivo: 'danger',
+    },
+  },
 ]
 
 export const mapModulesToTableRows = (modules: ModuleList[]): UTableRow[] =>
@@ -96,6 +118,7 @@ export const mapModulesToTableRows = (modules: ModuleList[]): UTableRow[] =>
     name: module.name || '-',
     description: module.description?.trim() || '-',
     price: formatModulePrice(module.price),
+    status: module.active ? 'Activo' : 'Inactivo',
   }))
 
 export const hasModuleCellValue = (value: unknown) => {

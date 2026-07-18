@@ -48,6 +48,7 @@ export const moduleFormSchema = z.object({
   price: z
     .string()
     .trim(),
+  active: z.boolean(),
 }).superRefine((data, ctx) => {
   if (!data.price) return
 
@@ -88,6 +89,7 @@ export const emptyModuleFormValues = (): ModuleFormValues => ({
   name: '',
   description: '',
   price: '',
+  active: true,
 })
 
 export const emptyModuleFormErrors = (): ModuleFormErrors => ({
@@ -102,6 +104,7 @@ export const mapModuleListToFormValues = (module: ModuleList | Module): ModuleFo
   name: module.name ?? '',
   description: module.description ?? '',
   price: module.price == null ? '' : formatModulePriceInput(String(module.price)),
+  active: module.active ?? true,
 })
 
 export const mapModuleFormErrors = (error: z.ZodError): ModuleFormErrors => {
@@ -155,6 +158,7 @@ export const parseModuleForm = (
       code: result.data.code,
       name: result.data.name,
       description: description || null,
+      active: result.data.active,
       price: priceDigits ? Number(priceDigits) : null,
     },
   }

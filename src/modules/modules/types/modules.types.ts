@@ -5,6 +5,7 @@ export interface Module{
     code: string;
     name: string;
     description: string | null;
+    active: boolean;
     price: number | null;
 }
 
