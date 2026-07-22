@@ -20,7 +20,7 @@
           <div class="w-full sm:w-64">
             <InputSearch
               v-model="searchQuery"
-              placeholder="Buscar por Nombre..."
+              placeholder="Buscar por Nombre o correo..."
               search-label="Buscar"
             />
           </div>
@@ -44,10 +44,20 @@
       show-actions
       actions-mode="inline"
       actions-label="Acciones"
-      :action-buttons="usersDemoTableActions"
+      :action-buttons="visibleTableActions"
+      :expanded-row-key="expandedCompaniesRowKey"
+      expanded-action-key="companies"
       empty-text="No hay usuarios demo registrados"
       @action="handleRowAction"
     >
+      <template #row-detail="{ row }">
+        <TableUserCompanies
+          v-if="resolveUserFromRow(row)"
+          :user="resolveUserFromRow(row)!"
+          @permissions="handleOpenPermissionsModal"
+        />
+      </template>
+
       <template #cell-phone="{ row }">
         <UBadge
           v-if="hasPhoneNumber(row.phone)"
@@ -91,6 +101,7 @@
     </div>
 
     <ModalEdit
+      v-if="editModalMounted"
       :modal-open="editModalOpen"
       :user="editingUser"
       @close-modal="closeEditModal"
@@ -99,19 +110,31 @@
     />
 
     <ModalDelete
+      v-if="deleteModalMounted"
       :modal-open="deleteModalOpen"
       :user-id="selectedDeleteId"
       :user-name="selectedDeleteName"
       @close-modal="closeDeleteModal"
       @deleted="handleDeleted"
     />
+
+    <ModalPermissionRolUser
+      v-if="permissionsModalMounted"
+      :modal-open="permissionsModalOpen"
+      :company-id="permissionsContext.companyId"
+      :company-name="permissionsContext.companyName"
+      :user="permissionsContext.user"
+      @close-modal="handleClosePermissionsModal"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from 'vue'
 import { refDebounced } from '@vueuse/core'
 
+import type { userCompany } from '~/core/company/types/company.types'
+import { useAuthStore } from '~/core/auth/store/auth.store'
 import { UBadge } from '~/core/ui/badge'
 import { ReloadButton } from '~/core/ui/buttons'
 import { FilterCards } from '~/core/ui/filters'
@@ -119,24 +142,39 @@ import type { FilterCardOption } from '~/core/ui/filters/filter-cards.types'
 import { useUsersService } from '~/modules/administration/users/services/users.services'
 import { UiIcon } from '~/core/ui/icons'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
+import { useModal } from '~/core/ui/modal'
 import PaginationClassic from '~/core/ui/pagination/PaginationClassic.vue'
 import { UTable, TableInitialLoader } from '~/core/ui/Tables'
 import type { UTableRow } from '~/core/ui/Tables/utable.types'
+import { useToast } from '~/core/ui/toast'
 import { formatTableText } from '~/shared/utils/format'
 import { useCopyPhoneNumber } from '~/shared/composables/use-copy-phone-number'
 import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import { useUsersStore } from '~/modules/administration/users/store/users.store'
 import type { User } from '~/modules/administration/users/types/users.types'
-import { usersDemoTableActions } from '../../mappers/users-demo-table.actions'
+import TableUserCompanies from '~/modules/administration/users/components/tables/TableUserCompanies.vue'
+import { resolveUsersDemoTableActions } from '../../mappers/users-demo-table.actions'
 import {
   mapUsersDemoToTableRows,
   usersDemoColumns,
 } from '../../mappers/users-demo-table.mapper'
-import ModalDelete from '../modals/ModalDelete.vue'
-import ModalEdit from '../modals/ModalEdit.vue'
 
+const ModalPermissionRolUser = defineAsyncComponent(
+  () => import('~/core/company/components/modals/ModalPermissionRolUser.vue'),
+)
+const ModalDelete = defineAsyncComponent(() => import('../modals/ModalDelete.vue'))
+const ModalEdit = defineAsyncComponent(() => import('../modals/ModalEdit.vue'))
+
+type PermissionsContext = {
+  companyId: string
+  companyName: string
+  user: userCompany | null
+}
+
+const authStore = useAuthStore()
 const usersStore = useUsersStore()
 const usersService = useUsersService()
+const toast = useToast()
 const { isPhoneAnimating, isPhoneCopied, copyPhoneNumber } = useCopyPhoneNumber()
 const searchQuery = ref('')
 const debouncedSearch = refDebounced(searchQuery, 400)
@@ -145,6 +183,23 @@ const amount = ref(10)
 const statusFilter = ref('all')
 const filterTotals = ref<Record<string, number>>({})
 const isFilterTotalsLoading = ref(true)
+const expandedCompaniesRowKey = ref<string | number | null>(null)
+
+const {
+  modalOpen: permissionsModalOpen,
+  open: openPermissionsModal,
+  close: closePermissionsModal,
+} = useModal()
+
+const permissionsContext = ref<PermissionsContext>({
+  companyId: '',
+  companyName: '',
+  user: null,
+})
+
+const visibleTableActions = computed(() =>
+  resolveUsersDemoTableActions(authStore.isAdminBackOfficeUser),
+)
 
 const statusFilterDefinitions = [
   { key: 'all', label: 'Todos' },
@@ -154,6 +209,19 @@ const statusFilterDefinitions = [
 
 const editModalOpen = ref(false)
 const deleteModalOpen = ref(false)
+const editModalMounted = ref(false)
+const deleteModalMounted = ref(false)
+const permissionsModalMounted = ref(false)
+
+watch(editModalOpen, (open) => {
+  if (open) editModalMounted.value = true
+})
+watch(deleteModalOpen, (open) => {
+  if (open) deleteModalMounted.value = true
+})
+watch(permissionsModalOpen, (open) => {
+  if (open) permissionsModalMounted.value = true
+})
 const editingUser = ref<User | null>(null)
 const selectedDeleteId = ref<string | null>(null)
 const selectedDeleteName = ref('')
@@ -232,9 +300,9 @@ const resolveUserFromRow = (row: UTableRow): User | null => {
 const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {}) => {
   currentPage.value = page
 
-  if (options.refreshTotals) {
-    await refreshFilterTotals()
-  }
+  const totalsPromise = options.refreshTotals
+    ? refreshFilterTotals()
+    : Promise.resolve()
 
   await withTableLoading(async () => {
     await usersStore.getUsers({
@@ -245,6 +313,8 @@ const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {
       isActive: resolveIsActiveFilter(),
     })
   })
+
+  await totalsPromise
 
   filterTotals.value = {
     ...filterTotals.value,
@@ -258,6 +328,7 @@ const handleReload = async () => {
   searchQuery.value = ''
   statusFilter.value = 'all'
   currentPage.value = 1
+  expandedCompaniesRowKey.value = null
 
   await fetchUsers(1, { refreshTotals: true })
 }
@@ -325,13 +396,49 @@ const handleDeleted = async () => {
   await fetchUsers(nextPage, { refreshTotals: true })
 }
 
+const handleOpenPermissionsModal = async (payload: PermissionsContext) => {
+  if (!payload.user?.roles.length) {
+    toast.warning('Este usuario no tiene roles asignados en esta empresa.')
+    return
+  }
+
+  permissionsContext.value = {
+    companyId: payload.companyId,
+    companyName: payload.companyName,
+    user: payload.user,
+  }
+  await nextTick()
+  openPermissionsModal()
+}
+
+const handleClosePermissionsModal = () => {
+  permissionsContext.value = {
+    companyId: '',
+    companyName: '',
+    user: null,
+  }
+  closePermissionsModal()
+}
+
 const handleRowAction = async ({ action, row }: { action: string, row: UTableRow }) => {
+  if (action === 'companies') {
+    const rowKey = row.id
+    if (rowKey == null) return
+    expandedCompaniesRowKey.value = expandedCompaniesRowKey.value === rowKey ? null : rowKey
+    return
+  }
+
+  if (expandedCompaniesRowKey.value != null) {
+    expandedCompaniesRowKey.value = null
+  }
+
   if (action === 'edit') {
     await openEditModal(row)
     return
   }
 
   if (action === 'delete') {
+    if (!authStore.isAdminBackOfficeUser) return
     await openDeleteModal(row)
   }
 }

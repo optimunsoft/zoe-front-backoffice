@@ -101,6 +101,11 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
             label: 'Usuarios',
             to: `${BACKOFFICE_DASHBOARD_PATH}/superusuarios`,
           },
+          {
+            key: 'especial-list',
+            label: 'Opciones especiales',
+            to: `${BACKOFFICE_DASHBOARD_PATH}/especiales`,
+          },
         ],
       },
     ],

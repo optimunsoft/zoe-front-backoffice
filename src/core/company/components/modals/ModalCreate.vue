@@ -73,11 +73,15 @@ const waitForFormRef = async () => {
   }
 }
 
+let initializeSeq = 0
+
 watch(
   () => props.modalOpen,
   async (isOpen) => {
+    const seq = ++initializeSeq
+
     if (!isOpen) {
-      isInitializing.value = false
+      if (seq === initializeSeq) isInitializing.value = false
       return
     }
 
@@ -85,11 +89,13 @@ watch(
 
     try {
       await waitForFormRef()
+      if (seq !== initializeSeq) return
       await formRef.value?.initialize()
     } finally {
-      isInitializing.value = false
+      if (seq === initializeSeq) isInitializing.value = false
     }
   },
+  { immediate: true },
 )
 
 const handleClose = () => {

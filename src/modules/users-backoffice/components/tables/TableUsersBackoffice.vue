@@ -33,7 +33,7 @@
           <div class="w-full sm:w-64">
             <InputSearch
               v-model="searchQuery"
-              placeholder="Buscar por Nombre..."
+              placeholder="Buscar por Nombre o correo..."
               search-label="Buscar"
             />
           </div>
@@ -143,12 +143,14 @@
     </div>
 
     <ModalCreate
+      v-if="createModalMounted"
       :modal-open="createModalOpen"
       @close-modal="closeCreateModal"
       @created="handleUsersMutated"
     />
 
     <ModalEdit
+      v-if="editModalMounted"
       :modal-open="editModalOpen"
       :user="editingUser"
       @close-modal="closeEditModal"
@@ -156,6 +158,7 @@
     />
 
     <ModalAssignCompanies
+      v-if="assignCompaniesModalMounted"
       :modal-open="assignCompaniesModalOpen"
       :user="assignCompaniesUser"
       @close-modal="closeAssignCompaniesModal"
@@ -165,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from 'vue'
 import { refDebounced } from '@vueuse/core'
 
 import { TableBadge } from '~/core/ui/badge'
@@ -190,10 +193,11 @@ import {
   mapUsersBackofficeToTableRows,
   usersBackofficeColumns,
 } from '../../mappers/users-backoffice-table.mapper'
-import ModalAssignCompanies from '../modals/ModalAssignCompanies.vue'
-import ModalCreate from '../modals/ModalCreate.vue'
-import ModalEdit from '../modals/ModalEdit.vue'
 import TableUserBackofficeCompanies from './TableUserBackofficeCompanies.vue'
+
+const ModalAssignCompanies = defineAsyncComponent(() => import('../modals/ModalAssignCompanies.vue'))
+const ModalCreate = defineAsyncComponent(() => import('../modals/ModalCreate.vue'))
+const ModalEdit = defineAsyncComponent(() => import('../modals/ModalEdit.vue'))
 
 const authStore = useAuthStore()
 const usersStore = useUsersStore()
@@ -219,6 +223,19 @@ const editingUser = ref<UserList | null>(null)
 const assignCompaniesModalOpen = ref(false)
 const assignCompaniesUser = ref<UserList | null>(null)
 const expandedCompaniesRowKey = ref<string | number | null>(null)
+const createModalMounted = ref(false)
+const editModalMounted = ref(false)
+const assignCompaniesModalMounted = ref(false)
+
+watch(createModalOpen, (open) => {
+  if (open) createModalMounted.value = true
+})
+watch(editModalOpen, (open) => {
+  if (open) editModalMounted.value = true
+})
+watch(assignCompaniesModalOpen, (open) => {
+  if (open) assignCompaniesModalMounted.value = true
+})
 
 const {
   isLoading,
@@ -316,9 +333,9 @@ const getUserForRow = (row: UTableRow) => resolveUserFromRow(row)
 const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {}) => {
   currentPage.value = page
 
-  if (options.refreshTotals) {
-    await refreshFilterTotals()
-  }
+  const totalsPromise = options.refreshTotals
+    ? refreshFilterTotals()
+    : Promise.resolve()
 
   await withTableLoading(async () => {
     await usersStore.getUsers({
@@ -330,6 +347,8 @@ const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {
     })
     expandedCompaniesRowKey.value = null
   })
+
+  await totalsPromise
 
   filterTotals.value = {
     ...filterTotals.value,

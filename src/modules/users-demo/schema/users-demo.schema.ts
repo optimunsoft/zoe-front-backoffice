@@ -4,6 +4,7 @@ import {
   resolveDefaultPhonePrefix,
   resolvePhonePrefixOption,
 } from '~/core/ubication/utils/phone.utils'
+import { todayLocalDate } from '~/shared/utils/date.utils'
 import type { User, UserUpdate } from '~/modules/administration/users/types/users.types'
 import type { UsersDemoFormErrors, UsersDemoFormValues } from '../types/users-demo.types'
 
@@ -60,7 +61,7 @@ export const emptyUsersDemoFormValues = (): UsersDemoFormValues => ({
   lastName: '',
   email: '',
   municipalityId: '',
-  birthDate: null,
+  birthDate: todayLocalDate(),
   phonePrefix: resolveDefaultPhonePrefix([]),
   phoneNumber: '',
   isVerified: false,

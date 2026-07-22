@@ -7,6 +7,7 @@ export type {
 } from './tabs.types'
 
 export {
+  getFolderItemStyle,
   getTabsItemClasses,
   getTabsListClasses,
   getTabsTriggerClasses,

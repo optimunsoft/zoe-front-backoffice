@@ -5,6 +5,7 @@ import {
   resolvePhonePrefixOption,
 } from '~/core/ubication/utils/phone.utils'
 import { isPasswordValid } from '~/shared/utils/password.utils'
+import { todayLocalDate } from '~/shared/utils/date.utils'
 import { BACKOFFICE_ROLE, USER_TYPE, type UserCreate, type UserList, type UserUpdate } from '../types/users.types'
 import { resolveUserAccountDemo } from '../utils/user-account.utils'
 
@@ -67,7 +68,6 @@ const userFormFieldsSchema = z.object({
   isAdmin: z.boolean(),
   isDemo: z.boolean(),
   password: z.string(),
-  userType: z.string(),
 })
 
 export type UserFormValues = z.input<typeof userFormFieldsSchema>
@@ -82,8 +82,7 @@ export type UserFormErrors = Record<
   | 'phonePrefix'
   | 'phoneNumber'
   | 'backofficeRole'
-  | 'password'
-  | 'userType',
+  | 'password',
   string
 >
 
@@ -93,7 +92,7 @@ export const emptyUserFormValues = (): UserFormValues => ({
   username: '',
   email: '',
   municipalityId: '',
-  birthDate: null,
+  birthDate: todayLocalDate(),
   phonePrefix: resolveDefaultPhonePrefix([]),
   phoneNumber: '',
   backofficeRole: '',
@@ -101,7 +100,6 @@ export const emptyUserFormValues = (): UserFormValues => ({
   isAdmin: false,
   isDemo: false,
   password: '',
-  userType: USER_TYPE.USUARIO,
 })
 
 export const emptyUserFormErrors = (): UserFormErrors => ({
@@ -115,7 +113,6 @@ export const emptyUserFormErrors = (): UserFormErrors => ({
   phoneNumber: '',
   backofficeRole: '',
   password: '',
-  userType: '',
 })
 
 const parseDmyDate = (value: string): Date | null => {
@@ -200,18 +197,6 @@ const validatePassword = (
   }
 }
 
-const validateUserType = (userType: string, mode: 'create' | 'edit', ctx: z.RefinementCtx) => {
-  if (mode !== 'create') return
-
-  if (userType.trim() !== USER_TYPE.USUARIO) {
-    ctx.addIssue({
-      code: 'custom',
-      message: 'El tipo de usuario no es válido.',
-      path: ['userType'],
-    })
-  }
-}
-
 const validateUsername = (
   username: string,
   mode: 'create' | 'edit',
@@ -283,7 +268,6 @@ export const validateUserForm = (
   const result = userFormFieldsSchema.superRefine((data, ctx) => {
     validateBirthDate(data.birthDate, ctx)
     validatePassword(data.password, mode, ctx)
-    validateUserType(data.userType, mode, ctx)
     validateUsername(data.username, mode, ctx)
     validateBackofficeRole(data, ctx)
   }).safeParse(values)
@@ -407,6 +391,5 @@ export const mapUserListToFormValues = (
     isAdmin: user.isAdmin ?? false,
     isDemo: accountDemo ?? false,
     password: '',
-    userType: USER_TYPE.USUARIO,
   }
 }

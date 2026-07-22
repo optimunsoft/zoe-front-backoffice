@@ -35,8 +35,9 @@
     <UTabs
       v-else
       v-model="activeFormTab"
-      variant="underline"
+      variant="folder"
       :items="formTabs"
+      :keep-alive-panels="true"
       aria-label="Secciones del formulario de empresa"
       wrapper-class="mb-2"
     >

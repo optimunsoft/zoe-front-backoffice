@@ -16,3 +16,9 @@ export type {
   InputState,
   InputSelectOption,
 } from './input.types'
+
+export {
+  getInputDisabledClass,
+  getInputSizeClass,
+  getInputStateClass,
+} from './input.utils'

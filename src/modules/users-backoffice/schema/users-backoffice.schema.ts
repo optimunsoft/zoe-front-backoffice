@@ -5,9 +5,9 @@ import {
   resolvePhonePrefixOption,
 } from '~/core/ubication/utils/phone.utils'
 import { isPasswordValid } from '~/shared/utils/password.utils'
+import { todayLocalDate } from '~/shared/utils/date.utils'
 import {
   BACKOFFICE_ROLE,
-  USER_TYPE,
 } from '~/modules/administration/users/types/users.types'
 import type {
   UserBackofficeCreate,
@@ -69,7 +69,6 @@ const usersBackofficeFormFieldsSchema = z.object({
   isAdmin: z.boolean(),
   isDemo: z.boolean(),
   password: z.string(),
-  userType: z.string(),
 })
 
 export type UsersBackofficeFormValues = z.input<typeof usersBackofficeFormFieldsSchema>
@@ -83,8 +82,7 @@ export type UsersBackofficeFormErrors = Record<
   | 'phonePrefix'
   | 'phoneNumber'
   | 'backofficeRole'
-  | 'password'
-  | 'userType',
+  | 'password',
   string
 >
 
@@ -93,7 +91,7 @@ export const emptyUsersBackofficeFormValues = (): UsersBackofficeFormValues => (
   lastName: '',
   email: '',
   municipalityId: '',
-  birthDate: null,
+  birthDate: todayLocalDate(),
   phonePrefix: resolveDefaultPhonePrefix([]),
   phoneNumber: '',
   backofficeRole: '',
@@ -101,7 +99,6 @@ export const emptyUsersBackofficeFormValues = (): UsersBackofficeFormValues => (
   isAdmin: true,
   isDemo: false,
   password: '',
-  userType: USER_TYPE.USUARIO,
 })
 
 export const emptyUsersBackofficeFormErrors = (): UsersBackofficeFormErrors => ({
@@ -114,7 +111,6 @@ export const emptyUsersBackofficeFormErrors = (): UsersBackofficeFormErrors => (
   phoneNumber: '',
   backofficeRole: '',
   password: '',
-  userType: '',
 })
 
 const parseDmyDate = (value: string): Date | null => {
@@ -286,7 +282,11 @@ export const parseUsersBackofficeCreateForm = (
 ):
   | { success: true, data: UserBackofficeCreate }
   | { success: false, errors: UsersBackofficeFormErrors } => {
-  const normalized = { ...values, isAdmin: true, isDemo: false }
+  const normalized = {
+    ...values,
+    isAdmin: true,
+    isDemo: false,
+  }
   const errors = validateUsersBackofficeForm(normalized, 'create')
 
   if (Object.values(errors).some(Boolean)) {
@@ -314,7 +314,11 @@ export const parseUsersBackofficeUpdateForm = (
 ):
   | { success: true, data: UserBackofficeUpdate }
   | { success: false, errors: UsersBackofficeFormErrors } => {
-  const normalized = { ...values, isAdmin: true, isDemo: false }
+  const normalized = {
+    ...values,
+    isAdmin: true,
+    isDemo: false,
+  }
   const errors = validateUsersBackofficeForm(normalized, 'edit')
 
   if (Object.values(errors).some(Boolean)) {
@@ -357,6 +361,5 @@ export const mapUserListToUsersBackofficeFormValues = (
     isAdmin: true,
     isDemo: false,
     password: '',
-    userType: USER_TYPE.USUARIO,
   }
 }

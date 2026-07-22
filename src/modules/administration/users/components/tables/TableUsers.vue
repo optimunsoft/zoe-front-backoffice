@@ -72,7 +72,7 @@
           <div class="w-full sm:w-64">
             <InputSearch
               v-model="searchQuery"
-              placeholder="Buscar por Nombre..."
+              placeholder="Buscar por Nombre o correo..."
               search-label="Buscar"
             />
           </div>
@@ -175,6 +175,7 @@
     </div>
 
     <ModalCreate
+      v-if="createModalMounted"
       :modal-open="createModalOpen"
       :show-backoffice-section="false"
       @close-modal="closeCreateModal"
@@ -182,6 +183,7 @@
     />
 
     <ModalEdit
+      v-if="editModalMounted"
       :modal-open="editModalOpen"
       :user="editingUser"
       :show-backoffice-section="false"
@@ -190,6 +192,7 @@
     />
 
     <ModalPermissionRolUser
+      v-if="permissionsModalMounted"
       :modal-open="permissionsModalOpen"
       :company-id="permissionsContext.companyId"
       :company-name="permissionsContext.companyName"
@@ -198,6 +201,7 @@
     />
 
     <ModalUserSessions
+      v-if="sessionsModalMounted"
       :modal-open="sessionsModalOpen"
       :user="sessionsUser"
       @close-modal="closeSessionsModal"
@@ -206,11 +210,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from 'vue'
 import { refDebounced } from '@vueuse/core'
 
 import { useCompanyStore } from '~/core/company/store/company.store'
-import ModalPermissionRolUser from '~/core/company/components/modals/ModalPermissionRolUser.vue'
 import type { CompanyList, userCompany } from '~/core/company/types/company.types'
 import { Button, ReloadButton } from '~/core/ui/buttons'
 import { UiIcon } from '~/core/ui/icons'
@@ -227,9 +230,6 @@ import { formatTableText } from '~/shared/utils/format'
 import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import { mapUsersToTableRows, userColumns } from '~/modules/administration/users/mappers/user-tables-mappers'
 import { isRootUserType, resolveUserTableActions } from '~/modules/administration/users/mappers/user-table.actions'
-import ModalCreate from '~/modules/administration/users/components/modals/ModalCreate.vue'
-import ModalEdit from '~/modules/administration/users/components/modals/ModalEdit.vue'
-import ModalUserSessions from '~/modules/administration/users/components/modals/ModalUserSessions.vue'
 import TableUserCompanies from '~/modules/administration/users/components/tables/TableUserCompanies.vue'
 import type { FilterCardOption } from '~/core/ui/filters/filter-cards.types'
 import { useUsersService } from '~/modules/administration/users/services/users.services'
@@ -238,6 +238,19 @@ import { USER_TYPE, type GetUsersParams, type User } from '~/modules/administrat
 import { useToast } from '~/core/ui/toast'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
 import { UI_TABLE_ICON_BUTTON_CLASSES } from '~/core/ui/interactive.classes'
+
+const ModalPermissionRolUser = defineAsyncComponent(
+  () => import('~/core/company/components/modals/ModalPermissionRolUser.vue'),
+)
+const ModalCreate = defineAsyncComponent(
+  () => import('~/modules/administration/users/components/modals/ModalCreate.vue'),
+)
+const ModalEdit = defineAsyncComponent(
+  () => import('~/modules/administration/users/components/modals/ModalEdit.vue'),
+)
+const ModalUserSessions = defineAsyncComponent(
+  () => import('~/modules/administration/users/components/modals/ModalUserSessions.vue'),
+)
 
 type PermissionsContext = {
   companyId: string
@@ -288,6 +301,23 @@ const editingUser = ref<User | null>(null)
 const sessionsModalOpen = ref(false)
 const sessionsUser = ref<User | null>(null)
 const expandedCompaniesRowKey = ref<string | number | null>(null)
+const createModalMounted = ref(false)
+const editModalMounted = ref(false)
+const permissionsModalMounted = ref(false)
+const sessionsModalMounted = ref(false)
+
+watch(createModalOpen, (open) => {
+  if (open) createModalMounted.value = true
+})
+watch(editModalOpen, (open) => {
+  if (open) editModalMounted.value = true
+})
+watch(permissionsModalOpen, (open) => {
+  if (open) permissionsModalMounted.value = true
+})
+watch(sessionsModalOpen, (open) => {
+  if (open) sessionsModalMounted.value = true
+})
 
 const userFilterDefinitions = [
   { key: 'all', label: 'Todos' },
@@ -374,9 +404,9 @@ const refreshFilterTotals = async () => {
 const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {}) => {
   currentPage.value = page
 
-  if (options.refreshTotals) {
-    await refreshFilterTotals()
-  }
+  const totalsPromise = options.refreshTotals
+    ? refreshFilterTotals()
+    : Promise.resolve()
 
   await withTableLoading(async () => {
     await usersStore.getUsers({
@@ -391,6 +421,8 @@ const fetchUsers = async (page: number, options: { refreshTotals?: boolean } = {
     selectedItems.value = []
     expandedCompaniesRowKey.value = null
   })
+
+  await totalsPromise
 
   filterTotals.value = {
     ...filterTotals.value,

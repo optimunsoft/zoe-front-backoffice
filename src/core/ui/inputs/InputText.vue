@@ -61,20 +61,39 @@
       >
         <slot name="leading" />
       </div>
+
+      <button
+        v-if="isPasswordField"
+        type="button"
+        class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 transition hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+        :disabled="disabled"
+        :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+        :aria-pressed="showPassword"
+        @click="togglePasswordVisibility"
+      >
+        <UiIcon :name="showPassword ? 'eyeOff' : 'eye'" size="sm" />
+      </button>
     </div>
   </InputField>
 </template>
 
 <script setup lang="ts">
-import { computed, useId, useSlots } from 'vue'
+import { computed, ref, useId, useSlots } from 'vue'
 
 import {
   blockNonDigitKeydown,
   extractDigitsFromClipboard,
   sanitizeDigitsInput,
 } from '~/shared/utils/digits-input.utils'
+import { UiIcon } from '~/core/ui/icons'
 import InputField from './InputField.vue'
 import type { InputSize, InputState } from './input.types'
+import {
+  getInputDisabledClass,
+  getInputSizeClass,
+  getInputStateClass,
+} from './input.utils'
+
 
 const props = withDefaults(defineProps<{
   modelValue?: string | number
@@ -111,8 +130,15 @@ const emit = defineEmits<{
 const slots = useSlots()
 const generatedId = useId()
 const inputId = computed(() => props.id ?? generatedId)
+const showPassword = ref(false)
 
-const resolvedType = computed(() => (props.digitsOnly ? 'text' : props.type))
+const isPasswordField = computed(() => props.type === 'password' && !props.digitsOnly)
+
+const resolvedType = computed(() => {
+  if (props.digitsOnly) return 'text'
+  if (isPasswordField.value) return showPassword.value ? 'text' : 'password'
+  return props.type
+})
 
 const digitsOnlyClass = computed(() => (
   props.digitsOnly
@@ -120,30 +146,24 @@ const digitsOnlyClass = computed(() => (
     : ''
 ))
 
-const sizeClass = computed(() => {
-  if (props.size === 'sm') return 'px-2 py-1'
-  if (props.size === 'lg') return 'px-4 py-3'
-  return ''
-})
+const sizeClass = computed(() => getInputSizeClass(props.size))
 
-const stateClass = computed(() => {
-  if (props.state === 'error') return 'border-red-300'
-  if (props.state === 'success') return 'border-green-300'
-  return ''
-})
+const stateClass = computed(() => getInputStateClass(props.state))
 
-const disabledClass = computed(() => {
-  if (!props.disabled) return ''
-  return 'dark:disabled:placeholder:text-gray-600 disabled:border-gray-200 dark:disabled:border-gray-700 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-600 disabled:cursor-not-allowed shadow-none'
-})
+const disabledClass = computed(() => getInputDisabledClass(props.disabled))
 
 const paddingClass = computed(() => {
   const classes: string[] = []
   if (props.prefix || slots.prefix) classes.push('pl-12')
-  if (props.suffix || slots.suffix) classes.push('pr-8')
+  if (props.suffix || slots.suffix || isPasswordField.value) classes.push('pr-10')
   if (slots.leading) classes.push('pl-9')
   return classes.join(' ')
 })
+
+const togglePasswordVisibility = () => {
+  if (props.disabled) return
+  showPassword.value = !showPassword.value
+}
 
 const sanitizeValue = (value: string) => (
   props.digitsOnly

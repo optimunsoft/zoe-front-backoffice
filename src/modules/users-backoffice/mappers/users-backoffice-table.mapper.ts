@@ -13,7 +13,7 @@ const formatFullName = (user: Pick<UserList, 'firstName' | 'lastName'>) => {
 const formatBackofficeRole = (role?: string | null) => {
   const normalized = role?.trim().toUpperCase()
   if (normalized === BACKOFFICE_ROLE.ADMINISTRADOR) return 'Administrador'
-  if (normalized === BACKOFFICE_ROLE.OPERARIO) return 'Operario'
+  if (normalized === BACKOFFICE_ROLE.OPERARIO) return 'Consultor'
   return normalized || EMPTY_CELL
 }
 

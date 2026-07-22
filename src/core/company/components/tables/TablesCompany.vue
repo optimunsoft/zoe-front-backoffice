@@ -175,12 +175,14 @@
     </div>
 
     <ModalCreate
+      v-if="createModalMounted"
       :modal-open="createModalOpen"
       @close-modal="closeCreateModal"
       @created="handleCompanyCreated"
     />
 
     <ModalEdit
+      v-if="editModalMounted"
       :modal-open="editModalOpen"
       :company="editingCompany"
       @close-modal="handleCloseEditModal"
@@ -189,6 +191,7 @@
     />
 
     <ModalPermissionRolUser
+      v-if="permissionsModalMounted"
       :modal-open="permissionsModalOpen"
       :company-id="permissionsContext.companyId"
       :company-name="permissionsContext.companyName"
@@ -197,6 +200,7 @@
     />
 
     <ModalAssignUsers
+      v-if="assignUsersModalMounted"
       :modal-open="assignUsersModalOpen"
       :company-id="assignUsersContext.companyId"
       :company-name="assignUsersContext.companyName"
@@ -207,7 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { refDebounced, watchDebounced } from '@vueuse/core'
 
 import { useCatalogStore } from '~/core/catalog/store/catalog.store'
@@ -239,13 +243,14 @@ import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import { formatTableText } from '~/shared/utils/format'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
 import { buildFilterPillOptions, filterItemsByPill } from '~/shared/utils/build-filter-pill-options'
-import ModalCreate from '../modals/ModalCreate.vue'
-import ModalEdit from '../modals/ModalEdit.vue'
-import ModalPermissionRolUser from '../modals/ModalPermissionRolUser.vue'
-import ModalAssignUsers from '../modals/ModalAssignUsers.vue'
 import TableCompanyUsers from './TableCompanyUsers.vue'
 import { useAuthStore } from '~/core/auth/store/auth.store'
 import { useMunicipalityService } from '~/core/ubication/services/municipality.service'
+
+const ModalCreate = defineAsyncComponent(() => import('../modals/ModalCreate.vue'))
+const ModalEdit = defineAsyncComponent(() => import('../modals/ModalEdit.vue'))
+const ModalPermissionRolUser = defineAsyncComponent(() => import('../modals/ModalPermissionRolUser.vue'))
+const ModalAssignUsers = defineAsyncComponent(() => import('../modals/ModalAssignUsers.vue'))
 
 type PermissionsContext = {
   companyId: string
@@ -297,6 +302,24 @@ const { modalOpen: createModalOpen, open: openCreateModal, close: closeCreateMod
 const { modalOpen: editModalOpen, open: openEditModal, close: closeEditModal } = useModal()
 const { modalOpen: permissionsModalOpen, open: openPermissionsModal, close: closePermissionsModal } = useModal()
 const { modalOpen: assignUsersModalOpen, open: openAssignUsersModal, close: closeAssignUsersModal } = useModal()
+
+const createModalMounted = ref(false)
+const editModalMounted = ref(false)
+const permissionsModalMounted = ref(false)
+const assignUsersModalMounted = ref(false)
+
+watch(createModalOpen, (open) => {
+  if (open) createModalMounted.value = true
+})
+watch(editModalOpen, (open) => {
+  if (open) editModalMounted.value = true
+})
+watch(permissionsModalOpen, (open) => {
+  if (open) permissionsModalMounted.value = true
+})
+watch(assignUsersModalOpen, (open) => {
+  if (open) assignUsersModalMounted.value = true
+})
 const editingCompany = ref<Company | null>(null)
 const permissionsContext = ref<PermissionsContext>({
   companyId: '',

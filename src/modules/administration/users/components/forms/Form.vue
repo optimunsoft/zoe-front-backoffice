@@ -2,8 +2,9 @@
   <form class="space-y-5" novalidate @submit.prevent="handleSubmit">
     <UTabs
       v-model="activeFormTab"
-      variant="underline"
+      variant="folder"
       :items="formTabs"
+      :keep-alive-panels="true"
       aria-label="Secciones del formulario de usuario"
       :wrapper-class="isCreateMode ? 'mb-2 user-form-tabs--single' : 'mb-2'"
     >
@@ -113,16 +114,7 @@
             </InputField>
           </div>
 
-          <InputSelect
-            id="user-type"
-            v-model="form.userType"
-            name="userType"
-            label="Tipo de usuario"
-            disabled
-            :options="userTypeOptions"
-            :error="errors.userType"
-            hint="Tipo fijo para usuarios."
-          />
+
 
           <div v-if="isCreateMode">
             <InputText
@@ -270,7 +262,7 @@ import { UTabs } from '~/core/ui/tabs'
 import type { UiTabItem } from '~/core/ui/tabs'
 import type { InputSelectOption } from '~/core/ui/inputs/input.types'
 import { Spinner } from '~/core/ui/loader'
-import { BACKOFFICE_ROLE, USER_TYPE, type User, type UserCreate, type UserUpdate } from '../../types/users.types'
+import { BACKOFFICE_ROLE, type User, type UserCreate, type UserUpdate } from '../../types/users.types'
 import { useUsersStore } from '../../store/users.store'
 import {
   emptyUserFormErrors,
@@ -331,9 +323,7 @@ const formTabs = computed<UiTabItem[]>(() => {
 
 const configurationTabFields: Array<keyof UserFormErrors> = ['backofficeRole']
 
-const userTypeOptions: InputSelectOption[] = [
-  { label: 'Usuario (Root)', value: USER_TYPE.USUARIO },
-]
+
 
 const backofficeRoleOptions: InputSelectOption[] = [
   { label: 'Operario', value: BACKOFFICE_ROLE.OPERARIO },
@@ -451,7 +441,6 @@ const onUserStatusChange = async (active: boolean) => {
 
 const reset = () => {
   Object.assign(form, emptyUserFormValues())
-  form.userType = USER_TYPE.USUARIO
 
   if (!props.showBackofficeSection) {
     form.isAdmin = false

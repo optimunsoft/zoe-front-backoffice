@@ -2,7 +2,6 @@ import {
   computed,
   nextTick,
   onBeforeUnmount,
-  onMounted,
   ref,
   toValue,
   watch,
@@ -27,6 +26,7 @@ export const useAnchoredOverlay = (
 ) => {
   const anchorRef = ref<HTMLElement | null>(null)
   const style = ref<AnchoredOverlayStyle | null>(null)
+  let listenersAttached = false
 
   const offset = options.offset ?? 4
   const zIndex = options.zIndex ?? 100
@@ -55,24 +55,34 @@ export const useAnchoredOverlay = (
     }
   }
 
+  const attachListeners = () => {
+    if (listenersAttached || typeof window === 'undefined') return
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    listenersAttached = true
+  }
+
+  const detachListeners = () => {
+    if (!listenersAttached || typeof window === 'undefined') return
+    window.removeEventListener('resize', updatePosition)
+    window.removeEventListener('scroll', updatePosition, true)
+    listenersAttached = false
+  }
+
   watch(() => toValue(open), async (isOpen) => {
     if (!isOpen) {
       style.value = null
+      detachListeners()
       return
     }
 
+    attachListeners()
     await nextTick()
     updatePosition()
   })
 
-  onMounted(() => {
-    window.addEventListener('resize', updatePosition)
-    window.addEventListener('scroll', updatePosition, true)
-  })
-
   onBeforeUnmount(() => {
-    window.removeEventListener('resize', updatePosition)
-    window.removeEventListener('scroll', updatePosition, true)
+    detachListeners()
   })
 
   const panelStyle = computed(() => style.value ?? undefined)

@@ -14,12 +14,21 @@
         :name="name"
         :placeholder="placeholder"
         :disabled="disabled"
+        :readonly="isAutocompleteLocked"
+        autocomplete="off"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        data-form-type="other"
+        data-lpignore="true"
+        data-1p-ignore="true"
         class="form-input w-full"
         role="combobox"
         aria-autocomplete="list"
         :aria-expanded="showSuggestions"
         :aria-controls="listboxId"
         :aria-activedescendant="activeDescendantId"
+        @focus="unlockBrowserAutocomplete"
         @input="onSearchInput(($event.target as HTMLInputElement).value)"
         @keydown="onKeydown"
       >
@@ -101,7 +110,7 @@ const props = withDefaults(defineProps<{
   modelValue: '',
   placeholder: 'Buscar municipio...',
   label: 'Municipio',
-  name: 'municipalitySearch',
+  name: 'zoe-municipality-search',
   required: false,
   disabled: false,
 })
@@ -117,6 +126,13 @@ const municipalityService = useMunicipalityService()
 const generatedId = useId()
 const inputId = computed(() => props.id ?? generatedId)
 const listboxId = computed(() => `${inputId.value}-listbox`)
+/** Chrome ignora autocomplete=off; el readonly breve evita el dropdown nativo. */
+const isAutocompleteLocked = ref(true)
+
+const unlockBrowserAutocomplete = () => {
+  if (!isAutocompleteLocked.value) return
+  isAutocompleteLocked.value = false
+}
 
 const search = ref('')
 const searchDebounced = refDebounced(search, 300)

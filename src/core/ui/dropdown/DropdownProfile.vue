@@ -29,7 +29,8 @@
       <div v-show="dropdownOpen" class="origin-top-right z-50 absolute top-full min-w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 py-1.5 rounded-lg shadow-lg overflow-hidden mt-1" :class="align === 'right' ? 'right-0' : 'left-0'">
         <div class="pt-0.5 pb-2 px-3 mb-1 border-b border-gray-200 dark:border-gray-700/60">
           <div class="font-medium text-gray-800 dark:text-gray-100">{{ authStore.user?.firstName + ' ' + authStore.user?.lastName }}</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400 italic">{{ authStore.user?.backofficeRole }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 italic">{{ authStore.user?.backofficeRole == 'OPERARIO' ? 'CONSULTOR' :
+           'ADMINISTRADOR' }}</div>
         </div>
         <ul
           ref="dropdown"

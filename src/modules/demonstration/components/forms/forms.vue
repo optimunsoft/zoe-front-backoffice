@@ -128,6 +128,7 @@ import {
   resolveDefaultPhonePrefix,
 } from '~/core/ubication/utils/phone.utils'
 import Datepicker from '~/core/ui/form/Datepicker.vue'
+import { todayLocalDate } from '~/shared/utils/date.utils'
 import InputCheckbox from '~/core/ui/inputs/InputCheckbox.vue'
 import InputField from '~/core/ui/inputs/InputField.vue'
 import InputSelect from '~/core/ui/inputs/InputSelect.vue'
@@ -182,7 +183,7 @@ const initialForm = () => ({
   email: '',
   phonePrefix: resolveDefaultPhonePrefix([]),
   phoneNumber: '',
-  scheduledDate: null as string | Date | Date[] | null,
+  scheduledDate: todayLocalDate() as string | Date | Date[] | null,
   scheduledTime: '',
   productInterest: [] as string[],
   status: '' as DemonstrationStatus | '',

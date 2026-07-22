@@ -1,6 +1,6 @@
 import type { UiIconName } from '~/core/ui/icons'
 
-export type UiTabsVariant = 'simple' | 'underline' | 'icons' | 'container'
+export type UiTabsVariant = 'simple' | 'underline' | 'icons' | 'container' | 'folder'
 
 export type UiTabItem = {
   key: string
