@@ -23,6 +23,11 @@ const COMPANY_STATUS_BADGE_COLORS = {
   Inactiva: 'danger',
 } as const
 
+const PRODUCTION_BADGE_COLORS = {
+  Producción: 'primary',
+  'Pruebas/Demo': 'warning',
+} as const
+
 export const companyColumns: UTableColumn[] = [
   { key: 'documentNumber', label: 'Documento', toggleable: false },
   { key: 'businessName', label: 'Razón social', variant: 'emphasis' },
@@ -35,6 +40,13 @@ export const companyColumns: UTableColumn[] = [
     badgeColorMap: COMPANY_STATUS_BADGE_COLORS,
   },
   { key: 'municipality', label: 'Ciudad' },
+  {
+    key: 'production',
+    label: 'Tipo',
+    align: 'center',
+    type: 'badge',
+    badgeColorMap: PRODUCTION_BADGE_COLORS,
+  },
   {
     key: 'hasApiKey',
     label: 'API KEY',
@@ -119,6 +131,7 @@ export const mapCompaniesToTableRows = (
       users: company.users ?? [],
       isActive: company.isActive ? 'Activa' : 'Inactiva',
       hasApiKey: company.hasApiKey ? 'Activa' : 'Inactiva',
+      production: company.production ? 'Producción' : 'Pruebas/Demo',
     }
   })
 }

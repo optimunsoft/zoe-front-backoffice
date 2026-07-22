@@ -109,6 +109,7 @@ const submitForm = () => {
 }
 
 const handleCreate = async (payload: CompanyRequestBody) => {
+  
   if (isSubmitting.value) return
 
   isSubmitting.value = true

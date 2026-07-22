@@ -13,6 +13,7 @@ Mapa rápido para cambios de diseño/comportamiento. **No migrar tokens violet�
 | Chrome header/footer ModalBasic | `modal/ModalBasic.vue` |
 | Tooltip | `Utooltip/Tooltip.vue` |
 | Tabla | `Tables/Utable.vue` |
+| List card (icono/imagen + título) | `cards/UListCard.vue` |
 
 ## Notas
 

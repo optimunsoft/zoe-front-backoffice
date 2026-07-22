@@ -48,12 +48,19 @@ export const useCompanyService = () => {
         });
     }
 
-    const getStatusCompanies = (companyId: string, active: boolean): Promise<GetCompanyStatusResponse> => {
+    const getStatusCompanies = (
+      companyId: string,
+      active: boolean,
+      options?: { skipNotification?: boolean },
+    ): Promise<GetCompanyStatusResponse> => {
         return $apiBackoffice<GetCompanyStatusResponse>(`administration/companies/${companyId}/status`, {
             method: 'PATCH',
             body: {
                 active: active,
             },
+            ...(options?.skipNotification
+                ? { headers: { [HEADER_SKIP_NOTIFICATION]: '1' } }
+                : {}),
         });
     }
 
@@ -64,23 +71,38 @@ export const useCompanyService = () => {
         });
     }
 
-    const unassignUsersFromCompany = (companyId: string, userId: string): Promise<AssignUsersCompanyResponse> => {
+    const unassignUsersFromCompany = (
+      companyId: string,
+      userId: string,
+      options?: { skipNotification?: boolean },
+    ): Promise<AssignUsersCompanyResponse> => {
         return $apiBackoffice<AssignUsersCompanyResponse>(`administration/companies/users/unassign`, {
             method: 'POST',
             body: {
                 companyId: companyId,
                 userId: userId,
             },
+            ...(options?.skipNotification
+                ? { headers: { [HEADER_SKIP_NOTIFICATION]: '1' } }
+                : {}),
         });
     }
 
-    const assignModulesToCompany = (moduleId: string, companyId: string, active: ActiveModule): Promise<AssignUsersCompanyResponse> => {
+    const assignModulesToCompany = (
+      moduleId: string,
+      companyId: string,
+      active: ActiveModule,
+      options?: { skipNotification?: boolean },
+    ): Promise<AssignUsersCompanyResponse> => {
         return $apiBackoffice<AssignUsersCompanyResponse>(`administration/modules/${moduleId}/companies`, {
             method: 'PATCH',
             body: {
                 companyId: companyId,
                 status: active,
             },
+            ...(options?.skipNotification
+                ? { headers: { [HEADER_SKIP_NOTIFICATION]: '1' } }
+                : {}),
         });
     }
 

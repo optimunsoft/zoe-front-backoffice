@@ -32,3 +32,4 @@ export type DeleteUsersDemoResult = {
 }
 
 export type DeleteUsersDemoResponse = ApiResponse<DeleteUsersDemoResult>
+export type DeleteUsersDemoCompanyResult = DeleteUsersDemoResult;

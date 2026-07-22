@@ -19,7 +19,7 @@ export const useCompanyStore = defineStore('company', () => {
   const cachedPages = ref<Record<string, { companies: CompanyList[]; total: number }>>({})
   const pendingRequests = new Map<string, Promise<void>>()
 
-  const normalizeResponse = (response: CompanyList[] | PaginatedCompaniesResponse): { companies: CompanyList[]; total: number } => {
+  const normalizeResponse = (response: CompanyList[] | PaginatedCompaniesResponse | Record<string, unknown>): { companies: CompanyList[]; total: number } => {
     if (Array.isArray(response)) {
       return {
         companies: response.map((item) => normalizeCompanyListItem(item)),
@@ -27,11 +27,33 @@ export const useCompanyStore = defineStore('company', () => {
       }
     }
 
-    const data = response.data ?? response.items ?? response.companies ?? []
+    const record = response as Record<string, unknown>
+    const nestedCompany = record.company ?? record.item ?? record.result
+    if (nestedCompany && typeof nestedCompany === 'object' && !Array.isArray(nestedCompany)) {
+      const company = normalizeCompanyListItem(nestedCompany as CompanyList)
+      return { companies: [company], total: 1 }
+    }
+
+    if (record.id || record.companyId || record.company_id) {
+      const company = normalizeCompanyListItem(response as CompanyList)
+      return { companies: [company], total: 1 }
+    }
+
+    const data = (response as PaginatedCompaniesResponse).data
+      ?? (response as PaginatedCompaniesResponse).items
+      ?? (response as PaginatedCompaniesResponse).companies
+      ?? []
+
+    if (!Array.isArray(data) && data && typeof data === 'object') {
+      const company = normalizeCompanyListItem(data as CompanyList)
+      return { companies: [company], total: 1 }
+    }
+
+    const list = Array.isArray(data) ? data : []
 
     return {
-      companies: data.map((item) => normalizeCompanyListItem(item)),
-      total: response.total ?? data.length,
+      companies: list.map((item) => normalizeCompanyListItem(item)),
+      total: (response as PaginatedCompaniesResponse).total ?? list.length,
     }
   }
 
@@ -88,13 +110,56 @@ export const useCompanyStore = defineStore('company', () => {
   }
 
   const createCompany = async (company: CompanyRequestBody) => {
-    const { response } = await useCompanyService().createCompany(company)
-    const normalized = normalizeResponse(response)
-    return normalized.companies[0] ?? null
+    const apiResult = await useCompanyService().createCompany(company)
+    const normalized = normalizeResponse(apiResult.response as CompanyList[] | PaginatedCompaniesResponse | Record<string, unknown>)
+    const created = normalized.companies[0] ?? null
+
+    if (created?.id) return created
+
+    // Fallback: algunas respuestas traen el id en campos anidados o con otro nombre.
+    const fallbackId = (() => {
+      const response = apiResult.response as unknown
+      if (!response || typeof response !== 'object') return null
+      const record = response as Record<string, unknown>
+      const candidates = [
+        record.id,
+        record.companyId,
+        record.company_id,
+        (record.company as Record<string, unknown> | undefined)?.id,
+        (record.data as Record<string, unknown> | undefined)?.id,
+      ]
+      for (const candidate of candidates) {
+        if (typeof candidate === 'string' && candidate.trim()) return candidate.trim()
+        if (typeof candidate === 'number' && Number.isFinite(candidate)) return String(candidate)
+      }
+      return null
+    })()
+
+    if (!fallbackId) return null
+
+    return {
+      ...(created ?? ({} as CompanyList)),
+      id: fallbackId,
+    }
   }
 
   const updateCompany = async (id: string, company: CompanyUpdateRequestBody) => {
     const { response } = await useCompanyService().updateCompany(id, company)
+
+    if (typeof company.production === 'boolean') {
+      const production = company.production
+      const sync = (item: CompanyList) => {
+        if (item.id === id) {
+          item.production = production
+        }
+      }
+
+      companies.value.forEach(sync)
+      Object.values(cachedPages.value).forEach((cached) => {
+        cached.companies.forEach(sync)
+      })
+    }
+
     return response
   }
 

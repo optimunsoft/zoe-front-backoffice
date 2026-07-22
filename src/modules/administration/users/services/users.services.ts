@@ -1,4 +1,5 @@
 import type { GetUsersParams, GetUsersResponse, SessionUserResponse, UserRequestBody, UserUpdate } from '../types/users.types'
+import { HEADER_SKIP_NOTIFICATION } from '~/shared/constants/headers'
 
 const buildGetUsersQuery = (params: GetUsersParams): Record<string, string | number | boolean> => {
   const query: Record<string, string | number | boolean> = {
@@ -60,10 +61,17 @@ export const useUsersService = () => {
     })
   }
 
-  const changesStatusUser = async (userId: string, status: boolean): Promise<GetUsersResponse> => {
+  const changesStatusUser = async (
+    userId: string,
+    status: boolean,
+    options?: { skipNotification?: boolean },
+  ): Promise<GetUsersResponse> => {
     return $apiBackoffice<GetUsersResponse>(`administration/users/${userId}/status`, {
       method: 'PATCH',
       body: { active: status },
+      ...(options?.skipNotification
+        ? { headers: { [HEADER_SKIP_NOTIFICATION]: '1' } }
+        : {}),
     })
   }
 

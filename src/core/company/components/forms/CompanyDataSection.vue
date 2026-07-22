@@ -21,6 +21,37 @@
     </aside>
 
     <div class="company-data-form__fields">
+      <div
+        v-if="isEditMode"
+        class="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900/40"
+      >
+        <span class="text-sm text-gray-600 dark:text-gray-300">
+          Entorno:
+        </span>
+        <TableBadge :color="form.production ? 'primary' : 'warning'">
+          {{ form.production ? 'Activa en producción' : 'Activa en pruebas/demo' }}
+        </TableBadge>
+      </div>
+
+      <div
+        v-else-if="!hideProductionField"
+        class="min-w-0"
+      >
+        <InputField
+          label="Entorno de la empresa"
+          html-for="company-production"
+        >
+          <InputSwitch
+            id="company-production"
+            :model-value="form.production"
+            label="Entorno de la empresa"
+            on-label="Producción"
+            off-label="Pruebas/Demo"
+            @update:model-value="form.production = $event"
+          />
+        </InputField>
+      </div>
+
       <div class="company-data-form__row">
         <div class="company-data-form__col">
           <InputSelect
@@ -250,7 +281,7 @@
   </div>
 
   <div class="mt-3 space-y-3">
-    <div v-if="!isEditMode">
+    <div v-if="!isEditMode && !hideOwnerField">
       <template v-if="!selectedOwner">
         <InputField
           label="Dueño de la empresa"
@@ -375,6 +406,8 @@ import InputFileUpload from '~/core/ui/inputs/InputFileUpload.vue'
 import InputText from '~/core/ui/inputs/InputText.vue'
 import InputField from '~/core/ui/inputs/InputField.vue'
 import InputMunicipalitySearch from '~/core/ui/inputs/InputMunicipalitySearch.vue'
+import InputSwitch from '~/core/ui/inputs/InputSwitch.vue'
+import { TableBadge } from '~/core/ui/badge'
 import { Button } from '~/core/ui/buttons'
 import { UiIcon } from '~/core/ui/icons'
 import type { InputSelectOption } from '~/core/ui/inputs/input.types'
@@ -395,7 +428,7 @@ defineOptions({
 const form = defineModel<CompanyFormValues>('form', { required: true })
 const errors = defineModel<CompanyFormErrors>('errors', { required: true })
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   mode: 'create' | 'edit'
   companyId?: string | null
   isNaturalPerson: boolean
@@ -405,7 +438,12 @@ const props = defineProps<{
   vatRegimeOptions: InputSelectOption[]
   taxResponsibilityOptions: InputSelectOption[]
   businessNatureOptions: InputSelectOption[]
-}>()
+  hideOwnerField?: boolean
+  hideProductionField?: boolean
+}>(), {
+  hideOwnerField: false,
+  hideProductionField: false,
+})
 
 const isEditMode = computed(() => props.mode === 'edit')
 

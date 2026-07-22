@@ -91,6 +91,7 @@ export interface CompanyList extends generalInformationCompany {
   isActive: boolean;
   modules: CompanyModule[];
   users: userCompany[];
+  production: boolean;
 }
 
 /** Alias usado en formularios y mappers. */
@@ -99,10 +100,12 @@ export type Company = CompanyList;
 export interface CompanyCreate extends Omit<generalInformationCompany, 'municipality'> {
   ownerUserId: string;
   municipalityId: string;
+  production: boolean ;
 }
 
 export interface CompanyUpdate extends Omit<generalInformationCompany, 'municipality'> {
   municipalityId: string;
+  production: boolean;
 }
 
 export type PaginatedCompaniesResponse = {

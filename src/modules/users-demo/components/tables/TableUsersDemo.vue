@@ -114,7 +114,18 @@
       :modal-open="deleteModalOpen"
       :user-id="selectedDeleteId"
       :user-name="selectedDeleteName"
+      :company-name="selectedDeleteCompanyName"
       @close-modal="closeDeleteModal"
+      @confirm="handleDeleteConfirm"
+    />
+
+    <ModalConfirmDelete
+      v-if="confirmDeleteModalMounted"
+      :modal-open="confirmDeleteModalOpen"
+      :user-id="selectedDeleteId"
+      :user-name="selectedDeleteName"
+      :company-name="selectedDeleteCompanyName"
+      @close-modal="closeConfirmDeleteModal"
       @deleted="handleDeleted"
     />
 
@@ -158,11 +169,16 @@ import {
   mapUsersDemoToTableRows,
   usersDemoColumns,
 } from '../../mappers/users-demo-table.mapper'
+import {
+  formatUserCompanyName,
+  getVisibleUserCompanies,
+} from '~/modules/administration/users/mappers/user-companies.mapper'
 
 const ModalPermissionRolUser = defineAsyncComponent(
   () => import('~/core/company/components/modals/ModalPermissionRolUser.vue'),
 )
 const ModalDelete = defineAsyncComponent(() => import('../modals/ModalDelete.vue'))
+const ModalConfirmDelete = defineAsyncComponent(() => import('../modals/ModalConfirmDelete.vue'))
 const ModalEdit = defineAsyncComponent(() => import('../modals/ModalEdit.vue'))
 
 type PermissionsContext = {
@@ -209,8 +225,10 @@ const statusFilterDefinitions = [
 
 const editModalOpen = ref(false)
 const deleteModalOpen = ref(false)
+const confirmDeleteModalOpen = ref(false)
 const editModalMounted = ref(false)
 const deleteModalMounted = ref(false)
+const confirmDeleteModalMounted = ref(false)
 const permissionsModalMounted = ref(false)
 
 watch(editModalOpen, (open) => {
@@ -219,12 +237,16 @@ watch(editModalOpen, (open) => {
 watch(deleteModalOpen, (open) => {
   if (open) deleteModalMounted.value = true
 })
+watch(confirmDeleteModalOpen, (open) => {
+  if (open) confirmDeleteModalMounted.value = true
+})
 watch(permissionsModalOpen, (open) => {
   if (open) permissionsModalMounted.value = true
 })
 const editingUser = ref<User | null>(null)
 const selectedDeleteId = ref<string | null>(null)
 const selectedDeleteName = ref('')
+const selectedDeleteCompanyName = ref('')
 const isInitialLoadDone = ref(false)
 
 const {
@@ -374,16 +396,46 @@ const closeEditModal = () => {
 const openDeleteModal = async (row: UTableRow) => {
   if (row.id == null) return
 
+  const user = resolveUserFromRow(row)
+  const companies = getVisibleUserCompanies(user?.companies)
+  const companyFromUser = companies.map(formatUserCompanyName).filter(Boolean).join(', ')
+  const companyFromRow = String(row.companyName ?? '').trim()
+  const companyName = companyFromUser
+    || (companyFromRow && companyFromRow !== '-' ? companyFromRow : '')
+
+  const userName = user
+    ? [user.firstName, user.lastName].map((part) => part?.trim()).filter(Boolean).join(' ')
+    : String(row.fullName ?? '').trim()
+
   selectedDeleteId.value = String(row.id)
-  selectedDeleteName.value = String(row.fullName ?? '')
+  selectedDeleteName.value = userName && userName !== '-' ? userName : ''
+  selectedDeleteCompanyName.value = companyName
   await nextTick()
   deleteModalOpen.value = true
 }
 
 const closeDeleteModal = () => {
   deleteModalOpen.value = false
+
+  // Si no se abre la confirmación, limpiar selección.
+  if (!confirmDeleteModalOpen.value) {
+    selectedDeleteId.value = null
+    selectedDeleteName.value = ''
+    selectedDeleteCompanyName.value = ''
+  }
+}
+
+const handleDeleteConfirm = async () => {
+  confirmDeleteModalOpen.value = true
+  await nextTick()
+  deleteModalOpen.value = false
+}
+
+const closeConfirmDeleteModal = () => {
+  confirmDeleteModalOpen.value = false
   selectedDeleteId.value = null
   selectedDeleteName.value = ''
+  selectedDeleteCompanyName.value = ''
 }
 
 const handleDeleted = async () => {

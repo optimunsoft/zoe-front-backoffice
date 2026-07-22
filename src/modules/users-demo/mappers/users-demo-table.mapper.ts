@@ -1,3 +1,7 @@
+import {
+  formatUserCompanyName,
+  getVisibleUserCompanies,
+} from '~/modules/administration/users/mappers/user-companies.mapper'
 import type { User } from '~/modules/administration/users/types/users.types'
 import type { UTableColumn, UTableRow } from '~/core/ui/Tables/utable.types'
 import { formatTableDate, formatTableEmail } from '~/shared/utils/format'
@@ -22,6 +26,13 @@ const formatPhone = (user: User) => {
 const formatSessionsCount = (value?: number | null) => {
   if (typeof value !== 'number' || Number.isNaN(value)) return EMPTY_CELL
   return String(value)
+}
+
+const formatCompanyName = (user: User) => {
+  const companies = getVisibleUserCompanies(user.companies)
+  if (!companies.length) return EMPTY_CELL
+
+  return companies.map(formatUserCompanyName).join(', ')
 }
 
 export const usersDemoColumns: UTableColumn[] = [
@@ -64,4 +75,5 @@ export const mapUsersDemoToTableRows = (users: User[]): UTableRow[] =>
     registeredAt: formatTableDate(user.createdAt),
     lastLoginAt: formatTableDate(user.last_login_at),
     sessionsCount: formatSessionsCount(user.total_sessions),
+    companyName: formatCompanyName(user),
   }))

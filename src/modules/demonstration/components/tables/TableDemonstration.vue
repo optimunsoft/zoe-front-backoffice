@@ -36,7 +36,7 @@
           <div class="w-full sm:w-64">
             <InputSearch
               v-model="searchQuery"
-              placeholder="Buscar..."
+              placeholder="Buscar por nombre o correo..."
               search-label="Buscar"
             />
           </div>

@@ -30,6 +30,20 @@ const resolveActiveFlag = (source: RawCompanyRecord): boolean => {
   return true
 }
 
+const resolveBooleanFlag = (
+  source: RawCompanyRecord,
+  ...keys: string[]
+): boolean => {
+  for (const key of keys) {
+    const value = source[key]
+    if (typeof value === 'boolean') return value
+    if (value === 1 || value === '1' || value === 'true') return true
+    if (value === 0 || value === '0' || value === 'false') return false
+  }
+
+  return false
+}
+
 const normalizeMunicipality = (value: unknown): companyMunicipality => {
   const municipality = (value && typeof value === 'object' ? value : {}) as RawCompanyRecord
   const state = (municipality.state && typeof municipality.state === 'object'
@@ -92,6 +106,7 @@ export const normalizeCompanyListItem = (raw: CompanyList | RawCompanyRecord): C
     id: pickString(item, 'id'),
     hasApiKey: Boolean(item.hasApiKey ?? item.has_api_key),
     isActive: resolveActiveFlag(item),
+    production: resolveBooleanFlag(item, 'production', 'isProduction', 'is_production'),
     modules: normalizeCompanyModules(item.modules ?? item.moduleIds ?? item.module_ids),
     users: normalizeUsers(item.users),
     businessNatureId: pickString(item, 'businessNatureId', 'business_nature_id'),
@@ -138,6 +153,7 @@ export type CompanyFormValues = {
   accountantName: string
   professionalCardNumber: string
   isActive: boolean
+  production: boolean
 }
 
 export type CompanyFormErrors = Partial<Record<keyof CompanyFormValues, string>>
@@ -164,6 +180,7 @@ export const emptyCompanyFormValues = (): CompanyFormValues => ({
   accountantName: '',
   professionalCardNumber: '',
   isActive: true,
+  production: true,
 })
 
 export const sanitizeCompanyDocumentNumber = (value: string) =>
@@ -232,10 +249,15 @@ export const parseCompanyForm = (
     isNaturalPerson: boolean
     isJuridicaPerson: boolean
     mode?: 'create' | 'edit'
+    /** Wizard: el dueño se inyecta después de crear el usuario. */
+    skipOwnerUserId?: boolean
+    production?: boolean | null
   },
 ) => {
   const mode = options.mode ?? 'create'
-  const schema = mode === 'create'
+  const skipOwnerUserId = Boolean(options.skipOwnerUserId)
+  const production = options.production ?? false
+  const schema = mode === 'create' && !skipOwnerUserId
     ? baseCompanyFormSchema
     : baseCompanyFormSchema.omit({ ownerUserId: true })
 
@@ -305,6 +327,7 @@ export const parseCompanyForm = (
     email: result.data.email.trim(),
     accountantName: result.data.accountantName.trim(),
     professionalCard: result.data.professionalCardNumber.trim(),
+    production,
   }
 
   if (mode === 'edit') {
@@ -317,10 +340,10 @@ export const parseCompanyForm = (
     }
   }
 
-  const payload: CompanyRequestBody = {
+  const payload = {
     ...basePayload,
-    ownerUserId: values.ownerUserId,
-  }
+    ownerUserId: skipOwnerUserId ? '' : values.ownerUserId,
+  } as CompanyRequestBody
 
   return {
     success: true as const,
@@ -354,5 +377,6 @@ export const mapCompanyToFormValues = (company: CompanyList): CompanyFormValues 
     accountantName: normalized.accountantName,
     professionalCardNumber: normalized.professionalCard,
     isActive: normalized.isActive,
+    production: normalized.production,
   }
 }

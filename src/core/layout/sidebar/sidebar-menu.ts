@@ -103,7 +103,7 @@ export const sidebarMenuSections: SidebarMenuSection[] = [
           },
           {
             key: 'especial-list',
-            label: 'Opciones especiales',
+            label: 'Especiales',
             to: `${BACKOFFICE_DASHBOARD_PATH}/especiales`,
           },
         ],

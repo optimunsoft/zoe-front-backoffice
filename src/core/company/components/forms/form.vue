@@ -30,6 +30,8 @@
       :vat-regime-options="vatRegimeOptions"
       :tax-responsibility-options="taxResponsibilityOptions"
       :business-nature-options="businessNatureOptions"
+      :hide-owner-field="hideOwnerField"
+      :hide-production-field="hideProductionField"
     />
 
     <UTabs
@@ -55,6 +57,8 @@
           :vat-regime-options="vatRegimeOptions"
           :tax-responsibility-options="taxResponsibilityOptions"
           :business-nature-options="businessNatureOptions"
+          :hide-owner-field="hideOwnerField"
+          :hide-production-field="hideProductionField"
         />
       </template>
 
@@ -104,8 +108,15 @@ defineOptions({
 
 const props = withDefaults(defineProps<{
   mode?: 'create' | 'edit'
+  hideOwnerField?: boolean
+  hideProductionField?: boolean
+  /** Default for create payload when the form has no production control. */
+  production?: boolean | null
 }>(), {
   mode: 'create',
+  hideOwnerField: false,
+  hideProductionField: false,
+  production: true,
 })
 
 const emit = defineEmits<{
@@ -218,6 +229,9 @@ const ensureUsersLoaded = async () => {
 
 const clearFormState = () => {
   Object.assign(form, emptyCompanyFormValues())
+  if (!isEditMode.value && props.production != null) {
+    form.production = Boolean(props.production)
+  }
   Object.assign(errors, emptyCompanyFormErrors())
   editingCompanyId.value = null
   isUpdatingCompanyStatus.value = false
@@ -272,7 +286,9 @@ const initialize = async (company?: Company) => {
   clearFormState()
 
   await catalogStore.preload()
-  await ensureUsersLoaded()
+  if (!props.hideOwnerField) {
+    await ensureUsersLoaded()
+  }
   await waitForSectionRefs()
 
   if (company) {
@@ -291,6 +307,8 @@ const handleSubmit = () => {
     isNaturalPerson: isNaturalPerson.value,
     isJuridicaPerson: isJuridicaPerson.value,
     mode: props.mode,
+    skipOwnerUserId: props.hideOwnerField,
+    production: form.production,
   })
 
   if (!result.success) {
