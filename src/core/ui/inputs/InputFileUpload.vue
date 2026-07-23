@@ -66,14 +66,15 @@
 
     <div
       v-else
-      class="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed px-4 py-5 transition"
-      :class="dropzoneClass"
+      class="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed transition"
+      :class="[dropzoneClass, dropzonePaddingClass]"
     >
       <img
         v-if="displayPreviewUrl"
         :src="displayPreviewUrl"
         alt="Vista previa"
-        class="max-h-24 max-w-full rounded-md object-contain"
+        class="rounded-md object-contain"
+        :class="previewImageClass"
       >
 
       <template v-else>
@@ -132,6 +133,8 @@ const props = withDefaults(defineProps<{
   hint?: string
   error?: string
   variant?: 'default' | 'compact'
+  /** Tamaño de la vista previa en variante default. */
+  previewSize?: 'sm' | 'md' | 'lg'
 }>(), {
   modelValue: null,
   remotePreviewUrl: null,
@@ -142,6 +145,7 @@ const props = withDefaults(defineProps<{
   disabled: false,
   loading: false,
   variant: 'default',
+  previewSize: 'sm',
 })
 
 const emit = defineEmits<{
@@ -159,12 +163,25 @@ const displayError = computed(() => props.error || localError.value)
 
 const displayPreviewUrl = computed(() => previewUrl.value || props.remotePreviewUrl || '')
 
+const previewImageClass = computed(() => {
+  if (props.previewSize === 'lg') return 'max-h-[14.75rem] w-full max-w-md'
+  if (props.previewSize === 'md') return 'max-h-40 w-full max-w-xs'
+  return 'max-h-24 max-w-full'
+})
+
 const dropzoneClass = computed(() => {
   if (displayError.value) {
     return 'border-red-300 bg-red-50/40 dark:border-red-500/40 dark:bg-red-500/5'
   }
 
   return 'border-gray-200 bg-gray-50/50 hover:border-gray-300 dark:border-gray-700/60 dark:bg-gray-900/20 dark:hover:border-gray-600'
+})
+
+const dropzonePaddingClass = computed(() => {
+  if (props.variant === 'compact') return ''
+  if (props.previewSize === 'lg') return 'min-h-[18.75rem] px-6 py-8'
+  if (props.previewSize === 'md') return 'min-h-56 px-5 py-6'
+  return 'px-4 py-5'
 })
 
 const allowedExtensions = computed(() =>

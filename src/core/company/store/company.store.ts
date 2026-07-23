@@ -109,8 +109,11 @@ export const useCompanyStore = defineStore('company', () => {
     pendingRequests.clear()
   }
 
-  const createCompany = async (company: CompanyRequestBody) => {
-    const apiResult = await useCompanyService().createCompany(company)
+  const createCompany = async (
+    company: CompanyRequestBody,
+    options?: { skipNotification?: boolean },
+  ) => {
+    const apiResult = await useCompanyService().createCompany(company, options)
     const normalized = normalizeResponse(apiResult.response as CompanyList[] | PaginatedCompaniesResponse | Record<string, unknown>)
     const created = normalized.companies[0] ?? null
 
@@ -212,8 +215,18 @@ export const useCompanyStore = defineStore('company', () => {
     return response
   }
 
-  const assignModulesToCompany = async (companyId: string, moduleId: string, action: ActiveModule) => {
-    const response = await useCompanyService().assignModulesToCompany(moduleId, companyId, action).then((result) => result.message)
+  const assignModulesToCompany = async (
+    companyId: string,
+    moduleId: string,
+    action: ActiveModule,
+    options?: { skipNotification?: boolean },
+  ) => {
+    const response = await useCompanyService().assignModulesToCompany(
+      moduleId,
+      companyId,
+      action,
+      options,
+    ).then((result) => result.message)
     return response
   }
 
@@ -229,6 +242,14 @@ export const useCompanyStore = defineStore('company', () => {
   const getCompanyLogo = async (companyId: string) => {
     const { response } = await useCompanyService().getCompanyLogo(companyId)
     return response.logo
+  }
+
+  const getCompanyRut = async (
+    file: File,
+    options?: { skipNotification?: boolean },
+  ) => {
+    const { response } = await useCompanyService().getCompanyRut(file, options)
+    return response.prefill
   }
   
   return {
@@ -249,5 +270,6 @@ export const useCompanyStore = defineStore('company', () => {
     assignModulesToCompany,
     uploadCompanyLogo,
     getCompanyLogo,
+    getCompanyRut,
   }
 })

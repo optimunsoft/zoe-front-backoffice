@@ -76,7 +76,7 @@ const emit = defineEmits<{
   'close-modal': []
 }>()
 
-const { close } = useModalDismiss(() => props.id, () => props.modalOpen, emit)
+const { close } = useModalDismiss(emit)
 
 watch(
   () => props.modalOpen,

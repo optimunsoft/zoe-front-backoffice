@@ -18,9 +18,9 @@ import type { UseModalOptions } from './modal.types'
  * />
  * ```
  *
- * `ModalShell` ya hace `Teleport` a `body` y gestiona el cierre con Esc.
+ * `ModalShell` ya hace `Teleport` a `body`.
  * No hace falta envolver cada modal con `<Teleport>` manualmente.
- * El clic fuera del modal no lo cierra.
+ * El clic fuera y la tecla Esc no cierran el modal.
  */
 export function useModal(options: UseModalOptions = {}) {
   const modalOpen = ref(false)

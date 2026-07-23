@@ -4,17 +4,19 @@
       Selecciona los módulos que se asignarán a la empresa. Este paso es opcional.
     </p>
 
-    <div ref="moduleAnchorRef" class="relative">
-      <div class="flex items-center gap-2">
+    <div ref="moduleFieldRef" class="relative">
+      <div ref="moduleAnchorRef" class="flex items-center gap-2">
         <input
           id="wizard-module-search"
+          ref="moduleInputRef"
           v-model="moduleSearch"
           type="text"
           name="moduleSearch"
           placeholder="Buscar módulo..."
           class="form-input w-full"
+          autocomplete="off"
           @focus="onSearchFocus"
-          @blur="onSearchBlur"
+          @click="onSearchFocus"
         >
         <Button
           type="button"
@@ -33,7 +35,8 @@
 
       <Teleport to="body">
         <div
-          v-if="showModuleSuggestionsPanel && modulePanelStyle"
+          v-if="showModuleSuggestions && modulePanelStyle"
+          ref="modulePanelRef"
           class="fixed max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700/60 dark:bg-gray-800"
           :style="modulePanelStyle"
         >
@@ -43,7 +46,7 @@
             type="button"
             class="flex w-full items-center gap-3 border-b border-gray-100 px-3 py-2.5 text-left transition last:border-b-0 hover:bg-gray-50 dark:border-gray-700/60 dark:hover:bg-gray-800/60"
             :class="pendingModule?.value === option.value ? 'bg-brand-50 dark:bg-brand-500/10' : ''"
-            @mousedown.prevent="pendingModule = option"
+            @mousedown.prevent="selectModuleCandidate(option)"
           >
             <span class="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300">
               <UiIcon name="dashboard" size="sm" />
@@ -110,8 +113,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { refDebounced } from '@vueuse/core'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { onClickOutside, refDebounced } from '@vueuse/core'
 
 import { useAnchoredOverlay } from '~/core/company/composables/use-anchored-overlay'
 import { Button } from '~/core/ui/buttons'
@@ -128,6 +131,9 @@ const model = defineModel<string[]>({ default: () => [] })
 
 const modulesStore = useModulesStore()
 
+const moduleFieldRef = ref<HTMLElement | null>(null)
+const modulePanelRef = ref<HTMLElement | null>(null)
+const moduleInputRef = ref<HTMLInputElement | null>(null)
 const moduleSearch = ref('')
 const moduleSearchDebounced = refDebounced(moduleSearch, 300)
 const isSearchingModules = ref(false)
@@ -148,18 +154,14 @@ const filteredOptions = computed(() =>
     })),
 )
 
-const showModuleSuggestionsPanel = computed(() =>
-  showModuleSuggestions.value
-  && (isSearchingModules.value
-    || filteredOptions.value.length > 0
-    || hasSearched.value
-    || moduleSearch.value.trim().length > 0),
-)
-
 const {
   anchorRef: moduleAnchorRef,
   panelStyle: modulePanelStyle,
-} = useAnchoredOverlay(showModuleSuggestionsPanel, { zIndex: 120 })
+  updatePosition: updateModulePanelPosition,
+} = useAnchoredOverlay(showModuleSuggestions, {
+  preferBelow: true,
+  zIndex: 120,
+})
 
 const syncModel = () => {
   model.value = selectedModules.value.map((item) => item.value)
@@ -172,10 +174,14 @@ const searchModules = async (term: string) => {
     await modulesStore.getModules(term.trim() ? { search: term.trim() } : {}, true)
   } finally {
     isSearchingModules.value = false
+    await nextTick()
+    updateModulePanelPosition()
   }
 }
 
 watch(moduleSearchDebounced, async (term) => {
+  if (!showModuleSuggestions.value) return
+  if (pendingModule.value && term.trim() === pendingModule.value.label) return
   pendingModule.value = null
   await searchModules(term)
 })
@@ -205,6 +211,12 @@ watch(
   { immediate: true },
 )
 
+const selectModuleCandidate = (option: ModuleOption) => {
+  pendingModule.value = option
+  moduleSearch.value = option.label
+  showModuleSuggestions.value = false
+}
+
 const confirmAddModule = () => {
   if (!pendingModule.value) return
   if (selectedIds.value.includes(pendingModule.value.value)) return
@@ -214,6 +226,7 @@ const confirmAddModule = () => {
   moduleSearch.value = ''
   showModuleSuggestions.value = false
   syncModel()
+  moduleInputRef.value?.focus()
 }
 
 const removeModule = (moduleId: string) => {
@@ -223,16 +236,18 @@ const removeModule = (moduleId: string) => {
 
 const onSearchFocus = async () => {
   showModuleSuggestions.value = true
-  if (modulesStore.modules.length === 0) {
-    await searchModules(moduleSearch.value)
-  }
+  await nextTick()
+  updateModulePanelPosition()
+  await searchModules(moduleSearch.value)
 }
 
-const onSearchBlur = () => {
-  window.setTimeout(() => {
+onClickOutside(
+  moduleFieldRef,
+  () => {
     showModuleSuggestions.value = false
-  }, 150)
-}
+  },
+  { ignore: [modulePanelRef] },
+)
 
 onMounted(async () => {
   await searchModules('')

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useCompanyService } from '~/core/company/services/company.service'
 import { useCompanyStore } from '~/core/company/store/company.store'
 import { ActiveModule, type CompanyRequestBody } from '~/core/company/types/company.types'
-import { useToast } from '~/core/ui/toast'
+import { useNotificationAlertStore } from '~/core/ui/notifications'
 import { useUsersStore } from '~/modules/administration/users/store/users.store'
 import type { UserCreate } from '~/modules/administration/users/types/users.types'
 import { useUsersService } from '~/modules/administration/users/services/users.services'
@@ -12,10 +12,16 @@ import {
   extractCreatedCompanyId,
   extractCreatedUserId,
 } from '../utils/created-entity-id.utils'
+import {
+  resolveWizardSubmitErrorAlert,
+  wizardStepIndexForFailure,
+  type WizardSubmitFailureEntity,
+} from '../utils/wizard-submit-error.utils'
 
 export const WIZARD_STEPS = [
   { key: 'user', label: 'Crear usuario' },
-  { key: 'company', label: 'Crear empresa' },
+  { key: 'company', label: 'Información general' },
+  { key: 'company-additional', label: 'Información adicional' },
   { key: 'logo', label: 'Logo de la empresa' },
   { key: 'modules', label: 'Asignar módulos' },
 ] as const
@@ -49,7 +55,7 @@ const emptyCreated = (): CreatedState => ({
 })
 
 export function useCreateGlobalCompanyWizard() {
-  const toast = useToast()
+  const notificationAlert = useNotificationAlertStore()
   const usersStore = useUsersStore()
   const companyStore = useCompanyStore()
   const usersService = useUsersService()
@@ -178,9 +184,10 @@ export function useCreateGlobalCompanyWizard() {
     if (isSubmitting.value) return false
     if (!canSubmitAll.value || !drafts.value.user || !drafts.value.company) {
       const pending = missingRequirements.value.join(', ')
-      toast.error(
+      notificationAlert.showError(
+        'No se puede enviar',
         pending
-          ? `No se puede enviar. Completa: ${pending}.`
+          ? `Completa: ${pending}.`
           : 'Faltan datos del usuario o de la empresa.',
       )
       return false
@@ -197,12 +204,16 @@ export function useCreateGlobalCompanyWizard() {
     submitProgressLabel.value = 'Creando usuario'
     failedStepLabel.value = null
     const created = emptyCreated()
+    let failedEntity: WizardSubmitFailureEntity | null = null
 
     try {
       // 1. createUser → userId para el siguiente paso
+      failedEntity = 'user'
       failedStepLabel.value = WIZARD_STEPS[0].label
       const { isAdmin: _isAdmin, isVerified: _isVerified, ...userPayload } = drafts.value.user
-      const userResponse = await usersStore.createUser(userPayload as UserCreate)
+      const userResponse = await usersStore.createUser(userPayload as UserCreate, {
+        skipNotification: true,
+      })
       const userId = extractCreatedUserId(userResponse)
       if (!userId) {
         throw new Error('No se pudo obtener el ID del usuario creado.')
@@ -210,13 +221,14 @@ export function useCreateGlobalCompanyWizard() {
       created.userId = userId
 
       // 2. createCompany(ownerUserId) → companyId para logo y módulos
+      failedEntity = 'company'
       submitProgressLabel.value = 'Creando empresa'
-      failedStepLabel.value = WIZARD_STEPS[1].label
+      failedStepLabel.value = 'Crear empresa'
       const createdCompany = await companyStore.createCompany({
         ...drafts.value.company,
         ownerUserId: userId,
         production: true,
-      })
+      }, { skipNotification: true })
       const companyId = extractCreatedCompanyId(createdCompany)
       if (!companyId) {
         throw new Error('No se pudo obtener el ID de la empresa creada.')
@@ -225,8 +237,9 @@ export function useCreateGlobalCompanyWizard() {
 
       // 3. uploadCompanyLogo(companyId, file)
       if (logoFile) {
+        failedEntity = 'logo'
         submitProgressLabel.value = 'Asignando logo'
-        failedStepLabel.value = WIZARD_STEPS[2].label
+        failedStepLabel.value = 'Logo de la empresa'
         await companyStore.uploadCompanyLogo(companyId, logoFile, {
           skipNotification: true,
         })
@@ -234,8 +247,9 @@ export function useCreateGlobalCompanyWizard() {
 
       // 4. assignModulesToCompany(companyId, moduleId)
       if (moduleIds.length > 0) {
+        failedEntity = 'modules'
         submitProgressLabel.value = 'Asignando módulos'
-        failedStepLabel.value = WIZARD_STEPS[3].label
+        failedStepLabel.value = 'Asignar módulos'
         for (const moduleId of moduleIds) {
           const normalizedModuleId = String(moduleId ?? '').trim()
           if (!normalizedModuleId) continue
@@ -244,23 +258,30 @@ export function useCreateGlobalCompanyWizard() {
             companyId,
             normalizedModuleId,
             ActiveModule.ACTIVO,
+            { skipNotification: true },
           )
           created.assignedModuleIds.push(normalizedModuleId)
         }
       }
 
+      failedEntity = null
       failedStepLabel.value = null
-      toast.success('Registro completo creado correctamente.')
+      notificationAlert.showSuccess('Creado correctamente')
       return true
     } catch (error) {
-      const stepLabel = failedStepLabel.value ?? 'desconocido'
       await rollbackCreated(created)
-      const detail = error instanceof Error && error.message
-        ? ` ${error.message}`
-        : ''
-      toast.error(
-        `Error en el paso "${stepLabel}". Se revirtió lo creado hasta ese punto.${detail}`,
-      )
+
+      const failureStepIndex = wizardStepIndexForFailure(failedEntity)
+      if (failureStepIndex != null) {
+        currentStepIndex.value = failureStepIndex
+      }
+
+      const alert = resolveWizardSubmitErrorAlert(error, failedEntity, {
+        userEmail: drafts.value.user?.email,
+        companyEmail: drafts.value.company?.email,
+        companyDocument: drafts.value.company?.documentNumber,
+      })
+      notificationAlert.showError(alert.title, alert.message)
       return false
     } finally {
       isSubmitting.value = false

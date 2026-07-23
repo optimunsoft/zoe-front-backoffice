@@ -22,6 +22,8 @@ export const useAnchoredOverlay = (
     offset?: number
     zIndex?: number
     maxHeight?: number
+    /** When true, always opens below the anchor (unless it would leave the viewport). */
+    preferBelow?: boolean
   } = {},
 ) => {
   const anchorRef = ref<HTMLElement | null>(null)
@@ -29,8 +31,9 @@ export const useAnchoredOverlay = (
   let listenersAttached = false
 
   const offset = options.offset ?? 4
-  const zIndex = options.zIndex ?? 100
+  const zIndex = options.zIndex ?? 110
   const maxHeight = options.maxHeight ?? 224
+  const preferBelow = options.preferBelow ?? false
 
   const updatePosition = () => {
     const el = anchorRef.value
@@ -42,7 +45,9 @@ export const useAnchoredOverlay = (
     const rect = el.getBoundingClientRect()
     const spaceBelow = window.innerHeight - rect.bottom - offset
     const spaceAbove = rect.top - offset
-    const openUp = spaceBelow < Math.min(maxHeight, 160) && spaceAbove > spaceBelow
+    const openUp = preferBelow
+      ? false
+      : spaceBelow < Math.min(maxHeight, 160) && spaceAbove > spaceBelow
 
     style.value = {
       position: 'fixed',

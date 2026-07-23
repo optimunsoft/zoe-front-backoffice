@@ -1,5 +1,8 @@
 <template>
-  <div class="relative min-h-96">
+  <div
+    class="relative"
+    :class="isFormReady ? '' : 'min-h-96 overflow-hidden'"
+  >
     <div
       v-if="!isFormReady"
       class="absolute inset-0 z-10 flex items-center justify-center bg-white dark:bg-gray-800"
@@ -321,13 +324,20 @@ const handleSubmit = () => {
   emit('submit', result.data)
 }
 
+const setFormValues = (values: Partial<typeof form>) => {
+  Object.assign(form, values)
+}
+
 defineExpose({
   submit: handleSubmit,
   reset,
   initialize,
   setValues,
+  setFormValues,
   isFormReady,
   displayName,
+  form,
+  getValues: () => ({ ...form }),
   uploadCompanyLogoIfNeeded: async (
     companyId: string,
     options?: { skipNotification?: boolean },

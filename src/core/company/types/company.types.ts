@@ -105,7 +105,8 @@ export interface CompanyCreate extends Omit<generalInformationCompany, 'municipa
 
 export interface CompanyUpdate extends Omit<generalInformationCompany, 'municipality'> {
   municipalityId: string;
-  production: boolean;
+  /** Opcional: no se envía en edición desde ModalEdit. */
+  production?: boolean;
 }
 
 export type PaginatedCompaniesResponse = {
@@ -140,6 +141,25 @@ export type CompanyLogo = {
   logo: string;
 }
 
+
+export type structurePrefill = {
+  documentTypeId: string;  
+  municipalityId: string;
+  documentNumber: string;
+  businessName: string;
+  tradeName: string | null;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  secondLastName: string;
+  email: string;
+  address: string;
+}
+
+export type rutCompany = {
+  prefill: structurePrefill;
+}
+
 export type AssignUsersCompanyRequest = AssignUsersCompany
 
 export type AssignUsersCompanyResponse = ApiResponse<AssignUsersCompany>;
@@ -147,6 +167,7 @@ export type AssignUsersCompanyResponse = ApiResponse<AssignUsersCompany>;
 export type UploadLogoResponse = ApiResponse<UploadLogo>;
 export type GetCompanyLogoResponse = ApiResponse<CompanyLogo>;
 export type GetCompaniesResponse = ApiResponse<CompanyList[] | PaginatedCompaniesResponse>;
+export type GetCompanyRutResponse = ApiResponse<rutCompany>;
 export type GetCompanyPermissionsResponse = ApiResponse<CompanyRolePermissions>;
 export type CompanyRequestBody = CompanyCreate;
 export type CompanyUpdateRequestBody = CompanyUpdate;

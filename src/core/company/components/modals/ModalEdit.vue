@@ -143,7 +143,8 @@ const handleEdit = async (payload: CompanyUpdateRequestBody) => {
   isSubmitting.value = true
 
   try {
-    await companyStore.updateCompany(companyId, payload)
+    const { production: _production, ...updatePayload } = payload
+    await companyStore.updateCompany(companyId, updatePayload)
     formRef.value?.reset()
     emit('close-modal')
     emit('updated')

@@ -330,10 +330,15 @@ watch(
 
     await loadLabelById(municipalityId)
   },
+  { immediate: true },
 )
 
 defineExpose({
   reset,
   setMunicipality,
+  syncLabelFromModel: async () => {
+    if (!props.modelValue) return
+    await loadLabelById(props.modelValue)
+  },
 })
 </script>

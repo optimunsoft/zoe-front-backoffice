@@ -15,7 +15,7 @@
             :model-value="form.firstName"
             name="firstName"
             type="text"
-            label="Nombre"
+            :label="firstNameLabel"
             placeholder="Nombre"
             required
             :error="errors.firstName"
@@ -28,7 +28,7 @@
             :model-value="form.lastName"
             name="lastName"
             type="text"
-            label="Apellido"
+            :label="lastNameLabel"
             placeholder="Apellido"
             required
             :error="errors.lastName"
@@ -41,7 +41,7 @@
             v-model="form.email"
             name="email"
             type="email"
-            label="Correo electrónico"
+            :label="emailLabel"
             placeholder="correo@empresa.com"
             required
             :error="errors.email"
@@ -68,6 +68,7 @@
             id="user-municipality-search"
             ref="municipalityFieldRef"
             v-model="form.municipalityId"
+            :label="municipalityLabel"
             required
             :error="errors.municipalityId"
             @update:model-value="clearFieldError('municipalityId')"
@@ -75,7 +76,7 @@
 
           <div>
             <InputField
-              label="Celular"
+              :label="phoneLabel"
               html-for="user-phone-number"
               required
               :error="phoneFieldError"
@@ -232,12 +233,13 @@
 </template>
 
 <style scoped>
-.user-form-tabs--single :deep(ul[role='tablist']) {
+/* wrapper-class vive en el root de UTabs (hijo); hace falta :deep en el selector */
+:deep(.user-form-tabs--single) {
   display: none;
 }
 
-.user-form-tabs--single :deep(.absolute.bottom-0) {
-  display: none;
+:deep(.user-form-tabs--single + div) {
+  margin-top: 0;
 }
 </style>
 
@@ -284,10 +286,20 @@ const props = withDefaults(defineProps<{
   mode?: 'create' | 'edit'
   initialUser?: User | null
   showBackofficeSection?: boolean
+  emailLabel?: string
+  firstNameLabel?: string
+  lastNameLabel?: string
+  municipalityLabel?: string
+  phoneLabel?: string
 }>(), {
   mode: 'create',
   initialUser: null,
   showBackofficeSection: true,
+  emailLabel: 'Correo electrónico',
+  firstNameLabel: 'Nombre',
+  lastNameLabel: 'Apellido',
+  municipalityLabel: 'Municipio',
+  phoneLabel: 'Celular',
 })
 
 const isEditMode = computed(() => props.mode === 'edit')

@@ -6,6 +6,7 @@
     :description="currentStepDescription"
     size="6xl"
     motion="gentle"
+    hide-body-fade
     @close-modal="handleClose"
   >
     <template #icon>
@@ -14,7 +15,7 @@
       </div>
     </template>
 
-    <div class="relative min-h-72">
+    <div class="relative min-h-0">
       <div
         v-if="isSubmitting"
         class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-lg bg-white/85 backdrop-blur-[1px] dark:bg-gray-800/85"
@@ -40,29 +41,76 @@
           v-if="modalOpen"
           ref="userFormRef"
           mode="create"
+          first-name-label="Nombre del usuario"
+          last-name-label="Apellido del usuario"
+          email-label="Correo electrónico del usuario"
+          municipality-label="Municipio del usuario"
+          phone-label="Celular del usuario"
           :show-backoffice-section="false"
           @submit="onUserStepSubmit"
         />
       </div>
 
-      <div v-show="stepKey === 'company'">
-        <FormCompany
-          v-if="companyStepMounted"
-          ref="companyFormRef"
-          mode="create"
-          hide-owner-field
-          hide-production-field
-          :production="true"
-          @submit="onCompanyStepSubmit"
-        />
+      <div
+        v-show="stepKey === 'company' || stepKey === 'company-additional'"
+        class="relative flex flex-col gap-4"
+        :aria-busy="statusRut || undefined"
+      >
+        <div
+          v-if="statusRut"
+          class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-lg bg-white/85 backdrop-blur-[1px] dark:bg-gray-800/85"
+          aria-live="polite"
+        >
+          <Spinner
+            size="lg"
+            class="text-violet-500 dark:text-violet-300"
+          />
+          <p class="text-sm font-medium text-gray-700 dark:text-gray-200">
+            Procesando documento...
+          </p>
+        </div>
+
+        <div v-show="stepKey === 'company'">
+          <input
+            ref="rutInputRef"
+            type="file"
+            class="sr-only"
+            accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+            @change="onRutFileChange"
+          >
+          <Tooltip bg="light" position="top" size="sm">
+            <template #trigger>
+              <Button type="button" variant="secondary" :loading="statusRut" :disabled="statusRut" @click="openRutPicker">
+                <template #icon>
+                  <UiIcon name="upload" size="sm" />
+                </template>
+                Subir RUT
+              </Button>
+            </template>
+            <div class="max-w-xs text-xs font-medium">
+              Sube el RUT de la empresa para completar los datos automáticamente.
+            </div>
+          </Tooltip>
+        </div>
+        <div class="min-w-0">
+          <FormCompanyEspecials
+            v-if="companyStepMounted"
+            ref="companyFormRef"
+            :production="true"
+            :section="companyFormSection"
+            :disabled="statusRut"
+            @submit="onCompanyStepSubmit"
+          />
+        </div>
       </div>
 
-      <div v-show="stepKey === 'logo'" class="mx-auto w-[50%]">
+      <div v-show="stepKey === 'logo'" class="mx-auto w-full max-w-xl">
         <InputFileUpload
           id="wizard-company-logo"
           v-model="logoFile"
           class="block w-full"
           label="Logo"
+          preview-size="lg"
           :accept="logoAccept"
           :max-size-mb="5"
           help-text="PNG o JPEG, máximo 5 MB"
@@ -127,17 +175,20 @@
 import { computed, nextTick, ref, unref, watch } from 'vue'
 
 import { useCatalogStore } from '~/core/catalog/store/catalog.store'
-import FormCompany from '~/core/company/components/forms/form.vue'
+import { useCompanyStore } from '~/core/company/store/company.store'
 import type { CompanyRequestBody, CompanyUpdateRequestBody } from '~/core/company/types/company.types'
 import { Button } from '~/core/ui/buttons'
 import { UiIcon } from '~/core/ui/icons'
 import InputFileUpload from '~/core/ui/inputs/InputFileUpload.vue'
 import { Spinner } from '~/core/ui/loader'
 import { ModalBasic } from '~/core/ui/modal'
+import { useNotificationAlertStore } from '~/core/ui/notifications'
+import { Tooltip } from '~/core/ui/Utooltip'
 import FormUser from '~/modules/administration/users/components/forms/Form.vue'
 import type { UserCreate, UserUpdate } from '~/modules/administration/users/types/users.types'
 import { useModulesStore } from '~/modules/modules/store/modules.store'
 
+import FormCompanyEspecials from '../forms/FormCompanyEspecials.vue'
 import WizardStepIndicator from '../wizard/WizardStepIndicator.vue'
 import WizardStepModules from '../wizard/WizardStepModules.vue'
 import { useCreateGlobalCompanyWizard } from '../../composables/use-create-global-company-wizard'
@@ -153,6 +204,8 @@ const emit = defineEmits<{
 
 const catalogStore = useCatalogStore()
 const modulesStore = useModulesStore()
+const companyStore = useCompanyStore()
+const notificationAlert = useNotificationAlertStore()
 
 const {
   WIZARD_STEPS,
@@ -175,20 +228,26 @@ const {
 } = useCreateGlobalCompanyWizard()
 
 const userFormRef = ref<InstanceType<typeof FormUser> | null>(null)
-const companyFormRef = ref<InstanceType<typeof FormCompany> | null>(null)
+const companyFormRef = ref<InstanceType<typeof FormCompanyEspecials> | null>(null)
 const companyStepMounted = ref(false)
 const isAdvancing = ref(false)
 const pendingUserAdvance = ref(false)
 const pendingCompanyAdvance = ref(false)
 const logoFile = ref<File | null>(null)
+const rutFile = ref<File | null>(null)
+const rutInputRef = ref<HTMLInputElement | null>(null)
 const moduleIds = ref<string[]>([])
 const logoAccept = '.png,.jpg,.jpeg,image/png,image/jpeg'
+const statusRut = ref(false)
 
 let prepareSeq = 0
 let preparePromise: Promise<void> | null = null
 let isCompanyFormPrepared = false
 
 const stepKey = computed(() => unref(currentStep)?.key ?? 'user')
+const companyFormSection = computed(() =>
+  stepKey.value === 'company-additional' ? 'additional' as const : 'general' as const,
+)
 const missingRequirementsLabel = computed(() =>
   unref(missingRequirements).join(', '),
 )
@@ -202,17 +261,72 @@ const modalTitle = computed(() => {
 const currentStepDescription = computed(() => {
   switch (stepKey.value) {
     case 'user':
-      return 'Paso 1 de 4: crea el usuario dueño de la empresa.'
+      return 'Paso 1 de 5: crea el usuario dueño de la empresa.'
     case 'company':
-      return 'Paso 2 de 4: completa los datos de la empresa.'
+      return 'Paso 2 de 5: completa la información general (puedes subir el RUT).'
+    case 'company-additional':
+      return 'Paso 3 de 5: completa la información adicional requerida.'
     case 'logo':
-      return 'Paso 3 de 4: carga el logo (opcional).'
+      return 'Paso 4 de 5: carga el logo (opcional).'
     case 'modules':
-      return 'Paso 4 de 4: asigna módulos (opcional) y envía.'
+      return 'Paso 5 de 5: asigna módulos (opcional) y envía.'
     default:
-      return 'Completa el registro en 4 pasos.'
+      return 'Completa el registro en 5 pasos.'
   }
 })
+
+const uploadRutFile = async (file: File) => {
+  // Prefill: sin alerta de éxito (solo al enviar el registro completo).
+  return companyStore.getCompanyRut(file, { skipNotification: true })
+}
+
+const openRutPicker = () => {
+  rutInputRef.value?.click()
+}
+
+const onRutFileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  input.value = ''
+  if (!file) return
+
+  rutFile.value = file
+  await getCompanyRut(file)
+}
+
+const getCompanyRut = async (file: File) => {
+  if (statusRut.value) return
+
+  statusRut.value = true
+  try {
+    const prefill = await uploadRutFile(file)
+
+    await waitForCompanyForm()
+    if (!companyFormRef.value || !prefill) return
+
+    // Asigna valores sin esperar el sync del municipio para no dejar el overlay colgado.
+    void companyFormRef.value.setFormValues({
+      ownerUserId: '',
+      taxResponsibilityId: '',
+      vatRegimeId: '',
+      documentTypeId: prefill.documentTypeId ?? '',
+      businessNatureId: (prefill as { businessNatureId?: string }).businessNatureId ?? '',
+      municipalityId: prefill.municipalityId ?? '',
+      documentNumber: prefill.documentNumber ?? '',
+      businessName: prefill.businessName ?? '',
+      firstName: prefill.firstName ?? '',
+      middleName: prefill.middleName ?? '',
+      lastName: prefill.lastName ?? '',
+      secondLastName: prefill.secondLastName ?? '',
+      email: prefill.email ?? '',
+      address: prefill.address ?? '',
+    })
+  } catch {
+    // El error ya se maneja por la capa de API / notificación.
+  } finally {
+    statusRut.value = false
+  }
+}
 
 const waitForCompanyForm = async () => {
   for (let attempt = 0; attempt < 20; attempt += 1) {
@@ -332,6 +446,14 @@ const handleNext = async () => {
 
   if (stepKey.value === 'company') {
     isAdvancing.value = true
+    const ok = companyFormRef.value?.validateGeneral() ?? false
+    if (ok) goNext()
+    isAdvancing.value = false
+    return
+  }
+
+  if (stepKey.value === 'company-additional') {
+    isAdvancing.value = true
     pendingCompanyAdvance.value = true
     companyFormRef.value?.submit()
     await nextTick()
@@ -371,6 +493,9 @@ const handleSubmitAll = async () => {
 
 const handleClose = () => {
   if (isSubmitting.value) return
+
+  // Cancelar: no mostrar alertas de éxito encoladas (p. ej. RUT u otras mutaciones intermedias).
+  notificationAlert.clearPending('success')
 
   userFormRef.value?.reset()
   companyFormRef.value?.reset()

@@ -47,10 +47,13 @@ export const useUsersService = () => {
     })
   }
 
-  const createUser = async (user: UserRequestBody): Promise<GetUsersResponse> => {
+  const createUser = async (user: UserRequestBody, options?: { skipNotification?: boolean }): Promise<GetUsersResponse> => {
     return $apiBackoffice<GetUsersResponse>('administration/users/create', {
       method: 'POST',
       body: user,
+      ...(options?.skipNotification
+        ? { headers: { [HEADER_SKIP_NOTIFICATION]: '1' } }
+        : {}),
     })
   }
 

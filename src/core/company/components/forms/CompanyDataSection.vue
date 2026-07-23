@@ -274,123 +274,122 @@
             @update:model-value="onProfessionalCardNumberChange"
           />
         </div>
-      </div>
 
-
-    </div>
-  </div>
-
-  <div class="mt-3 space-y-3">
-    <div v-if="!isEditMode && !hideOwnerField">
-      <template v-if="!selectedOwner">
-        <InputField
-          label="Dueño de la empresa"
-          html-for="company-owner-search"
-          required
-          :error="errors.ownerUserId"
+        <div
+          v-if="!isEditMode && !hideOwnerField"
+          class="company-data-form__col"
         >
-          <div class="flex items-center gap-2">
-            <div ref="ownerAnchorRef" class="relative min-w-0 flex-1">
-              <input
-                id="company-owner-search"
-                v-model="ownerSearch"
-                type="text"
-                name="ownerSearch"
-                placeholder="Buscar usuario por nombre o correo..."
-                class="form-input w-full"
-                @input="onOwnerSearchInput(($event.target as HTMLInputElement).value)"
-              >
-            </div>
-            <Button
-              type="button"
-              variant="primary"
-              class="shrink-0"
-              :disabled="!canAddOwner"
-              @click="confirmAddOwner"
+          <template v-if="!selectedOwner">
+            <InputField
+              label="Dueño de la empresa"
+              html-for="company-owner-search"
+              required
+              :error="errors.ownerUserId"
             >
-              <template #icon>
-                <UiIcon name="plus" size="sm" />
-              </template>
-              Agregar
-            </Button>
-          </div>
+              <div class="flex items-center gap-2">
+                <div ref="ownerAnchorRef" class="relative min-w-0 flex-1">
+                  <input
+                    id="company-owner-search"
+                    v-model="ownerSearch"
+                    type="text"
+                    name="ownerSearch"
+                    placeholder="Buscar usuario por nombre o correo..."
+                    class="form-input w-full"
+                    @input="onOwnerSearchInput(($event.target as HTMLInputElement).value)"
+                  >
+                </div>
+                <Button
+                  type="button"
+                  variant="primary"
+                  class="shrink-0"
+                  :disabled="!canAddOwner"
+                  @click="confirmAddOwner"
+                >
+                  <template #icon>
+                    <UiIcon name="plus" size="sm" />
+                  </template>
+                  Agregar
+                </Button>
+              </div>
 
-          <Teleport to="body">
-            <div
-              v-if="showOwnerSuggestions && ownerPanelStyle"
-              class="fixed max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700/60 dark:bg-gray-800"
-              :style="ownerPanelStyle"
-            >
-              <button
-                v-for="user in ownerSearchResults"
-                :key="user.id"
-                type="button"
-                class="flex w-full items-center justify-between gap-3 border-b border-gray-100 px-3 py-2.5 text-left transition last:border-b-0 hover:bg-gray-50 dark:border-gray-700/60 dark:hover:bg-gray-800/60"
-                :class="pendingOwner?.id === user.id ? 'bg-violet-50 dark:bg-violet-500/10' : ''"
-                @mousedown.prevent="selectOwnerCandidate(user)"
-              >
-                <div class="min-w-0">
-                  <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
-                    {{ formatUserDisplayName(user) }}
+              <Teleport to="body">
+                <div
+                  v-if="showOwnerSuggestions && ownerPanelStyle"
+                  class="fixed z-110 max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700/60 dark:bg-gray-800"
+                  :style="ownerPanelStyle"
+                >
+                  <button
+                    v-for="user in ownerSearchResults"
+                    :key="user.id"
+                    type="button"
+                    class="flex w-full items-center justify-between gap-3 border-b border-gray-100 px-3 py-2.5 text-left transition last:border-b-0 hover:bg-gray-50 dark:border-gray-700/60 dark:hover:bg-gray-800/60"
+                    :class="pendingOwner?.id === user.id ? 'bg-violet-50 dark:bg-violet-500/10' : ''"
+                    @mousedown.prevent="selectOwnerCandidate(user)"
+                  >
+                    <div class="min-w-0">
+                      <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
+                        {{ formatUserDisplayName(user) }}
+                      </p>
+                      <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+                        {{ user.email }}
+                      </p>
+                    </div>
+                    <span
+                      v-if="pendingOwner?.id === user.id"
+                      class="shrink-0 text-xs font-medium text-violet-500"
+                    >
+                      Seleccionado
+                    </span>
+                  </button>
+
+                  <p
+                    v-if="ownerSearchResults.length === 0 && !isSearchingOwners"
+                    class="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400"
+                  >
+                    No se encontraron usuarios con ese criterio.
                   </p>
-                  <p class="truncate text-xs text-gray-500 dark:text-gray-400">
-                    {{ user.email }}
+
+                  <p
+                    v-else-if="isSearchingOwners"
+                    class="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400"
+                  >
+                    Buscando...
                   </p>
                 </div>
-                <span
-                  v-if="pendingOwner?.id === user.id"
-                  class="shrink-0 text-xs font-medium text-violet-500"
-                >
-                  Seleccionado
-                </span>
-              </button>
+              </Teleport>
+            </InputField>
+          </template>
 
-              <p
-                v-if="ownerSearchResults.length === 0 && !isSearchingOwners"
-                class="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400"
-              >
-                No se encontraron usuarios con ese criterio.
-              </p>
-
-              <p
-                v-else-if="isSearchingOwners"
-                class="px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400"
-              >
-                Buscando...
-              </p>
-            </div>
-          </Teleport>
-        </InputField>
-      </template>
-
-      <InputField
-        v-else
-        label="Dueño de la empresa"
-        required
-        :error="errors.ownerUserId"
-      >
-        <div
-          class="flex items-center justify-between gap-3 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2.5 dark:border-violet-500/30 dark:bg-violet-500/10"
-        >
-          <div class="min-w-0">
-            <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
-              {{ formatUserDisplayName(selectedOwner) }}
-            </p>
-            <p class="truncate text-xs text-gray-500 dark:text-gray-400">
-              {{ selectedOwner.email }}
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            class="shrink-0"
-            @click="removeOwner"
+          <InputField
+            v-else
+            label="Dueño de la empresa"
+            required
+            :error="errors.ownerUserId"
           >
-            Quitar
-          </Button>
+            <div
+              class="flex items-center justify-between gap-3 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2.5 dark:border-violet-500/30 dark:bg-violet-500/10"
+            >
+              <div class="min-w-0">
+                <p class="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
+                  {{ formatUserDisplayName(selectedOwner) }}
+                </p>
+                <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+                  {{ selectedOwner.email }}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                class="shrink-0"
+                @click="removeOwner"
+              >
+                Quitar
+              </Button>
+            </div>
+          </InputField>
         </div>
-      </InputField>
+      </div>
     </div>
   </div>
 </template>
@@ -578,7 +577,11 @@ const showOwnerSuggestions = computed(() =>
 const {
   anchorRef: ownerAnchorRef,
   panelStyle: ownerPanelStyle,
-} = useAnchoredOverlay(showOwnerSuggestions)
+  updatePosition: updateOwnerPanelPosition,
+} = useAnchoredOverlay(showOwnerSuggestions, {
+  preferBelow: true,
+  zIndex: 110,
+})
 
 const selectOwnerCandidate = async (user: User) => {
   pendingOwner.value = user
@@ -617,6 +620,8 @@ const searchOwners = async (term: string) => {
   try {
     await ensureUsersLoaded()
     ownerSearchResults.value = filterUsersByTerm(query)
+    await nextTick()
+    updateOwnerPanelPosition()
   } finally {
     isSearchingOwners.value = false
   }

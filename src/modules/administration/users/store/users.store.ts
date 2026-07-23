@@ -45,8 +45,8 @@ export const useUsersStore = defineStore('users', () => {
         total.value = normalized.total;
     }
 
-    const createUser = async (user: UserRequestBody) => {
-        const { response } = await useUsersService().createUser(user);
+    const createUser = async (user: UserRequestBody, options?: { skipNotification?: boolean }) => {
+        const { response } = await useUsersService().createUser(user, options);
         return response;
     }
 

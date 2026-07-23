@@ -166,6 +166,7 @@ export const useNotificationAlertStore = defineStore('notificationAlert', () => 
     showError,
     showWarning,
     showInfo,
+    clearPending,
     remove,
     dismissCurrent,
   }

@@ -7,6 +7,6 @@ export type ModalPosition = 'center' | 'top'
 export type ModalLayer = 'base' | 'elevated' | 'notification'
 
 export type UseModalOptions = {
-  /** Se ejecuta cada vez que el modal se cierra (X, Esc o `close()`). */
+  /** Se ejecuta cada vez que el modal se cierra (X o `close()`). */
   onClose?: () => void
 }

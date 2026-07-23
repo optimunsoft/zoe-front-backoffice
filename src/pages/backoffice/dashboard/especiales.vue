@@ -79,10 +79,9 @@ watch(createCompanyModalOpen, (open) => {
 const specialOptions: SpecialOption[] = [
   {
     key: 'create-company',
-    title: 'Registro Completo de empresas',
-    description: 'Registra las empresas con todos los datos disponibles.',
+    title: 'Registro Avanzado de Empresa',
+    description: 'Configura una nueva empresa con todos los datos requeridos desde un único flujo',
     icon: 'company',
-    badge: 'Configuración',
     badgeTone: 'info',
   },
 ]
@@ -99,10 +98,15 @@ const openOptionModal = async (option: SpecialOption) => {
     case 'create-company': {
       if (isPreloadingCreateCompany.value || createCompanyModalOpen.value) return
 
+      createCompanyModalMounted.value = true
+      openCreateCompanyModal()
+
+      // Precarga en segundo plano; el modal ya prepara catálogos al abrirse.
       isPreloadingCreateCompany.value = true
       try {
         await preloadCreateCompanyDependencies()
-        openCreateCompanyModal()
+      } catch {
+        // No bloquear la apertura del modal si falla la precarga.
       } finally {
         isPreloadingCreateCompany.value = false
       }

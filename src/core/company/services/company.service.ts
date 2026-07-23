@@ -1,6 +1,6 @@
 import type { ApiResponse } from '~/shared/interfaces/api'
 import { HEADER_SKIP_NOTIFICATION } from '~/shared/constants/headers'
-import type { ActiveModule, AssignUsersCompanyRequest, AssignUsersCompanyResponse, CompanyRequestBody, CompanyUpdateRequestBody, GetCompaniesParams, GetCompaniesResponse, GetCompanyLogoResponse, GetCompanyPermissionsResponse, UploadLogoResponse } from '../types/company.types'
+import type { ActiveModule, AssignUsersCompanyRequest, AssignUsersCompanyResponse, CompanyRequestBody, CompanyUpdateRequestBody, GetCompaniesParams, GetCompaniesResponse, GetCompanyLogoResponse, GetCompanyPermissionsResponse, GetCompanyRutResponse, UploadLogoResponse } from '../types/company.types'
 
 export type GetCompanyStatusResponse = ApiResponse<null>
 
@@ -28,10 +28,16 @@ export const useCompanyService = () => {
         });
     }
 
-    const createCompany = (company: CompanyRequestBody): Promise<GetCompaniesResponse> => {
+    const createCompany = (
+      company: CompanyRequestBody,
+      options?: { skipNotification?: boolean },
+    ): Promise<GetCompaniesResponse> => {
         return $apiBackoffice<GetCompaniesResponse>('/administration/companies/create', {
             method: 'POST',
             body: company,
+            ...(options?.skipNotification
+                ? { headers: { [HEADER_SKIP_NOTIFICATION]: '1' } }
+                : {}),
         });
     }
 
@@ -129,6 +135,22 @@ export const useCompanyService = () => {
         })
     }
 
+    const getCompanyRut = (
+      file: File,
+      options?: { skipNotification?: boolean },
+    ): Promise<GetCompanyRutResponse> => {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        return $apiBackoffice<GetCompanyRutResponse>('administration/companies/rut/extract-prefill', {
+            method: 'POST',
+            body: formData,
+            ...(options?.skipNotification
+                ? { headers: { [HEADER_SKIP_NOTIFICATION]: '1' } }
+                : {}),
+        })
+    }
+
 
     return {
         getCompanies,
@@ -141,5 +163,6 @@ export const useCompanyService = () => {
         assignModulesToCompany,
         uploadCompanyLogo,
         getCompanyLogo,
+        getCompanyRut,
     }
 }
