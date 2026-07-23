@@ -42,7 +42,7 @@ export const companyColumns: UTableColumn[] = [
   { key: 'municipality', label: 'Ciudad' },
   {
     key: 'production',
-    label: 'Tipo',
+    label: 'Entorno',
     align: 'center',
     type: 'badge',
     badgeColorMap: PRODUCTION_BADGE_COLORS,

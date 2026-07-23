@@ -6,6 +6,7 @@ export type GetCompaniesParams = {
   search?: string;
   municipalityId?: string;
   stateId?: string;
+  production?: boolean;
 }
 
 export interface roleUserCompany {

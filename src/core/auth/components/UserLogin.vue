@@ -191,7 +191,7 @@
   
   
           <!-- Formulario -->
-          <form class="space-y-4" @submit.prevent="continueWithCode">
+          <form class="space-y-4" autocomplete="off" @submit.prevent="continueWithCode">
             <p
               v-if="errorMessage"
               class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
@@ -206,7 +206,10 @@
               <input
                 v-model="email"
                 type="email"
-                autocomplete="email"
+                autocomplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                data-form-type="other"
                 placeholder="usuario@optimunsoft.co"
                 :readonly="codeStepActive"
                 :aria-invalid="Boolean(emailError)"

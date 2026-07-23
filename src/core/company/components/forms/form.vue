@@ -17,6 +17,7 @@
       :class="{ invisible: !isFormReady }"
       :aria-hidden="!isFormReady"
       novalidate
+      autocomplete="off"
       @submit.prevent="handleSubmit"
     >
     <CompanyDataSection

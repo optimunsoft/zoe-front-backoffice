@@ -64,6 +64,7 @@ export const useCompanyStore = defineStore('company', () => {
       params.search?.trim() ?? '',
       params.municipalityId?.trim() ?? '',
       params.stateId?.trim() ?? '',
+      typeof params.production === 'boolean' ? String(params.production) : '',
     ].join(':')
 
   const getCompanies = async (params: GetCompaniesParams, force = false) => {

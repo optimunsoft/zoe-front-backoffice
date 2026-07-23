@@ -22,7 +22,11 @@
         :disabled="disabled"
         :inputmode="digitsOnly ? 'numeric' : undefined"
         :maxlength="maxLength || undefined"
-        :autocomplete="digitsOnly ? 'off' : undefined"
+        :autocomplete="resolvedAutocomplete"
+        data-lpignore="true"
+        data-1p-ignore="true"
+        data-bwignore="true"
+        data-form-type="other"
         class="form-input w-full"
         :class="[
           sizeClass,
@@ -114,6 +118,8 @@ const props = withDefaults(defineProps<{
   /** Solo permite dígitos al escribir, pegar o autocompletar. */
   digitsOnly?: boolean
   maxLength?: number
+  /** Por defecto desactiva autocompletado de Chrome/Google. */
+  autocomplete?: string
 }>(), {
   modelValue: '',
   type: 'text',
@@ -121,6 +127,7 @@ const props = withDefaults(defineProps<{
   state: 'default',
   inputClass: '',
   digitsOnly: false,
+  autocomplete: undefined,
 })
 
 const emit = defineEmits<{
@@ -133,6 +140,12 @@ const inputId = computed(() => props.id ?? generatedId)
 const showPassword = ref(false)
 
 const isPasswordField = computed(() => props.type === 'password' && !props.digitsOnly)
+
+const resolvedAutocomplete = computed(() => {
+  if (props.autocomplete) return props.autocomplete
+  if (isPasswordField.value) return 'new-password'
+  return 'off'
+})
 
 const resolvedType = computed(() => {
   if (props.digitsOnly) return 'text'

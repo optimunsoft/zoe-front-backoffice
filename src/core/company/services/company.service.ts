@@ -8,13 +8,15 @@ export const useCompanyService = () => {
     const { $apiBackoffice } = useNuxtApp();
 
     const getCompanies = (params: GetCompaniesParams): Promise<GetCompaniesResponse> => {
-        const query: Record<string, string | number> = {
+        const query: Record<string, string | number | boolean> = {
             amount: params.amount,
             page: params.page,
         }
 
         const search = params.search?.trim()
         if (search) query.search = search
+
+        if (typeof params.production === 'boolean') query.production = params.production
 
         const municipalityId = params.municipalityId?.trim()
         if (municipalityId) query.municipalityId = municipalityId

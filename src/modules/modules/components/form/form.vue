@@ -1,5 +1,5 @@
 <template>
-  <form class="space-y-4" novalidate @submit.prevent="handleSubmit">
+  <form class="space-y-4" novalidate autocomplete="off" @submit.prevent="handleSubmit">
     <div class="grid gap-4 sm:grid-cols-2">
       <InputField
         label="Código"

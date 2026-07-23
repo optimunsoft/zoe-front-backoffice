@@ -23,7 +23,8 @@
         <FilterCards
           v-model="companyFilter"
           :options="companyFilterOptions"
-          aria-label="Filtrar empresas"
+          :loading="isFilterTotalsLoading"
+          aria-label="Filtrar empresas por entorno"
           wrapper-class="mb-0"
         />
 
@@ -225,12 +226,14 @@ import {
   type CompanyLocationSearchOption,
 } from '~/core/company/mappers/company-location.mapper'
 import { companyTableActions } from '~/core/company/mappers/company-table.actions'
-import type { Company, userCompany } from '~/core/company/types/company.types'
+import type { Company, PaginatedCompaniesResponse, userCompany } from '~/core/company/types/company.types'
 import { useCompanyStore } from '~/core/company/store/company.store'
+import { useCompanyService } from '~/core/company/services/company.service'
 import { useVatRegimeStore } from '~/core/vatRegime/store/vatRegime.store'
 import { Button, ReloadButton } from '~/core/ui/buttons'
 import { UiIcon } from '~/core/ui/icons'
 import { FilterCards } from '~/core/ui/filters'
+import type { FilterCardOption } from '~/core/ui/filters/filter-cards.types'
 import { useModal } from '~/core/ui/modal'
 import TableColumnToggle from '~/core/ui/dropdown/TableColumnToggle.vue'
 import InputSearch from '~/core/ui/inputs/InputSearch.vue'
@@ -242,7 +245,6 @@ import type { UTableRow } from '~/core/ui/Tables/utable.types'
 import { useTableRefresh } from '~/shared/composables/use-table-refresh'
 import { formatTableText } from '~/shared/utils/format'
 import { useVisibleTableColumns } from '~/shared/composables/use-visible-table-columns'
-import { buildFilterPillOptions, filterItemsByPill } from '~/shared/utils/build-filter-pill-options'
 import TableCompanyUsers from './TableCompanyUsers.vue'
 import { useAuthStore } from '~/core/auth/store/auth.store'
 import { useMunicipalityService } from '~/core/ubication/services/municipality.service'
@@ -267,6 +269,7 @@ const catalogStore = useCatalogStore()
 const authStore = useAuthStore()
 const businessNatureStore = useBusinessNatureStore()
 const companyStore = useCompanyStore()
+const companyService = useCompanyService()
 const vatRegimeStore = useVatRegimeStore()
 const municipalityService = useMunicipalityService()
 
@@ -279,10 +282,19 @@ const isSearchingLocations = ref(false)
 const hasLocationSearchAttempt = ref(false)
 const appliedLocationLabel = ref('')
 const companyFilter = ref('all')
+const filterTotals = ref<Record<string, number>>({})
+const isFilterTotalsLoading = ref(true)
 const appliedStateId = ref('')
 const appliedMunicipalityId = ref('')
 const currentPage = ref(1)
 const amount = ref(10)
+
+const companyFilterDefinitions = [
+  { key: 'all', label: 'Todos' },
+  { key: 'production', label: 'Producción' },
+  { key: 'demo', label: 'Pruebas/Demo' },
+] as const
+
 const {
   isLoading,
   isInitialLoadDone,
@@ -333,33 +345,68 @@ const assignUsersContext = ref<AssignUsersContext>({
 
 const totalCompanies = computed(() => companyStore.total)
 
-const normalizeCatalogLabel = (value: string) =>
-  value
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-
-const isNaturalBusinessNatureId = (businessNatureId: string) => {
-  const nature = businessNatureStore.businessNatures.find((item) => item.id === businessNatureId)
-  if (!nature) return false
-  return normalizeCatalogLabel(nature.name).includes('persona natural')
-}
-
-const isJuridicaBusinessNatureId = (businessNatureId: string) => {
-  const nature = businessNatureStore.businessNatures.find((item) => item.id === businessNatureId)
-  if (!nature) return false
-  return normalizeCatalogLabel(nature.name).includes('persona juridica')
-}
-
-const companyFilterOptions = computed(() =>
-  buildFilterPillOptions<Company>({
-    items: companyStore.companies,
-    options: [
-      { key: 'all', label: 'Todos' },
-    ],
-  }),
+const companyFilterOptions = computed<FilterCardOption[]>(() =>
+  companyFilterDefinitions.map((option) => ({
+    key: option.key,
+    label: option.label,
+    count: filterTotals.value[option.key],
+  })),
 )
+
+const resolveProductionForKey = (filterKey: string): boolean | undefined => {
+  if (filterKey === 'production') return true
+  if (filterKey === 'demo') return false
+  return undefined
+}
+
+const resolveProductionFilter = (): boolean | undefined =>
+  resolveProductionForKey(companyFilter.value)
+
+const extractCompaniesTotal = (
+  response: Awaited<ReturnType<typeof companyService.getCompanies>>['response'],
+) => {
+  if (Array.isArray(response)) return response.length
+  const paginated = response as PaginatedCompaniesResponse
+  return paginated.total
+    ?? paginated.data?.length
+    ?? paginated.items?.length
+    ?? paginated.companies?.length
+    ?? 0
+}
+
+const refreshFilterTotals = async () => {
+  isFilterTotalsLoading.value = true
+
+  try {
+    const search = searchQuery.value.trim()
+    const stateId = appliedStateId.value.trim()
+    const municipalityId = appliedMunicipalityId.value.trim()
+
+    const results = await Promise.all(
+      companyFilterDefinitions.map(async (option) => {
+        try {
+          const production = resolveProductionForKey(option.key)
+          const { response } = await companyService.getCompanies({
+            amount: 1,
+            page: 1,
+            ...(search ? { search } : {}),
+            ...(stateId ? { stateId } : {}),
+            ...(municipalityId ? { municipalityId } : {}),
+            ...(typeof production === 'boolean' ? { production } : {}),
+          })
+
+          return [option.key, extractCompaniesTotal(response)] as const
+        } catch {
+          return [option.key, filterTotals.value[option.key] ?? 0] as const
+        }
+      }),
+    )
+
+    filterTotals.value = Object.fromEntries(results)
+  } finally {
+    isFilterTotalsLoading.value = false
+  }
+}
 
 const showLocationSuggestions = computed(() => {
   const query = locationSearchQuery.value.trim()
@@ -409,7 +456,7 @@ const applyLocationFilter = async (option: CompanyLocationSearchOption) => {
   appliedStateId.value = option.stateId
   appliedMunicipalityId.value = option.municipalityId
   locationSearchResults.value = []
-  await fetchCompanies(1, true)
+  await fetchCompanies(1, true, { refreshTotals: true })
 }
 
 const selectLocationOption = async (option: CompanyLocationSearchOption) => {
@@ -428,25 +475,11 @@ const clearLocationFilter = async () => {
   hasLocationSearchAttempt.value = false
 
   if (!isInitialLoadDone.value || isLoading.value) return
-  await fetchCompanies(1, true)
+  await fetchCompanies(1, true, { refreshTotals: true })
 }
 
-const filteredCompanies = computed(() =>
-  filterItemsByPill(
-    companyStore.companies,
-    companyFilter.value,
-    'all',
-    {
-      natural: (company) => isNaturalBusinessNatureId(company.businessNatureId),
-      juridica: (company) => isJuridicaBusinessNatureId(company.businessNatureId),
-      'with-api-key': (company) => company.hasApiKey,
-      'without-api-key': (company) => !company.hasApiKey,
-    },
-  ),
-)
-
 const rows = computed<UTableRow[]>(() =>
-  mapCompaniesToTableRows(filteredCompanies.value, {
+  mapCompaniesToTableRows(companyStore.companies, {
     businessNatures: businessNatureStore.businessNatures,
     vatRegimes: vatRegimeStore.vatRegimes,
   }),
@@ -493,6 +526,7 @@ const buildCompaniesRequestParams = (page: number) => {
   const search = searchQuery.value.trim()
   const stateId = appliedStateId.value.trim()
   const municipalityId = appliedMunicipalityId.value.trim()
+  const production = resolveProductionFilter()
 
   return {
     amount: amount.value,
@@ -500,6 +534,7 @@ const buildCompaniesRequestParams = (page: number) => {
     ...(search ? { search } : {}),
     ...(stateId ? { stateId } : {}),
     ...(municipalityId ? { municipalityId } : {}),
+    ...(typeof production === 'boolean' ? { production } : {}),
   }
 }
 
@@ -521,15 +556,31 @@ const applyLocationSearch = async () => {
   }
 }
 
-const fetchCompanies = async (page: number, force = false) => {
+const fetchCompanies = async (
+  page: number,
+  force = false,
+  options: { refreshTotals?: boolean; forceCatalog?: boolean } = {},
+) => {
   currentPage.value = page
 
+  const totalsPromise = options.refreshTotals
+    ? refreshFilterTotals()
+    : Promise.resolve()
+
   await withTableLoading(async () => {
-    await catalogStore.preload(force)
+    // Catálogos de core: se reutilizan del store (casi no cambian). Solo se fuerza en reload explícito.
+    await catalogStore.preload(options.forceCatalog === true)
     await companyStore.getCompanies(buildCompaniesRequestParams(page), force)
     selectedItems.value = []
     expandedUsersRowKey.value = null
   })
+
+  await totalsPromise
+
+  filterTotals.value = {
+    ...filterTotals.value,
+    [companyFilter.value]: companyStore.total,
+  }
 }
 
 const handleCreateCompany = () => {
@@ -537,7 +588,7 @@ const handleCreateCompany = () => {
 }
 
 const handleCompanyCreated = async () => {
-  await fetchCompanies(currentPage.value, true)
+  await fetchCompanies(currentPage.value, true, { refreshTotals: true })
 }
 
 const handleCloseEditModal = () => {
@@ -584,7 +635,7 @@ const handleCloseAssignUsersModal = () => {
 }
 
 const handleAssignUsersUpdated = async () => {
-  await fetchCompanies(currentPage.value, true)
+  await fetchCompanies(currentPage.value, true, { refreshTotals: true })
 }
 
 const handleCompanyStatusUpdated = (active: boolean) => {
@@ -597,7 +648,7 @@ const handleCompanyStatusUpdated = (active: boolean) => {
 }
 
 const handleCompanyUpdated = async () => {
-  await fetchCompanies(currentPage.value, true)
+  await fetchCompanies(currentPage.value, true, { refreshTotals: true })
 }
 
 const handleChangePage = async (page: number) => {
@@ -625,20 +676,12 @@ const handleReload = async () => {
   companyFilter.value = 'all'
   currentPage.value = 1
 
-  await withTableLoading(async () => {
-    await catalogStore.preload(true)
-    await companyStore.getCompanies({
-      amount: amount.value,
-      page: 1,
-    }, true)
-    selectedItems.value = []
-    expandedUsersRowKey.value = null
-  })
+  await fetchCompanies(1, true, { refreshTotals: true, forceCatalog: true })
 }
 
 const handleSearch = async () => {
   if (isLoading.value) return
-  await fetchCompanies(1, true)
+  await fetchCompanies(1, true, { refreshTotals: true })
 }
 
 const handleLocationSearch = async () => {
@@ -666,7 +709,7 @@ watchDebounced(
       appliedMunicipalityId.value = ''
 
       if (hadFilter) {
-        await fetchCompanies(1, true)
+        await fetchCompanies(1, true, { refreshTotals: true })
       }
     }
 
@@ -679,12 +722,17 @@ watchDebounced(
   searchQuery,
   async () => {
     if (!isInitialLoadDone.value || isLoading.value) return
-    await fetchCompanies(1, true)
+    await fetchCompanies(1, true, { refreshTotals: true })
   },
   { debounce: 400 },
 )
 
+watch(companyFilter, async () => {
+  if (!isInitialLoadDone.value || isLoading.value) return
+  await fetchCompanies(1, true)
+})
+
 onMounted(async () => {
-  await fetchCompanies(currentPage.value)
+  await fetchCompanies(currentPage.value, false, { refreshTotals: true })
 })
 </script>

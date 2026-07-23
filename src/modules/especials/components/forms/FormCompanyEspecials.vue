@@ -15,6 +15,7 @@
       :class="{ 'pointer-events-none': disabled }"
       :aria-busy="disabled || undefined"
       novalidate
+      autocomplete="off"
       @submit.prevent="handleSubmit"
     >
       <CompanyDataSectionEspecials

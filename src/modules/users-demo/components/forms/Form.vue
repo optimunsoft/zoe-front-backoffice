@@ -1,5 +1,5 @@
 <template>
-  <form class="space-y-5" novalidate @submit.prevent="handleSubmit">
+  <form class="space-y-5" novalidate autocomplete="off" @submit.prevent="handleSubmit">
     <div class="grid gap-4 sm:grid-cols-2">
       <InputText
         id="users-demo-first-name"

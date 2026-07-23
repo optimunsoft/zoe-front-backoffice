@@ -1,5 +1,5 @@
 <template>
-  <form class="space-y-5" novalidate @submit.prevent="handleSubmit">
+  <form class="space-y-5" novalidate autocomplete="off" @submit.prevent="handleSubmit">
     <UTabs
       v-model="activeFormTab"
       variant="folder"

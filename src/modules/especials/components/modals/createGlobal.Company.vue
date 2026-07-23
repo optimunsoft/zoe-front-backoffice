@@ -78,8 +78,12 @@
             accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
             @change="onRutFileChange"
           >
+          <p class="text-sm text-gray-500 dark:text-gray-400 pb-4">
+            Sube el RUT de la empresa para completar los datos automáticamente.
+          </p>
           <Tooltip bg="light" position="top" size="sm">
             <template #trigger>
+             
               <Button type="button" variant="secondary" :loading="statusRut" :disabled="statusRut" @click="openRutPicker">
                 <template #icon>
                   <UiIcon name="upload" size="sm" />
